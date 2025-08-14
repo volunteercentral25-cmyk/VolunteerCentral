@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Verification - CATA Volunteer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            background: #f9f9f9;
+            padding: 30px;
+            border-radius: 0 0 10px 10px;
+        }
+        .button {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>CATA Volunteer</h1>
+        <p>Email Verification</p>
+    </div>
+    
+    <div class="content">
+        <h2>Welcome to CATA Volunteer!</h2>
+        <p>Hello {{name}},</p>
+        <p>Thank you for registering with CATA Volunteer. To complete your registration, please verify your email address by clicking the button below:</p>
+        
+        <div style="text-align: center;">
+            <a href="{{verification_url}}" class="button">Verify Email Address</a>
+        </div>
+        
+        <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
+        <p style="word-break: break-all; color: #667eea;">{{verification_url}}</p>
+        
+        <p>This link will expire in 24 hours for security reasons.</p>
+        
+        <p>If you didn't create an account with CATA Volunteer, you can safely ignore this email.</p>
+        
+        <p>Best regards,<br>The CATA Volunteer Team</p>
+    </div>
+    
+    <div class="footer">
+        <p>This email was sent from CATA Volunteer. Please do not reply to this email.</p>
+        <p>&copy; 2024 CATA Volunteer. All rights reserved.</p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Volunteer Hours Override Request - CATA Volunteer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            background: #f9f9f9;
+            padding: 30px;
+            border-radius: 0 0 10px 10px;
+        }
+        .details {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+        .button {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .button.approve {
+            background: #28a745;
+        }
+        .button.deny {
+            background: #dc3545;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>CATA Volunteer</h1>
+        <p>Hours Override Request</p>
+    </div>
+    
+    <div class="content">
+        <h2>Volunteer Hours Override Request</h2>
+        <p>Hello,</p>
+        <p>A student has requested approval for volunteer hours that require admin override. Please review the details below:</p>
+        
+        <div class="details">
+            <h3>Student Information:</h3>
+            <p><strong>Name:</strong> {{student_name}}</p>
+            <p><strong>Student ID:</strong> {{student_id}}</p>
+            <p><strong>Email:</strong> {{student_email}}</p>
+            
+            <h3>Volunteer Hours Details:</h3>
+            <p><strong>Event:</strong> {{event_name}}</p>
+            <p><strong>Location:</strong> {{event_location}}</p>
+            <p><strong>Date:</strong> {{event_date}}</p>
+            <p><strong>Hours:</strong> {{hours}} hours</p>
+            <p><strong>Description:</strong> {{description}}</p>
+        </div>
+        
+        <p>Please review this request and take action:</p>
+        
+        <div style="text-align: center;">
+            <a href="{{approve_url}}" class="button approve">Approve Hours</a>
+            <a href="{{deny_url}}" class="button deny">Deny Hours</a>
+        </div>
+        
+        <p>If the buttons don't work, you can use these direct links:</p>
+        <p><strong>Approve:</strong> <a href="{{approve_url}}" style="color: #667eea;">{{approve_url}}</a></p>
+        <p><strong>Deny:</strong> <a href="{{deny_url}}" style="color: #667eea;">{{deny_url}}</a></p>
+        
+        <p>This request will expire in 7 days for security reasons.</p>
+        
+        <p>Best regards,<br>The CATA Volunteer Team</p>
+    </div>
+    
+    <div class="footer">
+        <p>This email was sent from CATA Volunteer. Please do not reply to this email.</p>
+        <p>&copy; 2024 CATA Volunteer. All rights reserved.</p>
+    </div>
+</body>
+</html>
