@@ -1,0 +1,3 @@
+[33m87c3b97[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;31mcata-pages/main[m[33m)[m Fix project name to cata-volunteer-central to avoid Vercel conflict
+[33m36b397e[m Merge Cata-pages repository and resolve conflicts
+[33m8351b61[m Add CATA Volunteer website with Supabase integration, authentication, and dashboard features
