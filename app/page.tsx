@@ -35,24 +35,24 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-accent via-background to-accent/50">
+    <div className="min-h-screen bg-cata-gradient">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-border/50 sticky top-0 z-50">
+      <header className="bg-white/90 backdrop-blur-md border-b border-cata-burgundy/20 sticky top-0 z-50 shadow-lg">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <Image src="/cata-logo.png" alt="CATA Logo" width={50} height={50} className="animate-pulse-cata" />
+              <Image src="/cata-logo.png" alt="CATA Logo" width={50} height={50} className="animate-float" />
               <div>
-                <h1 className="text-2xl font-serif font-bold text-primary">CATA Volunteer</h1>
-                <p className="text-sm text-muted-foreground font-sans">Central High School</p>
+                <h1 className="text-2xl font-serif font-bold text-gradient">CATA Volunteer</h1>
+                <p className="text-sm text-cata-navy font-sans">Central High School</p>
               </div>
             </div>
             <div className="hidden md:flex items-center space-x-6">
-              <div className="flex items-center space-x-2 text-secondary">
+              <div className="flex items-center space-x-2 text-cata-navy animate-pulse-cata">
                 <Users className="h-4 w-4" />
                 <span className="text-sm font-sans">500+ Students</span>
               </div>
-              <div className="flex items-center space-x-2 text-secondary">
+              <div className="flex items-center space-x-2 text-cata-navy animate-pulse-cata">
                 <Clock className="h-4 w-4" />
                 <span className="text-sm font-sans">10,000+ Hours</span>
               </div>
@@ -66,43 +66,49 @@ export default function HomePage() {
           {/* Hero Section */}
           <div className="space-y-6 animate-fade-in-up">
             <div className="space-y-4">
-              <h2 className="text-4xl md:text-5xl font-serif font-bold text-foreground leading-tight">
-                Empower Your <span className="text-primary">Community</span>
+              <h2 className="text-4xl md:text-5xl font-serif font-bold text-white leading-tight">
+                Empower Your <span className="text-gradient">Community</span>
               </h2>
-              <p className="text-xl text-muted-foreground font-sans leading-relaxed">
+              <p className="text-xl text-white/90 font-sans leading-relaxed">
                 Explore volunteer opportunities, log your hours, and make a difference in your community.
               </p>
             </div>
 
             {/* Feature Cards */}
             <div className="grid sm:grid-cols-2 gap-4">
-              <Card className="border-primary/20 hover:border-primary/40 transition-colors">
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                      <Heart className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="font-serif font-semibold">Find Opportunities</h3>
-                      <p className="text-sm text-muted-foreground font-sans">Browse local volunteer events</p>
-                    </div>
+              <div className="card-cata hover-lift animate-scale-in">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-cata-burgundy/10 rounded-lg animate-glow">
+                    <Heart className="h-5 w-5 text-cata-burgundy" />
                   </div>
-                </CardContent>
-              </Card>
+                  <div>
+                    <h3 className="font-serif font-semibold text-cata-burgundy">Find Opportunities</h3>
+                    <p className="text-sm text-muted-foreground font-sans">Browse local volunteer events</p>
+                  </div>
+                </div>
+              </div>
 
-              <Card className="border-secondary/20 hover:border-secondary/40 transition-colors">
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-secondary/10 rounded-lg">
-                      <Award className="h-5 w-5 text-secondary" />
-                    </div>
-                    <div>
-                      <h3 className="font-serif font-semibold">Track Hours</h3>
-                      <p className="text-sm text-muted-foreground font-sans">Log and verify your impact</p>
-                    </div>
+              <div className="card-cata hover-lift animate-scale-in">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-cata-navy/10 rounded-lg animate-glow">
+                    <Award className="h-5 w-5 text-cata-navy" />
                   </div>
-                </CardContent>
-              </Card>
+                  <div>
+                    <h3 className="font-serif font-semibold text-cata-navy">Track Hours</h3>
+                    <p className="text-sm text-muted-foreground font-sans">Log and monitor your service</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+              <button className="btn-cata-primary animate-bounce-cata">
+                Get Started Today
+              </button>
+              <button className="btn-cata-secondary">
+                Learn More
+              </button>
             </div>
 
             {/* Stats */}
@@ -122,129 +128,117 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Authentication Section */}
+          {/* Auth Forms */}
           <div className="animate-slide-in-right">
-            <Card className="w-full max-w-md mx-auto shadow-xl border-0 bg-white/90 backdrop-blur-sm">
-              <CardHeader className="text-center pb-4">
-                <CardTitle className="text-2xl font-serif text-primary">Get Started</CardTitle>
-                <CardDescription className="font-sans">Join the CATA volunteer community</CardDescription>
+            <Card className="card-cata-gradient shadow-2xl">
+              <CardHeader className="text-center">
+                <CardTitle className="text-2xl font-serif text-white">Welcome Back</CardTitle>
+                <CardDescription className="text-white/80 font-sans">
+                  Sign in to your CATA Volunteer account
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <Tabs defaultValue="login" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 mb-6">
-                    <TabsTrigger value="login" className="font-sans">
-                      Sign In
-                    </TabsTrigger>
-                    <TabsTrigger value="register" className="font-sans">
-                      Sign Up
-                    </TabsTrigger>
-                  </TabsList>
+                                  <Tabs defaultValue="login" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 bg-white/20">
+                      <TabsTrigger value="login" className="text-white data-[state=active]:bg-white data-[state=active]:text-cata-burgundy">
+                        <Lock className="h-4 w-4 mr-2" />
+                        Login
+                      </TabsTrigger>
+                      <TabsTrigger value="register" className="text-white data-[state=active]:bg-white data-[state=active]:text-cata-burgundy">
+                        <User className="h-4 w-4 mr-2" />
+                        Register
+                      </TabsTrigger>
+                    </TabsList>
 
-                  <TabsContent value="login">
-                    <form onSubmit={handleLogin} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="email" className="font-sans">
-                          Email
-                        </Label>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                      <TabsContent value="login" className="space-y-4 mt-6">
+                      <form onSubmit={handleLogin} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="email" className="text-white font-sans">Email</Label>
                           <Input
                             id="email"
                             type="email"
-                            placeholder="your.email@cata.edu"
-                            className="pl-10 font-sans"
+                            placeholder="Enter your email"
+                            className="bg-white/90 border-white/20 text-cata-burgundy placeholder:text-cata-burgundy/60 focus-cata"
                             required
                           />
                         </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="password" className="font-sans">
-                          Password
-                        </Label>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <div className="space-y-2">
+                          <Label htmlFor="password" className="text-white font-sans">Password</Label>
                           <Input
                             id="password"
                             type="password"
                             placeholder="Enter your password"
-                            className="pl-10 font-sans"
+                            className="bg-white/90 border-white/20 text-cata-burgundy placeholder:text-cata-burgundy/60 focus-cata"
                             required
                           />
                         </div>
-                      </div>
-                      <Button type="submit" className="w-full font-sans font-semibold" disabled={isLoading}>
-                        {isLoading ? "Signing In..." : "Sign In"}
-                      </Button>
-                    </form>
-                  </TabsContent>
+                        <button
+                          type="submit"
+                          disabled={isLoading}
+                          className="btn-cata-primary w-full"
+                        >
+                          {isLoading ? (
+                            <div className="flex items-center justify-center">
+                              <div className="loading-spinner mr-2"></div>
+                              Signing in...
+                            </div>
+                          ) : (
+                            "Sign In"
+                          )}
+                        </button>
+                      </form>
+                    </TabsContent>
 
-                  <TabsContent value="register">
-                    <form onSubmit={handleRegister} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="fullName" className="font-sans">
-                          Full Name
-                        </Label>
-                        <div className="relative">
-                          <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                      <TabsContent value="register" className="space-y-4 mt-6">
+                      <form onSubmit={handleRegister} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="reg-email" className="text-white font-sans">Email</Label>
                           <Input
-                            id="fullName"
-                            type="text"
-                            placeholder="John Doe"
-                            className="pl-10 font-sans"
-                            required
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="studentId" className="font-sans">
-                          Student ID
-                        </Label>
-                        <div className="relative">
-                          <GraduationCap className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="studentId"
-                            type="text"
-                            placeholder="12345678"
-                            className="pl-10 font-sans"
-                            required
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="registerEmail" className="font-sans">
-                          Email
-                        </Label>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="registerEmail"
+                            id="reg-email"
                             type="email"
-                            placeholder="your.email@cata.edu"
-                            className="pl-10 font-sans"
+                            placeholder="Enter your email"
+                            className="bg-white/90 border-white/20 text-cata-burgundy placeholder:text-cata-burgundy/60 focus-cata"
                             required
                           />
                         </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="registerPassword" className="font-sans">
-                          Password
-                        </Label>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <div className="space-y-2">
+                          <Label htmlFor="student-id" className="text-white font-sans">Student ID</Label>
                           <Input
-                            id="registerPassword"
+                            id="student-id"
+                            type="text"
+                            placeholder="Enter your 10-digit student ID"
+                            className="bg-white/90 border-white/20 text-cata-burgundy placeholder:text-cata-burgundy/60 focus-cata"
+                            pattern="[0-9]{10}"
+                            maxLength={10}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="reg-password" className="text-white font-sans">Password</Label>
+                          <Input
+                            id="reg-password"
                             type="password"
                             placeholder="Create a password"
-                            className="pl-10 font-sans"
+                            className="bg-white/90 border-white/20 text-cata-burgundy placeholder:text-cata-burgundy/60 focus-cata"
                             required
                           />
                         </div>
-                      </div>
-                      <Button type="submit" className="w-full font-sans font-semibold" disabled={isLoading}>
-                        {isLoading ? "Creating Account..." : "Create Account"}
-                      </Button>
-                    </form>
-                  </TabsContent>
+                        <button
+                          type="submit"
+                          disabled={isLoading}
+                          className="btn-cata-primary w-full"
+                        >
+                          {isLoading ? (
+                            <div className="flex items-center justify-center">
+                              <div className="loading-spinner mr-2"></div>
+                              Creating account...
+                            </div>
+                          ) : (
+                            "Create Account"
+                          )}
+                        </button>
+                      </form>
+                    </TabsContent>
                 </Tabs>
               </CardContent>
             </Card>
