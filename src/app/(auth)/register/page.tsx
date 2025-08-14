@@ -33,6 +33,13 @@ export default function RegisterPage() {
     setLoading(true)
     setError('')
 
+    // Validate student ID exactly 10 digits
+    if (!/^\d{10}$/.test(formData.studentId)) {
+      setError('Student ID must be exactly 10 digits')
+      setLoading(false)
+      return
+    }
+
     // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match')
@@ -166,11 +173,15 @@ export default function RegisterPage() {
               id="studentId"
               name="studentId"
               type="text"
+              inputMode="numeric"
+              pattern="\d{10}"
+              maxLength={10}
               value={formData.studentId}
               onChange={handleChange}
               required
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter your student ID"
+              placeholder="10-digit Student ID"
+              title="Student ID must be exactly 10 digits"
             />
           </div>
 

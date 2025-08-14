@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
@@ -9,12 +9,23 @@ import { useRouter } from 'next/navigation'
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [supabase, setSupabase] = useState<any>(null)
   const router = useRouter()
-  const supabase = createClient()
+
+  useEffect(() => {
+    try {
+      const client = createClient()
+      setSupabase(client)
+    } catch (error) {
+      console.error('Failed to create Supabase client:', error)
+    }
+  }, [])
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
+    if (supabase) {
+      await supabase.auth.signOut()
+      router.push('/')
+    }
   }
 
   return (

@@ -1,64 +1,82 @@
-'use client'
+"use client"
 
 import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
-import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/auth-context'
+import { createClient } from '@/lib/supabase/client'
+import { motion } from 'framer-motion'
+import { Loader2 } from 'lucide-react'
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+  const { user, loading } = useAuth()
   const router = useRouter()
+  const [userRole, setUserRole] = useState<string | null>(null)
+  const [checkingRole, setCheckingRole] = useState(true)
   const supabase = createClient()
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        setUser(user)
-        // Check user role and redirect accordingly
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single()
-        
-        if (profile?.role === 'admin') {
-          router.push('/admin/dashboard')
-        } else {
-          router.push('/student/dashboard')
-        }
-      } else {
-        router.push('/login')
-      }
-      setLoading(false)
+    if (!loading && !user) {
+      router.push('/')
+      return
     }
 
-    getUser()
-  }, [router, supabase])
+    if (user) {
+      checkUserRole()
+    }
+  }, [user, loading, router])
 
-  if (loading) {
+  const checkUserRole = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user?.id)
+        .single()
+
+      if (error) {
+        console.error('Error fetching user role:', error)
+        // Default to student if role not found
+        setUserRole('student')
+      } else {
+        setUserRole(data?.role || 'student')
+      }
+    } catch (error) {
+      console.error('Error checking user role:', error)
+      setUserRole('student')
+    } finally {
+      setCheckingRole(false)
+    }
+  }
+
+  useEffect(() => {
+    if (userRole && !checkingRole) {
+      if (userRole === 'admin') {
+        router.push('/admin/dashboard')
+      } else {
+        router.push('/student/dashboard')
+      }
+    }
+  }, [userRole, checkingRole, router])
+
+  if (loading || checkingRole) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
         <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full"
-        />
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center"
+        >
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            className="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full mx-auto mb-4"
+          />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Loading Dashboard</h2>
+          <p className="text-gray-600">Please wait while we set up your experience...</p>
+        </motion.div>
       </div>
     )
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="text-center"
-      >
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">Loading Dashboard...</h1>
-        <p className="text-gray-600">Redirecting you to the appropriate dashboard.</p>
-      </motion.div>
-    </div>
-  )
+  return null
 }

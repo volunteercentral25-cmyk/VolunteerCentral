@@ -20,11 +20,6 @@
       "dest": "/"
     }
   ],
-  "functions": {
-    "api/flask_app.py": {
-      "runtime": "python3.9"
-    }
-  },
   "env": {
     "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key",

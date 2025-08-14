@@ -7,7 +7,7 @@ export const loginSchema = z.object({
 
 export const registerSchema = z.object({
   email: z.string().email('Invalid email address'),
-  studentId: z.string().min(1, 'Student ID is required'),
+  studentId: z.string().regex(/^\d{10}$/, 'Student ID must be exactly 10 digits'),
   fullName: z.string().min(2, 'Full name must be at least 2 characters'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
@@ -35,7 +35,7 @@ export const opportunitySchema = z.object({
 
 export const profileSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters'),
-  studentId: z.string().min(1, 'Student ID is required'),
+  studentId: z.string().regex(/^\d{10}$/, 'Student ID must be exactly 10 digits'),
   email: z.string().email('Invalid email address'),
 })
 

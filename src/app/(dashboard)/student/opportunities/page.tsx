@@ -89,10 +89,10 @@ export default function StudentOpportunitiesPage() {
                     </span>
                   </div>
                 )}
-                {opportunity.max_volunteers > 0 && (
+                {typeof opportunity.max_participants === 'number' && opportunity.max_participants > 0 && (
                   <div className="flex justify-between">
                     <span className="font-medium">Max Volunteers:</span>
-                    <span>{opportunity.max_volunteers}</span>
+                    <span>{opportunity.max_participants}</span>
                   </div>
                 )}
               </div>
