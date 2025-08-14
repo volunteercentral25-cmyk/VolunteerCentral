@@ -1,0 +1,12 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/(auth)/login/page": "/login",
+  "/(dashboard)/student/dashboard/page": "/student/dashboard",
+  "/(dashboard)/admin/dashboard/page": "/admin/dashboard",
+  "/(dashboard)/dashboard/page": "/dashboard",
+  "/(auth)/register/page": "/register",
+  "/(auth)/verify-email/page": "/verify-email",
+  "/(dashboard)/student/hours/page": "/student/hours",
+  "/page": "/",
+  "/(dashboard)/student/opportunities/page": "/student/opportunities"
+}
