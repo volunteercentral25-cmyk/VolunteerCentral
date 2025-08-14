@@ -9,7 +9,7 @@
   --cata-white: #ffffff;
   --cata-light-gray: #f0f0f0;
 
-  /* Updated color system with CATA branding */
+  /* Enhanced color system with vibrant CATA branding */
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -128,7 +128,7 @@
   }
 }
 
-/* Added custom animations for CATA branding */
+/* Enhanced animations for CATA branding */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -151,6 +151,17 @@
   }
 }
 
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 @keyframes pulse-cata {
   0%,
   100% {
@@ -161,6 +172,69 @@
   }
 }
 
+@keyframes bounce-cata {
+  0%, 20%, 53%, 80%, 100% {
+    transform: translate3d(0,0,0);
+  }
+  40%, 43% {
+    transform: translate3d(0, -8px, 0);
+  }
+  70% {
+    transform: translate3d(0, -4px, 0);
+  }
+  90% {
+    transform: translate3d(0, -2px, 0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 5px var(--cata-burgundy), 0 0 10px var(--cata-burgundy), 0 0 15px var(--cata-burgundy);
+  }
+  50% {
+    box-shadow: 0 0 10px var(--cata-burgundy), 0 0 20px var(--cata-burgundy), 0 0 30px var(--cata-burgundy);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes scale-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Animation classes */
 .animate-fade-in-up {
   animation: fadeInUp 0.6s ease-out;
 }
@@ -169,13 +243,48 @@
   animation: slideInRight 0.6s ease-out;
 }
 
+.animate-slide-in-left {
+  animation: slideInLeft 0.6s ease-out;
+}
+
 .animate-pulse-cata {
   animation: pulse-cata 2s infinite;
 }
 
-/* Added gradient backgrounds for CATA branding */
+.animate-bounce-cata {
+  animation: bounce-cata 1s ease-in-out;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  background-size: 200px 100%;
+  animation: shimmer 2s infinite;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-rotate {
+  animation: rotate 2s linear infinite;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.5s ease-out;
+}
+
+/* Enhanced gradient backgrounds for CATA branding */
 .bg-cata-gradient {
   background: linear-gradient(135deg, var(--cata-burgundy) 0%, var(--cata-navy) 100%);
+}
+
+.bg-cata-gradient-hover:hover {
+  background: linear-gradient(135deg, var(--cata-navy) 0%, var(--cata-burgundy) 100%);
+  transition: all 0.3s ease;
 }
 
 .bg-cata-diagonal {
@@ -185,4 +294,94 @@
     linear-gradient(-45deg, transparent 75%, var(--cata-burgundy) 75%);
   background-size: 20px 20px;
   background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+.bg-cata-radial {
+  background: radial-gradient(circle at center, var(--cata-burgundy) 0%, var(--cata-navy) 100%);
+}
+
+.bg-cata-conic {
+  background: conic-gradient(from 0deg, var(--cata-burgundy), var(--cata-navy), var(--cata-burgundy));
+}
+
+/* Enhanced button styles */
+.btn-cata-primary {
+  @apply bg-cata-gradient text-white font-bold py-3 px-6 rounded-lg shadow-lg;
+  @apply hover:bg-cata-gradient-hover transform hover:scale-105;
+  @apply transition-all duration-300 ease-in-out;
+  @apply animate-glow;
+}
+
+.btn-cata-secondary {
+  @apply bg-white text-cata-burgundy font-bold py-3 px-6 rounded-lg border-2 border-cata-burgundy;
+  @apply hover:bg-cata-burgundy hover:text-white;
+  @apply transition-all duration-300 ease-in-out;
+  @apply animate-pulse-cata;
+}
+
+/* Enhanced card styles */
+.card-cata {
+  @apply bg-white rounded-xl shadow-xl p-6;
+  @apply hover:shadow-2xl transform hover:-translate-y-2;
+  @apply transition-all duration-300 ease-in-out;
+  @apply border border-gray-200;
+}
+
+.card-cata-gradient {
+  @apply bg-cata-gradient text-white rounded-xl shadow-xl p-6;
+  @apply hover:shadow-2xl transform hover:-translate-y-2;
+  @apply transition-all duration-300 ease-in-out;
+}
+
+/* Enhanced text styles */
+.text-cata-primary {
+  color: var(--cata-burgundy);
+}
+
+.text-cata-secondary {
+  color: var(--cata-navy);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--cata-burgundy), var(--cata-navy));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Enhanced hover effects */
+.hover-lift:hover {
+  transform: translateY(-5px);
+  transition: transform 0.3s ease;
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 20px var(--cata-burgundy);
+  transition: box-shadow 0.3s ease;
+}
+
+/* Loading animations */
+.loading-spinner {
+  @apply animate-rotate;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid var(--cata-burgundy);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+}
+
+/* Enhanced focus states */
+.focus-cata:focus {
+  outline: 2px solid var(--cata-burgundy);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(155, 27, 48, 0.1);
+}
+
+/* Responsive animations */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
