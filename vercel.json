@@ -1,0 +1,40 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
+    },
+    {
+      "src": "api/flask_app.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/flask_app.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/"
+    }
+  ],
+  "functions": {
+    "api/flask_app.py": {
+      "runtime": "python3.9"
+    }
+  },
+  "env": {
+    "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key",
+    "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
+    "FLASK_MAIL_SERVER": "@flask_mail_server",
+    "FLASK_MAIL_PORT": "@flask_mail_port",
+    "FLASK_MAIL_USE_TLS": "@flask_mail_use_tls",
+    "FLASK_MAIL_USERNAME": "@flask_mail_username",
+    "FLASK_MAIL_PASSWORD": "@flask_mail_password",
+    "NEXT_PUBLIC_APP_URL": "@next_public_app_url",
+    "JWT_SECRET": "@jwt_secret"
+  }
+}
