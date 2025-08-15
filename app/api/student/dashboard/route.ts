@@ -3,27 +3,37 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('Dashboard API: Starting request...')
+    
     const supabase = createClient()
     
     // Get the current user with better error handling
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     
+    console.log('Dashboard API: Auth result:', { 
+      user: user?.id, 
+      email: user?.email, 
+      error: userError?.message 
+    })
+    
     if (userError) {
-      console.error('User authentication error:', userError)
+      console.error('Dashboard API: User authentication error:', userError)
       return NextResponse.json({ 
         error: 'Authentication failed', 
-        details: userError.message 
+        details: userError.message,
+        code: 'AUTH_ERROR'
       }, { status: 401 })
     }
     
     if (!user) {
-      console.error('No user found in session')
+      console.error('Dashboard API: No user found in session')
       return NextResponse.json({ 
-        error: 'No authenticated user found' 
+        error: 'No authenticated user found',
+        code: 'NO_USER'
       }, { status: 401 })
     }
 
-    console.log('User authenticated:', user.email, 'User ID:', user.id)
+    console.log('Dashboard API: User authenticated:', user.email, 'User ID:', user.id)
 
     // Get user profile with better error handling
     let { data: profile, error: profileError } = await supabase
@@ -32,9 +42,15 @@ export async function GET(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
+    console.log('Dashboard API: Profile lookup result:', {
+      profile: profile?.id,
+      error: profileError?.message,
+      errorCode: profileError?.code
+    })
+
     if (profileError) {
-      console.error('Profile lookup error:', profileError)
-      console.error('Profile error details:', {
+      console.error('Dashboard API: Profile lookup error:', profileError)
+      console.error('Dashboard API: Profile error details:', {
         code: profileError.code,
         message: profileError.message,
         details: profileError.details,
@@ -44,7 +60,7 @@ export async function GET(request: NextRequest) {
       // Check if it's a "not found" error vs other errors
       if (profileError.code === 'PGRST116') {
         // Profile not found - try to create it
-        console.log('Profile not found, attempting to create...')
+        console.log('Dashboard API: Profile not found, attempting to create...')
         const { data: newProfile, error: createError } = await supabase
           .from('profiles')
           .insert({
@@ -57,25 +73,27 @@ export async function GET(request: NextRequest) {
           .single()
 
         if (createError) {
-          console.error('Profile creation error:', createError)
+          console.error('Dashboard API: Profile creation error:', createError)
           return NextResponse.json({ 
             error: 'Failed to create profile',
-            details: createError.message
+            details: createError.message,
+            code: 'PROFILE_CREATE_ERROR'
           }, { status: 500 })
         }
 
-        console.log('Profile created successfully:', newProfile)
+        console.log('Dashboard API: Profile created successfully:', newProfile)
         profile = newProfile
       } else {
         // Other error - return the error
-        console.error('Unexpected profile error:', profileError)
+        console.error('Dashboard API: Unexpected profile error:', profileError)
         return NextResponse.json({ 
           error: 'Failed to fetch profile',
-          details: profileError.message
+          details: profileError.message,
+          code: 'PROFILE_FETCH_ERROR'
         }, { status: 500 })
       }
     } else {
-      console.log('Profile found successfully:', profile)
+      console.log('Dashboard API: Profile found successfully:', profile)
     }
 
     // Get volunteer hours statistics from volunteer_hours table
@@ -85,9 +103,9 @@ export async function GET(request: NextRequest) {
       .eq('student_id', profile.id)
 
     if (hoursError) {
-      console.error('Hours fetch error:', hoursError)
+      console.error('Dashboard API: Hours fetch error:', hoursError)
       // Don't fail the entire request for hours error, just use empty array
-      console.log('Using empty hours data due to error')
+      console.log('Dashboard API: Using empty hours data due to error')
     }
 
     // Get opportunity registrations
@@ -97,9 +115,9 @@ export async function GET(request: NextRequest) {
       .eq('student_id', profile.id)
 
     if (registrationsError) {
-      console.error('Registrations fetch error:', registrationsError)
+      console.error('Dashboard API: Registrations fetch error:', registrationsError)
       // Don't fail the entire request for registrations error, just use empty array
-      console.log('Using empty registrations data due to error')
+      console.log('Dashboard API: Using empty registrations data due to error')
     }
 
     // Calculate statistics with safe defaults
@@ -146,13 +164,14 @@ export async function GET(request: NextRequest) {
       achievements
     }
 
-    console.log('Dashboard data prepared successfully')
+    console.log('Dashboard API: Dashboard data prepared successfully')
     return NextResponse.json(dashboardData)
   } catch (error) {
-    console.error('Dashboard API error:', error)
+    console.error('Dashboard API: Unexpected error:', error)
     return NextResponse.json({ 
       error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
+      code: 'INTERNAL_ERROR'
     }, { status: 500 })
   }
 }
