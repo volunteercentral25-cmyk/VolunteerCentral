@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { OpportunityRegistration } from '@/lib/supabase/types'
 
 export async function GET(request: NextRequest) {
   try {
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
     const opportunities = opportunitiesData?.map(opportunity => {
       const registrations = opportunity.opportunity_registrations || []
       const volunteersRegistered = registrations.length
-      const isRegistered = registrations.some(reg => reg.student_id === profile.id)
+      const isRegistered = registrations.some((reg: OpportunityRegistration) => reg.student_id === profile.id)
       
       // Calculate duration in hours
       const startTime = new Date(`2000-01-01T${opportunity.start_time}`)
