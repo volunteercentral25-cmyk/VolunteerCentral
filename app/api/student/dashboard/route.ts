@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     let { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
-      .eq('email', user.email)
+      .eq('id', user.id)
       .single()
 
     if (profileError) {
@@ -46,13 +46,14 @@ export async function GET(request: NextRequest) {
       console.log('Profile found:', profile)
     }
 
-    // Get volunteer hours statistics
+    // Get volunteer hours statistics from volunteer_hours table
     const { data: hoursData, error: hoursError } = await supabase
       .from('volunteer_hours')
       .select('*')
       .eq('student_id', profile.id)
 
     if (hoursError) {
+      console.error('Hours fetch error:', hoursError)
       return NextResponse.json({ error: 'Failed to fetch hours' }, { status: 500 })
     }
 
@@ -63,6 +64,7 @@ export async function GET(request: NextRequest) {
       .eq('student_id', profile.id)
 
     if (registrationsError) {
+      console.error('Registrations fetch error:', registrationsError)
       return NextResponse.json({ error: 'Failed to fetch registrations' }, { status: 500 })
     }
 

@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-import { OpportunityRegistration } from '@/lib/supabase/types'
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +15,7 @@ export async function GET(request: NextRequest) {
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
-      .eq('email', user.email)
+      .eq('id', user.id)
       .single()
 
     if (profileError) {
@@ -45,12 +44,12 @@ export async function GET(request: NextRequest) {
     const opportunities = opportunitiesData?.map(opportunity => {
       const registrations = opportunity.opportunity_registrations || []
       const volunteersRegistered = registrations.length
-      const isRegistered = registrations.some((reg: OpportunityRegistration) => reg.student_id === profile.id)
+      const isRegistered = registrations.some((reg: any) => reg.student_id === profile.id)
       
       // Calculate duration in hours
-      const startTime = new Date(`2000-01-01T${opportunity.start_time}`)
-      const endTime = new Date(`2000-01-01T${opportunity.end_time}`)
-      const duration = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60)
+      const startTime = opportunity.start_time ? new Date(`2000-01-01T${opportunity.start_time}`) : null
+      const endTime = opportunity.end_time ? new Date(`2000-01-01T${opportunity.end_time}`) : null
+      const duration = startTime && endTime ? (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60) : 4
 
       // Determine if featured (mock logic - could be based on admin selection)
       const featured = Math.random() > 0.7 // 30% chance of being featured
@@ -84,15 +83,15 @@ export async function GET(request: NextRequest) {
         description: opportunity.description,
         location: opportunity.location,
         date: opportunity.date,
-        time: `${opportunity.start_time} - ${opportunity.end_time}`,
+        time: opportunity.start_time && opportunity.end_time ? `${opportunity.start_time} - ${opportunity.end_time}` : '9:00 AM - 1:00 PM',
         duration: Math.round(duration),
-        volunteersNeeded: opportunity.max_participants,
+        volunteersNeeded: opportunity.max_volunteers || 10,
         volunteersRegistered,
         category,
         difficulty,
         featured,
         isRegistered,
-        isFull: volunteersRegistered >= opportunity.max_participants
+        isFull: volunteersRegistered >= (opportunity.max_volunteers || 10)
       }
     }) || []
 
@@ -117,7 +116,7 @@ export async function POST(request: NextRequest) {
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
-      .eq('email', user.email)
+      .eq('id', user.id)
       .single()
 
     if (profileError) {
@@ -149,7 +148,7 @@ export async function POST(request: NextRequest) {
       .insert({
         opportunity_id: opportunityId,
         student_id: profile.id,
-        status: 'registered'
+        status: 'pending'
       })
       .select()
       .single()

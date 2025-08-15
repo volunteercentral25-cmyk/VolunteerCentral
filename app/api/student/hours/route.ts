@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
-      .eq('email', user.email)
+      .eq('id', user.id)
       .single()
 
     if (profileError) {
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
-      .eq('email', user.email)
+      .eq('id', user.id)
       .single()
 
     if (profileError) {
