@@ -55,7 +55,33 @@ export default function RegisterPage() {
     }
 
     try {
-      // Create user account
+      // Check if student ID already exists
+      const { data: existingProfile, error: checkError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('student_id', formData.studentId)
+        .single()
+
+      if (existingProfile) {
+        setError('A user with this Student ID already exists')
+        setLoading(false)
+        return
+      }
+
+      // Check if email already exists
+      const { data: existingEmail, error: emailCheckError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', formData.email)
+        .single()
+
+      if (existingEmail) {
+        setError('A user with this email already exists')
+        setLoading(false)
+        return
+      }
+
+      // Create user account with metadata
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -69,16 +95,57 @@ export default function RegisterPage() {
       })
 
       if (authError) {
+        console.error('Auth error:', authError)
         setError(authError.message)
-      } else {
+        setLoading(false)
+        return
+      }
+
+      if (authData.user) {
+        console.log('User created successfully:', authData.user.id)
+        
+        // Wait a moment for the trigger to create the profile
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+        // Verify profile was created
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authData.user.id)
+          .single()
+
+        if (profileError || !profile) {
+          console.error('Profile creation error:', profileError)
+          // Try to create profile manually if trigger failed
+          const { error: manualProfileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: authData.user.id,
+              email: formData.email,
+              full_name: formData.fullName,
+              student_id: formData.studentId,
+              role: 'student'
+            })
+
+          if (manualProfileError) {
+            console.error('Manual profile creation failed:', manualProfileError)
+            setError('Account created but profile setup failed. Please contact support.')
+            setLoading(false)
+            return
+          }
+        }
+
         setSuccess(true)
         // Redirect to email verification page
         setTimeout(() => {
           router.push('/verify-email')
         }, 2000)
+      } else {
+        setError('Failed to create user account')
       }
     } catch (err) {
-      setError('An unexpected error occurred')
+      console.error('Registration error:', err)
+      setError('An unexpected error occurred. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -95,7 +162,7 @@ export default function RegisterPage() {
           <div className="text-green-600 text-6xl mb-4">✓</div>
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Registration Successful!</h2>
           <p className="text-gray-600 mb-6">
-            Please check your email to verify your account before signing in.
+            Your account has been created successfully. Please check your email to verify your account before signing in.
           </p>
           <Link href="/login">
             <motion.button

@@ -28,11 +28,44 @@ export default function LoginPage() {
 
       if (error) {
         setError(error.message)
-      } else {
+        setLoading(false)
+        return
+      }
+
+      if (data.user) {
+        console.log('User logged in successfully:', data.user.id)
+        
+        // Check if profile exists
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single()
+
+        if (profileError || !profile) {
+          console.log('Profile not found, creating one...')
+          // Create profile if it doesn't exist
+          const { error: createProfileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: data.user.id,
+              email: data.user.email,
+              full_name: data.user.user_metadata?.full_name || 'User',
+              student_id: data.user.user_metadata?.student_id,
+              role: data.user.user_metadata?.role || 'student'
+            })
+
+          if (createProfileError) {
+            console.error('Failed to create profile:', createProfileError)
+            // Continue anyway - user can still access the app
+          }
+        }
+
         // Redirect based on user role
         router.push('/dashboard')
       }
     } catch (err) {
+      console.error('Login error:', err)
       setError('An unexpected error occurred')
     } finally {
       setLoading(false)
