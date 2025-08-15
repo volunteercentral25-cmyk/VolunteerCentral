@@ -25,42 +25,38 @@ import {
   Target
 } from 'lucide-react'
 
+interface HourEntry {
+  id: string
+  activity: string
+  hours: number
+  date: string
+  description: string
+  status: string
+  location: string
+}
+
+interface HoursData {
+  hours: HourEntry[]
+  summary: {
+    totalHours: number
+    approvedCount: number
+    pendingCount: number
+  }
+}
+
 export default function StudentHours() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [hoursData, setHoursData] = useState<HoursData | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     activity: '',
     hours: '',
     date: '',
     description: ''
   })
-  const [hours, setHours] = useState([
-    {
-      id: 1,
-      activity: 'Community Garden Cleanup',
-      hours: 4,
-      date: '2024-01-15',
-      description: 'Helped clean and maintain the community garden',
-      status: 'approved'
-    },
-    {
-      id: 2,
-      activity: 'Food Bank Volunteer',
-      hours: 6,
-      date: '2024-01-10',
-      description: 'Assisted with food sorting and distribution',
-      status: 'approved'
-    },
-    {
-      id: 3,
-      activity: 'Library Reading Program',
-      hours: 3,
-      date: '2024-01-08',
-      description: 'Read books to children at the local library',
-      status: 'pending'
-    }
-  ])
   const router = useRouter()
   const supabase = createClient()
 
@@ -69,8 +65,9 @@ export default function StudentHours() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         setUser(user)
+        await fetchHoursData()
       } else {
-        router.push('/login')
+        router.push('/')
       }
       setLoading(false)
     }
@@ -78,22 +75,53 @@ export default function StudentHours() {
     getUser()
   }, [router, supabase])
 
+  const fetchHoursData = async () => {
+    try {
+      const response = await fetch('/api/student/hours')
+      if (!response.ok) {
+        throw new Error('Failed to fetch hours data')
+      }
+      const data = await response.json()
+      setHoursData(data)
+    } catch (error) {
+      console.error('Error fetching hours data:', error)
+      setError('Failed to load hours data')
+    }
+  }
+
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     router.push('/')
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const newHour = {
-      id: hours.length + 1,
-      ...formData,
-      hours: parseInt(formData.hours),
-      status: 'pending'
+    setSubmitting(true)
+
+    try {
+      const response = await fetch('/api/student/hours', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to submit hours')
+      }
+
+      // Reset form and refresh data
+      setFormData({ activity: '', hours: '', date: '', description: '' })
+      setShowForm(false)
+      await fetchHoursData()
+    } catch (error) {
+      console.error('Error submitting hours:', error)
+      setError(error instanceof Error ? error.message : 'Failed to submit hours')
+    } finally {
+      setSubmitting(false)
     }
-    setHours([newHour, ...hours])
-    setFormData({ activity: '', hours: '', date: '', description: '' })
-    setShowForm(false)
   }
 
   if (loading) {
@@ -104,6 +132,25 @@ export default function StudentHours() {
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
           className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full"
         />
+      </div>
+    )
+  }
+
+  if (error && !hoursData) {
+    return (
+      <div className="min-h-screen gradient-bg flex items-center justify-center">
+        <Card className="glass-effect border-0 shadow-xl">
+          <CardContent className="p-8 text-center">
+            <div className="text-red-500 mb-4">
+              <Activity className="h-12 w-12 mx-auto" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Hours</h2>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button onClick={fetchHoursData} className="btn-primary">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -259,15 +306,29 @@ export default function StudentHours() {
                     />
                   </div>
                   <div className="flex gap-3">
-                    <Button type="submit" className="btn-primary">
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Submit Hours
+                    <Button type="submit" className="btn-primary" disabled={submitting}>
+                      {submitting ? (
+                        <>
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
+                          />
+                          Submitting...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Submit Hours
+                        </>
+                      )}
                     </Button>
                     <Button 
                       type="button" 
                       variant="outline" 
                       onClick={() => setShowForm(false)}
                       className="btn-secondary"
+                      disabled={submitting}
                     >
                       Cancel
                     </Button>
@@ -285,92 +346,129 @@ export default function StudentHours() {
           transition={{ duration: 0.8, delay: 0.4 }}
         >
           <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Your Hours History</h2>
-          <div className="space-y-4">
-            {hours.map((hour) => (
-              <motion.div
-                key={hour.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
-              >
-                <Card className="glass-effect border-0 shadow-lg">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className={`rounded-full p-3 ${
-                          hour.status === 'approved' 
-                            ? 'bg-green-100' 
-                            : 'bg-yellow-100'
-                        }`}>
-                          {hour.status === 'approved' ? (
-                            <CheckCircle className="h-6 w-6 text-green-600" />
-                          ) : (
-                            <AlertCircle className="h-6 w-6 text-yellow-600" />
-                          )}
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900">{hour.activity}</h3>
-                          <p className="text-sm text-gray-600">{hour.description}</p>
-                          <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-4 w-4" />
-                              {hour.hours} hours
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-4 w-4" />
-                              {new Date(hour.date).toLocaleDateString()}
-                            </span>
+          {hoursData ? (
+            <div className="space-y-4">
+              {hoursData.hours.length > 0 ? (
+                hoursData.hours.map((hour) => (
+                  <motion.div
+                    key={hour.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <Card className="glass-effect border-0 shadow-lg">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className={`rounded-full p-3 ${
+                              hour.status === 'approved' 
+                                ? 'bg-green-100' 
+                                : hour.status === 'pending'
+                                ? 'bg-yellow-100'
+                                : 'bg-red-100'
+                            }`}>
+                              {hour.status === 'approved' ? (
+                                <CheckCircle className="h-6 w-6 text-green-600" />
+                              ) : hour.status === 'pending' ? (
+                                <Clock className="h-6 w-6 text-yellow-600" />
+                              ) : (
+                                <AlertCircle className="h-6 w-6 text-red-600" />
+                              )}
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900">{hour.activity}</h3>
+                              <p className="text-sm text-gray-600">{hour.description}</p>
+                              <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-4 w-4" />
+                                  {hour.hours} hours
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="h-4 w-4" />
+                                  {new Date(hour.date).toLocaleDateString()}
+                                </span>
+                                {hour.location !== 'N/A' && (
+                                  <span className="flex items-center gap-1">
+                                    <Target className="h-4 w-4" />
+                                    {hour.location}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </div>
+                          <Badge className={
+                            hour.status === 'approved' 
+                              ? 'bg-green-100 text-green-800' 
+                              : hour.status === 'pending'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-red-100 text-red-800'
+                          }>
+                            {hour.status}
+                          </Badge>
                         </div>
-                      </div>
-                      <Badge className={
-                        hour.status === 'approved' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-yellow-100 text-yellow-800'
-                      }>
-                        {hour.status === 'approved' ? 'Approved' : 'Pending'}
-                      </Badge>
-                    </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))
+              ) : (
+                <Card className="glass-effect border-0 shadow-xl">
+                  <CardContent className="p-12 text-center">
+                    <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No hours logged yet</h3>
+                    <p className="text-gray-600">Start by logging your first volunteer hours!</p>
                   </CardContent>
                 </Card>
-              </motion.div>
-            ))}
-          </div>
+              )}
+            </div>
+          ) : (
+            <Card className="glass-effect border-0 shadow-xl">
+              <CardContent className="p-12 text-center">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full mx-auto mb-4"
+                />
+                <p className="text-gray-600">Loading hours data...</p>
+              </CardContent>
+            </Card>
+          )}
         </motion.div>
 
         {/* Summary Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.6 }}
-          className="mt-12"
-        >
-          <Card className="glass-effect border-0 shadow-xl">
-            <CardContent className="p-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4 text-center">Summary</h3>
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <p className="text-3xl font-bold text-gradient">
-                    {hours.reduce((sum, hour) => sum + hour.hours, 0)}
-                  </p>
-                  <p className="text-sm text-gray-600">Total Hours</p>
+        {hoursData && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+            className="mt-12"
+          >
+            <Card className="glass-effect border-0 shadow-xl">
+              <CardContent className="p-6">
+                <h3 className="text-xl font-semibold text-gray-900 mb-4 text-center">Summary</h3>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <p className="text-3xl font-bold text-gradient">
+                      {hoursData.summary.totalHours}
+                    </p>
+                    <p className="text-sm text-gray-600">Total Hours</p>
+                  </div>
+                  <div>
+                    <p className="text-3xl font-bold text-gradient">
+                      {hoursData.summary.approvedCount}
+                    </p>
+                    <p className="text-sm text-gray-600">Approved</p>
+                  </div>
+                  <div>
+                    <p className="text-3xl font-bold text-gradient">
+                      {hoursData.summary.pendingCount}
+                    </p>
+                    <p className="text-sm text-gray-600">Pending</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-3xl font-bold text-gradient">
-                    {hours.filter(h => h.status === 'approved').length}
-                  </p>
-                  <p className="text-sm text-gray-600">Approved</p>
-                </div>
-                <div>
-                  <p className="text-3xl font-bold text-gradient">
-                    {hours.filter(h => h.status === 'pending').length}
-                  </p>
-                  <p className="text-sm text-gray-600">Pending</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
       </main>
     </div>
   )

@@ -21,106 +21,37 @@ import {
   Users,
   Heart,
   Star,
-  Filter
+  Filter,
+  Activity,
+  CheckCircle
 } from 'lucide-react'
+
+interface Opportunity {
+  id: string
+  title: string
+  organization: string
+  description: string
+  location: string
+  date: string
+  time: string
+  duration: number
+  volunteersNeeded: number
+  volunteersRegistered: number
+  category: string
+  difficulty: string
+  featured: boolean
+  isRegistered: boolean
+  isFull: boolean
+}
 
 export default function StudentOpportunities() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
-  const [opportunities, setOpportunities] = useState([
-    {
-      id: 1,
-      title: 'Community Garden Cleanup',
-      organization: 'Green Thumb Initiative',
-      description: 'Help maintain and beautify our community garden. Tasks include weeding, planting, and general maintenance.',
-      location: 'Central Park Community Garden',
-      date: '2024-02-15',
-      time: '9:00 AM - 12:00 PM',
-      duration: 3,
-      volunteersNeeded: 8,
-      volunteersRegistered: 5,
-      category: 'environment',
-      difficulty: 'easy',
-      featured: true
-    },
-    {
-      id: 2,
-      title: 'Food Bank Volunteer',
-      organization: 'Community Food Bank',
-      description: 'Assist with sorting, packaging, and distributing food to families in need. Great opportunity to help combat food insecurity.',
-      location: 'Downtown Food Bank',
-      date: '2024-02-20',
-      time: '10:00 AM - 2:00 PM',
-      duration: 4,
-      volunteersNeeded: 12,
-      volunteersRegistered: 8,
-      category: 'hunger',
-      difficulty: 'medium',
-      featured: false
-    },
-    {
-      id: 3,
-      title: 'Library Reading Program',
-      organization: 'Public Library',
-      description: 'Read books to children and help foster a love of reading. Perfect for students who enjoy working with kids.',
-      location: 'Central Public Library',
-      date: '2024-02-18',
-      time: '3:00 PM - 5:00 PM',
-      duration: 2,
-      volunteersNeeded: 6,
-      volunteersRegistered: 4,
-      category: 'education',
-      difficulty: 'easy',
-      featured: true
-    },
-    {
-      id: 4,
-      title: 'Senior Center Activities',
-      organization: 'Golden Years Center',
-      description: 'Lead activities and provide companionship for senior citizens. Activities include games, crafts, and conversation.',
-      location: 'Golden Years Senior Center',
-      date: '2024-02-22',
-      time: '1:00 PM - 4:00 PM',
-      duration: 3,
-      volunteersNeeded: 10,
-      volunteersRegistered: 7,
-      category: 'elderly',
-      difficulty: 'medium',
-      featured: false
-    },
-    {
-      id: 5,
-      title: 'Animal Shelter Helper',
-      organization: 'Paws & Hearts Shelter',
-      description: 'Help care for animals at the local shelter. Tasks include feeding, cleaning, and socializing with animals.',
-      location: 'Paws & Hearts Animal Shelter',
-      date: '2024-02-25',
-      time: '9:00 AM - 1:00 PM',
-      duration: 4,
-      volunteersNeeded: 8,
-      volunteersRegistered: 3,
-      category: 'animals',
-      difficulty: 'easy',
-      featured: false
-    },
-    {
-      id: 6,
-      title: 'Beach Cleanup',
-      organization: 'Ocean Conservation Group',
-      description: 'Help clean up our local beaches and protect marine life. All equipment provided.',
-      location: 'Sunset Beach',
-      date: '2024-02-28',
-      time: '8:00 AM - 11:00 AM',
-      duration: 3,
-      volunteersNeeded: 15,
-      volunteersRegistered: 12,
-      category: 'environment',
-      difficulty: 'easy',
-      featured: true
-    }
-  ])
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [registering, setRegistering] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -129,8 +60,9 @@ export default function StudentOpportunities() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         setUser(user)
+        await fetchOpportunities()
       } else {
-        router.push('/login')
+        router.push('/')
       }
       setLoading(false)
     }
@@ -138,18 +70,59 @@ export default function StudentOpportunities() {
     getUser()
   }, [router, supabase])
 
+  const fetchOpportunities = async () => {
+    try {
+      const response = await fetch('/api/student/opportunities')
+      if (!response.ok) {
+        throw new Error('Failed to fetch opportunities')
+      }
+      const data = await response.json()
+      setOpportunities(data.opportunities)
+    } catch (error) {
+      console.error('Error fetching opportunities:', error)
+      setError('Failed to load opportunities')
+    }
+  }
+
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     router.push('/')
   }
 
-  const handleRegister = (opportunityId: number) => {
-    // In a real app, this would make an API call to register
-    setOpportunities(prev => prev.map(opp => 
-      opp.id === opportunityId 
-        ? { ...opp, volunteersRegistered: opp.volunteersRegistered + 1 }
-        : opp
-    ))
+  const handleRegister = async (opportunityId: string) => {
+    setRegistering(opportunityId)
+    
+    try {
+      const response = await fetch('/api/student/opportunities', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ opportunityId }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to register')
+      }
+
+      // Update local state to reflect registration
+      setOpportunities(prev => prev.map(opp => 
+        opp.id === opportunityId 
+          ? { 
+              ...opp, 
+              isRegistered: true,
+              volunteersRegistered: opp.volunteersRegistered + 1,
+              isFull: opp.volunteersRegistered + 1 >= opp.volunteersNeeded
+            }
+          : opp
+      ))
+    } catch (error) {
+      console.error('Error registering for opportunity:', error)
+      setError(error instanceof Error ? error.message : 'Failed to register')
+    } finally {
+      setRegistering(null)
+    }
   }
 
   const filteredOpportunities = opportunities.filter(opp => {
@@ -197,6 +170,25 @@ export default function StudentOpportunities() {
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
           className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full"
         />
+      </div>
+    )
+  }
+
+  if (error && opportunities.length === 0) {
+    return (
+      <div className="min-h-screen gradient-bg flex items-center justify-center">
+        <Card className="glass-effect border-0 shadow-xl">
+          <CardContent className="p-8 text-center">
+            <div className="text-red-500 mb-4">
+              <Activity className="h-12 w-12 mx-auto" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Opportunities</h2>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button onClick={fetchOpportunities} className="btn-primary">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -375,10 +367,30 @@ export default function StudentOpportunities() {
                         <Button 
                           onClick={() => handleRegister(opportunity.id)}
                           className="btn-primary"
-                          disabled={opportunity.volunteersRegistered >= opportunity.volunteersNeeded}
+                          disabled={opportunity.isFull || opportunity.isRegistered || registering === opportunity.id}
                         >
-                          <Heart className="h-4 w-4 mr-2" />
-                          {opportunity.volunteersRegistered >= opportunity.volunteersNeeded ? 'Full' : 'Register'}
+                          {registering === opportunity.id ? (
+                            <>
+                              <motion.div
+                                animate={{ rotate: 360 }}
+                                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
+                              />
+                              Registering...
+                            </>
+                          ) : opportunity.isRegistered ? (
+                            <>
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Registered
+                            </>
+                          ) : opportunity.isFull ? (
+                            'Full'
+                          ) : (
+                            <>
+                              <Heart className="h-4 w-4 mr-2" />
+                              Register
+                            </>
+                          )}
                         </Button>
                       </div>
                     </CardContent>
@@ -451,10 +463,30 @@ export default function StudentOpportunities() {
                         <Button 
                           onClick={() => handleRegister(opportunity.id)}
                           className="btn-primary"
-                          disabled={opportunity.volunteersRegistered >= opportunity.volunteersNeeded}
+                          disabled={opportunity.isFull || opportunity.isRegistered || registering === opportunity.id}
                         >
-                          <Heart className="h-4 w-4 mr-2" />
-                          {opportunity.volunteersRegistered >= opportunity.volunteersNeeded ? 'Full' : 'Register'}
+                          {registering === opportunity.id ? (
+                            <>
+                              <motion.div
+                                animate={{ rotate: 360 }}
+                                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
+                              />
+                              Registering...
+                            </>
+                          ) : opportunity.isRegistered ? (
+                            <>
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Registered
+                            </>
+                          ) : opportunity.isFull ? (
+                            'Full'
+                          ) : (
+                            <>
+                              <Heart className="h-4 w-4 mr-2" />
+                              Register
+                            </>
+                          )}
                         </Button>
                       </div>
                     </CardContent>
