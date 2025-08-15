@@ -24,16 +24,16 @@
     "baseUrl": ".",
     "paths": {
       "@/*": [
-        "./src/*"
+        "./*"
       ],
       "@/components/*": [
-        "./src/components/*"
+        "./components/*"
       ],
       "@/lib/*": [
-        "./src/lib/*"
+        "./lib/*"
       ],
       "@/app/*": [
-        "./src/app/*"
+        "./app/*"
       ]
     },
     "target": "ES2017"
