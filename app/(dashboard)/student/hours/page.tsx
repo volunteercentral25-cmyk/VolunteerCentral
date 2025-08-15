@@ -1,212 +1,377 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
+import Image from 'next/image'
+import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { formatDate, formatHours } from '@/lib/utils'
-import { VolunteerHours } from '@/lib/supabase/types'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { 
+  Clock,
+  Calendar,
+  User,
+  LogOut,
+  ArrowLeft,
+  Plus,
+  CheckCircle,
+  AlertCircle,
+  Activity,
+  Target
+} from 'lucide-react'
 
-export default function StudentHoursPage() {
-  const [hours, setHours] = useState<VolunteerHours[]>([])
+export default function StudentHours() {
+  const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [showLogForm, setShowLogForm] = useState(false)
+  const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({
+    activity: '',
     hours: '',
     date: '',
-    description: '',
-    opportunityId: ''
+    description: ''
   })
+  const [hours, setHours] = useState([
+    {
+      id: 1,
+      activity: 'Community Garden Cleanup',
+      hours: 4,
+      date: '2024-01-15',
+      description: 'Helped clean and maintain the community garden',
+      status: 'approved'
+    },
+    {
+      id: 2,
+      activity: 'Food Bank Volunteer',
+      hours: 6,
+      date: '2024-01-10',
+      description: 'Assisted with food sorting and distribution',
+      status: 'approved'
+    },
+    {
+      id: 3,
+      activity: 'Library Reading Program',
+      hours: 3,
+      date: '2024-01-08',
+      description: 'Read books to children at the local library',
+      status: 'pending'
+    }
+  ])
+  const router = useRouter()
+  const supabase = createClient()
 
   useEffect(() => {
-    fetchHours()
-  }, [])
-
-  const fetchHours = async () => {
-    try {
-      const response = await fetch('/api/hours')
-      if (response.ok) {
-        const data = await response.json()
-        setHours(data)
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setUser(user)
+      } else {
+        router.push('/login')
       }
-    } catch (error) {
-      console.error('Error fetching hours:', error)
-    } finally {
       setLoading(false)
     }
+
+    getUser()
+  }, [router, supabase])
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push('/')
   }
 
-  const logHours = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
-    try {
-      const response = await fetch('/api/hours', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      })
-
-      if (response.ok) {
-        setFormData({ hours: '', date: '', description: '', opportunityId: '' })
-        setShowLogForm(false)
-        fetchHours()
-      }
-    } catch (error) {
-      console.error('Error logging hours:', error)
+    const newHour = {
+      id: hours.length + 1,
+      ...formData,
+      hours: parseInt(formData.hours),
+      status: 'pending'
     }
+    setHours([newHour, ...hours])
+    setFormData({ activity: '', hours: '', date: '', description: '' })
+    setShowForm(false)
   }
-
-  const totalHours = hours.reduce((sum, hour) => sum + Number(hour.hours), 0)
-  const approvedHours = hours
-    .filter(hour => hour.status === 'approved')
-    .reduce((sum, hour) => sum + Number(hour.hours), 0)
-  const pendingHours = hours
-    .filter(hour => hour.status === 'pending')
-    .reduce((sum, hour) => sum + Number(hour.hours), 0)
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen gradient-bg flex items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full"
+        />
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Volunteer Hours
-        </h1>
-        <p className="text-gray-600">
-          Log and track your volunteer hours
-        </p>
+    <div className="min-h-screen gradient-bg overflow-hidden">
+      {/* Decorative blobs */}
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute -top-32 -right-16 h-72 w-72 rounded-full bg-purple-300/70 blur-3xl animate-blob" />
+        <div className="absolute bottom-0 left-0 h-72 w-72 rounded-full bg-pink-300/60 blur-3xl animate-blob animation-delay-2000" />
+        <div className="absolute top-40 left-10 h-72 w-72 rounded-full bg-blue-300/60 blur-3xl animate-blob animation-delay-4000" />
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid gap-6 mb-8 md:grid-cols-3">
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Total Hours</p>
-              <p className="text-3xl font-bold text-blue-600">{formatHours(totalHours)}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Approved Hours</p>
-              <p className="text-3xl font-bold text-green-600">{formatHours(approvedHours)}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Pending Hours</p>
-              <p className="text-3xl font-bold text-yellow-600">{formatHours(pendingHours)}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Log Hours Button */}
-      <div className="mb-6">
-        <Button 
-          onClick={() => setShowLogForm(!showLogForm)}
-          className="mb-4"
-        >
-          {showLogForm ? 'Cancel' : 'Log New Hours'}
-        </Button>
-      </div>
-
-      {/* Log Hours Form */}
-      {showLogForm && (
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Log Volunteer Hours</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={logHours} className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+      {/* Header */}
+      <motion.header
+        initial={{ y: -24, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="sticky top-0 z-40 border-b border-white/30 bg-white/70 backdrop-blur-md"
+      >
+        <div className="mx-auto max-w-7xl px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link href="/student/dashboard" className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
+                <ArrowLeft className="h-4 w-4" />
+                Back to Dashboard
+              </Link>
+              <div className="h-6 w-px bg-gray-300" />
+              <Link href="/" className="flex items-center gap-3">
+                <Image src="/images/cata-logo.png" alt="CATA Logo" width={32} height={32} className="rounded-lg shadow-glow" />
                 <div>
-                  <label className="block text-sm font-medium mb-2">Hours</label>
-                  <Input
-                    type="number"
-                    step="0.5"
-                    min="0"
-                    value={formData.hours}
-                    onChange={(e) => setFormData({ ...formData, hours: e.target.value })}
-                    placeholder="2.5"
-                    required
-                  />
+                  <p className="text-sm font-semibold text-gradient">CATA Volunteer</p>
+                  <p className="text-xs text-gray-600">Hours Tracking</p>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Date</label>
-                  <Input
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    required
-                  />
-                </div>
+              </Link>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="hidden md:flex items-center gap-2 text-sm text-gray-600">
+                <User className="h-4 w-4" />
+                <span>{user?.user_metadata?.full_name || 'Student'}</span>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Description</label>
-                <Input
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Describe your volunteer work..."
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full">
-                Log Hours
+              <Button 
+                onClick={handleSignOut}
+                variant="outline" 
+                className="btn-secondary btn-hover-effect"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
               </Button>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+            </div>
+          </div>
+        </div>
+      </motion.header>
 
-      {/* Hours History */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Hours History</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <main className="mx-auto max-w-7xl px-4 py-8">
+        {/* Header Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="text-center mb-12"
+        >
+          <Badge className="mb-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white">
+            Track Your Impact
+          </Badge>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            Volunteer <span className="text-gradient">Hours</span>
+          </h1>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Log your volunteer activities and track your community impact. Every hour counts towards making a difference.
+          </p>
+        </motion.div>
+
+        {/* Add Hours Button */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          className="mb-8 text-center"
+        >
+          <Button 
+            onClick={() => setShowForm(!showForm)}
+            className="btn-primary btn-hover-effect"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            {showForm ? 'Cancel' : 'Add New Hours'}
+          </Button>
+        </motion.div>
+
+        {/* Add Hours Form */}
+        {showForm && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="mb-8"
+          >
+            <Card className="glass-effect border-0 shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-gradient">Log New Hours</CardTitle>
+                <CardDescription>Record your volunteer activity and hours</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="activity">Activity Name</Label>
+                      <Input 
+                        id="activity"
+                        value={formData.activity}
+                        onChange={(e) => setFormData({...formData, activity: e.target.value})}
+                        placeholder="e.g., Community Garden Cleanup"
+                        className="input-focus-effect"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="hours">Hours</Label>
+                      <Input 
+                        id="hours"
+                        type="number"
+                        min="0.5"
+                        step="0.5"
+                        value={formData.hours}
+                        onChange={(e) => setFormData({...formData, hours: e.target.value})}
+                        placeholder="2.5"
+                        className="input-focus-effect"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Date</Label>
+                    <Input 
+                      id="date"
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) => setFormData({...formData, date: e.target.value})}
+                      className="input-focus-effect"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea 
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => setFormData({...formData, description: e.target.value})}
+                      placeholder="Describe what you did during this volunteer activity..."
+                      className="input-focus-effect"
+                      rows={3}
+                      required
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <Button type="submit" className="btn-primary">
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Submit Hours
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setShowForm(false)}
+                      className="btn-secondary"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Hours List */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.4 }}
+        >
+          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Your Hours History</h2>
           <div className="space-y-4">
             {hours.map((hour) => (
-              <div key={hour.id} className="flex items-center justify-between p-4 border rounded-lg">
+              <motion.div
+                key={hour.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                <Card className="glass-effect border-0 shadow-lg">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className={`rounded-full p-3 ${
+                          hour.status === 'approved' 
+                            ? 'bg-green-100' 
+                            : 'bg-yellow-100'
+                        }`}>
+                          {hour.status === 'approved' ? (
+                            <CheckCircle className="h-6 w-6 text-green-600" />
+                          ) : (
+                            <AlertCircle className="h-6 w-6 text-yellow-600" />
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">{hour.activity}</h3>
+                          <p className="text-sm text-gray-600">{hour.description}</p>
+                          <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-4 w-4" />
+                              {hour.hours} hours
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-4 w-4" />
+                              {new Date(hour.date).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <Badge className={
+                        hour.status === 'approved' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-yellow-100 text-yellow-800'
+                      }>
+                        {hour.status === 'approved' ? 'Approved' : 'Pending'}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Summary Stats */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.6 }}
+          className="mt-12"
+        >
+          <Card className="glass-effect border-0 shadow-xl">
+            <CardContent className="p-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4 text-center">Summary</h3>
+              <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
-                  <p className="font-medium">{formatHours(Number(hour.hours))}</p>
-                  <p className="text-sm text-gray-600">{formatDate(hour.date)}</p>
-                  {hour.description && (
-                    <p className="text-sm text-gray-500 mt-1">{hour.description}</p>
-                  )}
+                  <p className="text-3xl font-bold text-gradient">
+                    {hours.reduce((sum, hour) => sum + hour.hours, 0)}
+                  </p>
+                  <p className="text-sm text-gray-600">Total Hours</p>
                 </div>
-                <div className="text-right">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    hour.status === 'approved' ? 'bg-green-100 text-green-800' :
-                    hour.status === 'denied' ? 'bg-red-100 text-red-800' :
-                    'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {hour.status}
-                  </span>
+                <div>
+                  <p className="text-3xl font-bold text-gradient">
+                    {hours.filter(h => h.status === 'approved').length}
+                  </p>
+                  <p className="text-sm text-gray-600">Approved</p>
+                </div>
+                <div>
+                  <p className="text-3xl font-bold text-gradient">
+                    {hours.filter(h => h.status === 'pending').length}
+                  </p>
+                  <p className="text-sm text-gray-600">Pending</p>
                 </div>
               </div>
-            ))}
-            
-            {hours.length === 0 && (
-              <p className="text-center text-gray-500 py-8">
-                No hours logged yet. Start by logging your first volunteer hours!
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </main>
     </div>
   )
 }
