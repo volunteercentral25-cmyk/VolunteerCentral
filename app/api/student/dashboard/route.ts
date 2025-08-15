@@ -8,18 +8,42 @@ export async function GET(request: NextRequest) {
     // Get the current user
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError || !user) {
+      console.error('User authentication error:', userError)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    console.log('User authenticated:', user.email)
+
     // Get user profile
-    const { data: profile, error: profileError } = await supabase
+    let { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
       .eq('email', user.email)
       .single()
 
     if (profileError) {
-      return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
+      console.error('Profile lookup error:', profileError)
+      // Try to create profile if it doesn't exist
+      const { data: newProfile, error: createError } = await supabase
+        .from('profiles')
+        .insert({
+          id: user.id,
+          email: user.email,
+          full_name: user.user_metadata?.full_name || 'Student',
+          role: 'student'
+        })
+        .select()
+        .single()
+
+      if (createError) {
+        console.error('Profile creation error:', createError)
+        return NextResponse.json({ error: 'Failed to create profile' }, { status: 500 })
+      }
+
+      console.log('Profile created:', newProfile)
+      profile = newProfile
+    } else {
+      console.log('Profile found:', profile)
     }
 
     // Get volunteer hours statistics

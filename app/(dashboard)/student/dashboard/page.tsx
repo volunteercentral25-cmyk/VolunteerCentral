@@ -75,13 +75,14 @@ export default function StudentDashboard() {
     try {
       const response = await fetch('/api/student/dashboard')
       if (!response.ok) {
-        throw new Error('Failed to fetch dashboard data')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to fetch dashboard data')
       }
       const data = await response.json()
       setDashboardData(data)
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
-      setError('Failed to load dashboard data')
+      setError(error instanceof Error ? error.message : 'Failed to load dashboard data')
     }
   }
 
