@@ -9,10 +9,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Ensure proper handling of src directory
-  experimental: {
-    appDir: true,
-  },
   // Set the source directory
   distDir: '.next',
   // Configure for Vercel deployment
