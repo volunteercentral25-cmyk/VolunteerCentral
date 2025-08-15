@@ -88,8 +88,14 @@ temp/
 # TernJS port file
 .tern-port
 
-# Stores VSCode versions used for testing VSCode extensions
+# Stores VSCode versions used for testing Vercode extensions
 .vscode-test
 
-# Local development
+# Development files (but keep the working app structure)
 src/
+cata-volunteer-central/
+styles/
+context.md
+image.png
+tatus
+mcp_servers.json

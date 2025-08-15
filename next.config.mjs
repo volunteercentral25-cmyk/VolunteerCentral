@@ -9,10 +9,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Set the source directory
-  distDir: '.next',
-  // Configure for Vercel deployment
-  output: 'standalone',
 }
 
 export default nextConfig
