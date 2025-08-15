@@ -1,277 +1,382 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
+import { motion } from "framer-motion"
 import Image from "next/image"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Heart, Users, Clock, Award, Mail, Lock, User, GraduationCap } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { 
+  Heart,
+  Users,
+  Clock,
+  Award,
+  Mail,
+  Lock,
+  User,
+  GraduationCap,
+  ArrowRight,
+  Search,
+  CalendarCheck2,
+  CheckCircle2
+} from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
+import { useRouter } from "next/navigation"
 
 export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState("login")
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    fullName: "",
+    studentId: "",
+    confirmPassword: ""
+  })
+  const router = useRouter()
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    // Simulate login process
-    setTimeout(() => {
-      // Redirect to student dashboard
-      window.location.href = "/student/dashboard"
-    }, 2000)
+
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      })
+
+      if (error) {
+        console.error("Login error:", error.message)
+        return
+      }
+
+      router.push("/dashboard")
+    } catch (error) {
+      console.error("Login error:", error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    // Simulate registration process
-    setTimeout(() => {
-      // Redirect to student dashboard
-      window.location.href = "/student/dashboard"
-    }, 2000)
+
+    if (formData.password !== formData.confirmPassword) {
+      console.error("Passwords do not match")
+      setIsLoading(false)
+      return
+    }
+
+    // Enforce 10-digit student ID on homepage register as well
+    if (!/^\d{10}$/.test(formData.studentId)) {
+      console.error("Student ID must be exactly 10 digits")
+      setIsLoading(false)
+      return
+    }
+
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.fullName,
+            student_id: formData.studentId,
+            role: "student"
+          }
+        }
+      })
+
+      if (error) {
+        console.error("Registration error:", error.message)
+        return
+      }
+
+      setActiveTab("login")
+    } catch (error) {
+      console.error("Registration error:", error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
-    <div className="min-h-screen bg-cata-gradient relative overflow-hidden">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-cata-burgundy/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-cata-navy/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-gradient-to-r from-cata-burgundy/20 to-cata-navy/20 rounded-full blur-2xl animate-spin-slow"></div>
+    <div className="min-h-screen gradient-bg overflow-hidden">
+      {/* Decorative blobs */}
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute -top-32 -right-16 h-72 w-72 rounded-full bg-purple-300/70 blur-3xl animate-blob" />
+        <div className="absolute bottom-0 left-0 h-72 w-72 rounded-full bg-pink-300/60 blur-3xl animate-blob animation-delay-2000" />
+        <div className="absolute top-40 left-10 h-72 w-72 rounded-full bg-blue-300/60 blur-3xl animate-blob animation-delay-4000" />
       </div>
-      
+
       {/* Header */}
-      <header className="bg-white/95 backdrop-blur-xl border-b border-cata-burgundy/30 sticky top-0 z-50 shadow-2xl">
-        <div className="container mx-auto px-4 py-4">
+      <motion.header
+        initial={{ y: -24, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="sticky top-0 z-40 border-b border-white/30 bg-white/70 backdrop-blur-md"
+      >
+        <div className="mx-auto max-w-7xl px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="relative">
-                <Image src="/cata-logo.png" alt="CATA Logo" width={50} height={50} className="animate-float drop-shadow-2xl" />
-                <div className="absolute inset-0 bg-gradient-to-r from-cata-burgundy to-cata-navy rounded-full opacity-20 blur-xl animate-pulse"></div>
-              </div>
+            <Link href="/" className="flex items-center gap-3">
+              <Image src="/images/cata-logo.png" alt="CATA Logo" width={48} height={48} className="rounded-lg shadow-glow" />
               <div>
-                <h1 className="text-2xl font-serif font-bold text-gradient bg-gradient-to-r from-cata-burgundy via-cata-navy to-cata-burgundy bg-clip-text text-transparent animate-gradient-x">CATA Volunteer</h1>
-                <p className="text-sm text-cata-navy font-sans font-medium">Central High School</p>
+                <p className="text-lg font-semibold text-gradient">CATA Volunteer</p>
+                <p className="text-xs text-gray-600">Community Action Through Volunteering</p>
               </div>
-            </div>
-            <div className="hidden md:flex items-center space-x-6">
-              <div className="flex items-center space-x-2 text-cata-navy animate-pulse-cata group">
-                <div className="p-2 bg-cata-burgundy/10 rounded-full group-hover:bg-cata-burgundy/20 transition-colors">
-                  <Users className="h-4 w-4" />
-                </div>
-                <span className="text-sm font-sans font-medium">500+ Students</span>
-              </div>
-              <div className="flex items-center space-x-2 text-cata-navy animate-pulse-cata group">
-                <div className="p-2 bg-cata-navy/10 rounded-full group-hover:bg-cata-navy/20 transition-colors">
-                  <Clock className="h-4 w-4" />
-                </div>
-                <span className="text-sm font-sans font-medium">10,000+ Hours</span>
-              </div>
+            </Link>
+            <div className="hidden md:flex items-center gap-3">
+              <Link href="#auth" className="btn-secondary btn-hover-effect rounded-md px-4 py-2">Sign In</Link>
+              <Link href="#auth" className="btn-primary btn-hover-effect rounded-md px-4 py-2">Get Started</Link>
             </div>
           </div>
         </div>
-      </header>
+      </motion.header>
 
-      <main className="relative z-10">
-        {/* Hero Section - Full Width */}
-        <section className="min-h-screen flex items-center justify-center px-4 py-20">
-          <div className="max-w-7xl mx-auto w-full">
-            <div className="grid lg:grid-cols-2 gap-16 items-center">
-              {/* Left Content */}
-              <div className="space-y-8 animate-fade-in-up relative z-10">
-                <div className="space-y-6">
-                  <div className="relative">
-                    <h2 className="text-5xl md:text-7xl font-serif font-bold text-white leading-tight drop-shadow-2xl">
-                      Empower Your <span className="text-gradient bg-gradient-to-r from-cata-burgundy via-white to-cata-navy bg-clip-text text-transparent animate-gradient-x">Community</span>
-                    </h2>
-                    <div className="absolute -inset-1 bg-gradient-to-r from-cata-burgundy/50 to-cata-navy/50 blur-lg opacity-30 animate-pulse"></div>
-                  </div>
-                  <p className="text-xl md:text-2xl text-white/95 font-sans leading-relaxed max-w-2xl">
-                    Explore volunteer opportunities, log your hours, and make a <span className="text-cata-burgundy font-semibold">difference</span> in your community.
-                  </p>
-                </div>
-
-                {/* Feature Cards */}
-                <div className="grid sm:grid-cols-2 gap-6">
-                  <div className="card-cata hover-lift animate-scale-in group">
-                    <div className="flex items-center space-x-4 p-6">
-                      <div className="p-3 bg-gradient-to-br from-cata-burgundy/20 to-cata-burgundy/10 rounded-xl animate-glow group-hover:scale-110 transition-transform">
-                        <Heart className="h-6 w-6 text-cata-burgundy" />
-                      </div>
-                      <div>
-                        <h3 className="font-serif font-bold text-lg text-cata-burgundy mb-1">Find Opportunities</h3>
-                        <p className="text-sm text-white/80 font-sans">Browse local volunteer events</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="card-cata hover-lift animate-scale-in group">
-                    <div className="flex items-center space-x-4 p-6">
-                      <div className="p-3 bg-gradient-to-br from-cata-navy/20 to-cata-navy/10 rounded-xl animate-glow group-hover:scale-110 transition-transform">
-                        <Award className="h-6 w-6 text-cata-navy" />
-                      </div>
-                      <div>
-                        <h3 className="font-serif font-bold text-lg text-cata-navy mb-1">Track Hours</h3>
-                        <p className="text-sm text-white/80 font-sans">Log and monitor your service</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* CTA Buttons */}
-                <div className="flex flex-col sm:flex-row gap-4 pt-6">
-                  <button className="btn-cata-primary animate-bounce-cata group">
-                    <span className="group-hover:scale-105 transition-transform">Get Started Today</span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-cata-burgundy to-cata-navy rounded-lg opacity-0 group-hover:opacity-20 transition-opacity"></div>
-                  </button>
-                  <button className="btn-cata-secondary group">
-                    <span className="group-hover:scale-105 transition-transform">Learn More</span>
-                  </button>
-                </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-6 pt-8">
-                  <div className="text-center group">
-                    <div className="text-3xl font-serif font-bold text-cata-burgundy mb-2 animate-pulse-cata">50+</div>
-                    <div className="text-sm text-white/80 font-sans font-medium">Active Opportunities</div>
-                    <div className="w-12 h-1 bg-gradient-to-r from-cata-burgundy to-cata-navy mx-auto mt-2 rounded-full group-hover:scale-x-150 transition-transform"></div>
-                  </div>
-                  <div className="text-center group">
-                    <div className="text-3xl font-serif font-bold text-cata-navy mb-2 animate-pulse-cata">500+</div>
-                    <div className="text-sm text-white/80 font-sans font-medium">Student Volunteers</div>
-                    <div className="w-12 h-1 bg-gradient-to-r from-cata-navy to-cata-burgundy mx-auto mt-2 rounded-full group-hover:scale-x-150 transition-transform"></div>
-                  </div>
-                  <div className="text-center group">
-                    <div className="text-3xl font-serif font-bold text-cata-burgundy mb-2 animate-pulse-cata">10K+</div>
-                    <div className="text-sm text-white/80 font-sans font-medium">Hours Logged</div>
-                    <div className="w-12 h-1 bg-gradient-to-r from-cata-burgundy to-cata-navy mx-auto mt-2 rounded-full group-hover:scale-x-150 transition-transform"></div>
-                  </div>
-                </div>
+      <main className="mx-auto max-w-7xl px-4">
+        {/* Hero */}
+        <section className="grid gap-12 py-16 md:grid-cols-2 md:gap-16 md:py-24">
+          <div className="flex flex-col justify-center gap-8">
+            <Badge className="w-fit bg-gradient-to-r from-purple-600 to-pink-600 text-white">Join the movement</Badge>
+            <h1 className="text-balance text-5xl font-bold tracking-tight text-gray-900 md:text-6xl">
+              Empower your <span className="text-gradient">community impact</span>
+            </h1>
+            <p className="max-w-prose text-lg leading-relaxed text-gray-600 md:text-xl">
+              Discover opportunities, log hours effortlessly, and earn recognition for your service. Built for students, loved by administrators.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Link href="#auth" className="btn-primary btn-hover-effect rounded-md px-5 py-3">Start now</Link>
+              <Link href="/dashboard" className="btn-secondary rounded-md px-5 py-3">Go to dashboard</Link>
+            </div>
+            <div className="mt-6 grid grid-cols-2 gap-6 sm:grid-cols-3">
+              <div className="rounded-xl bg-white/70 p-4 text-center shadow-sm">
+                <p className="text-3xl font-bold text-gradient">500+</p>
+                <p className="text-xs text-gray-600">Active students</p>
               </div>
-
-              {/* Auth Forms */}
-              <div className="animate-slide-in-right relative z-10">
-                <Card className="card-cata-gradient shadow-2xl border-0 backdrop-blur-xl">
-                  <CardHeader className="text-center pb-6">
-                    <CardTitle className="text-3xl font-serif text-white mb-2">Welcome Back</CardTitle>
-                    <CardDescription className="text-white/90 font-sans text-lg">
-                      Sign in to your CATA Volunteer account
-                    </CardDescription>
-                    <div className="w-24 h-1 bg-gradient-to-r from-cata-burgundy to-cata-navy mx-auto mt-4 rounded-full"></div>
-                  </CardHeader>
-                  <CardContent>
-                    <Tabs defaultValue="login" className="w-full">
-                      <TabsList className="grid w-full grid-cols-2 bg-white/20">
-                        <TabsTrigger value="login" className="text-white data-[state=active]:bg-white data-[state=active]:text-cata-burgundy">
-                          <Lock className="h-4 w-4 mr-2" />
-                          Login
-                        </TabsTrigger>
-                        <TabsTrigger value="register" className="text-white data-[state=active]:bg-white data-[state=active]:text-cata-burgundy">
-                          <User className="h-4 w-4 mr-2" />
-                          Register
-                        </TabsTrigger>
-                      </TabsList>
-
-                      <TabsContent value="login" className="space-y-4 mt-6">
-                        <form onSubmit={handleLogin} className="space-y-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="email" className="text-white font-sans">Email</Label>
-                            <Input
-                              id="email"
-                              type="email"
-                              placeholder="Enter your email"
-                              className="bg-white/90 border-white/20 text-cata-burgundy placeholder:text-cata-burgundy/60 focus-cata"
-                              required
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="password" className="text-white font-sans">Password</Label>
-                            <Input
-                              id="password"
-                              type="password"
-                              placeholder="Enter your password"
-                              className="bg-white/90 border-white/20 text-cata-burgundy placeholder:text-cata-burgundy/60 focus-cata"
-                              required
-                            />
-                          </div>
-                          <button
-                            type="submit"
-                            disabled={isLoading}
-                            className="btn-cata-primary w-full"
-                          >
-                            {isLoading ? (
-                              <div className="flex items-center justify-center">
-                                <div className="loading-spinner mr-2"></div>
-                                Signing in...
-                              </div>
-                            ) : (
-                              "Sign In"
-                            )}
-                          </button>
-                        </form>
-                      </TabsContent>
-
-                      <TabsContent value="register" className="space-y-4 mt-6">
-                        <form onSubmit={handleRegister} className="space-y-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="reg-email" className="text-white font-sans">Email</Label>
-                            <Input
-                              id="reg-email"
-                              type="email"
-                              placeholder="Enter your email"
-                              className="bg-white/90 border-white/20 text-cata-burgundy placeholder:text-cata-burgundy/60 focus-cata"
-                              required
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="student-id" className="text-white font-sans">Student ID</Label>
-                            <Input
-                              id="student-id"
-                              type="text"
-                              placeholder="Enter your 10-digit student ID"
-                              className="bg-white/90 border-white/20 text-cata-burgundy placeholder:text-cata-burgundy/60 focus-cata"
-                              pattern="[0-9]{10}"
-                              maxLength={10}
-                              required
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="reg-password" className="text-white font-sans">Password</Label>
-                            <Input
-                              id="reg-password"
-                              type="password"
-                              placeholder="Create a password"
-                              className="bg-white/90 border-white/20 text-cata-burgundy placeholder:text-cata-burgundy/60 focus-cata"
-                              required
-                            />
-                          </div>
-                          <button
-                            type="submit"
-                            disabled={isLoading}
-                            className="btn-cata-primary w-full"
-                          >
-                            {isLoading ? (
-                              <div className="flex items-center justify-center">
-                                <div className="loading-spinner mr-2"></div>
-                                Creating account...
-                              </div>
-                            ) : (
-                              "Create Account"
-                            )}
-                          </button>
-                        </form>
-                      </TabsContent>
-                    </Tabs>
-                  </CardContent>
-                </Card>
+              <div className="rounded-xl bg-white/70 p-4 text-center shadow-sm">
+                <p className="text-3xl font-bold text-gradient">10K+</p>
+                <p className="text-xs text-gray-600">Hours logged</p>
+              </div>
+              <div className="rounded-xl bg-white/70 p-4 text-center shadow-sm sm:block hidden">
+                <p className="text-3xl font-bold text-gradient">50+</p>
+                <p className="text-xs text-gray-600">Opportunities</p>
               </div>
             </div>
           </div>
+
+          {/* Auth Card */}
+          <div id="auth" className="flex justify-center">
+            <Card className="glass-effect w-full max-w-md border-0 shadow-xl">
+              <CardHeader className="space-y-2 text-center">
+                <div className="mx-auto mb-1 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-purple">
+                  <User className="h-8 w-8 text-white" />
+                </div>
+                <CardTitle className="text-gradient text-2xl">Welcome</CardTitle>
+                <CardDescription>Sign in or create your account to continue</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 rounded-lg bg-gray-100 p-1">
+                    <TabsTrigger value="login" className="rounded-md data-[state=active]:bg-white data-[state=active]:text-purple-600">Sign In</TabsTrigger>
+                    <TabsTrigger value="register" className="rounded-md data-[state=active]:bg-white data-[state=active]:text-purple-600">Sign Up</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="login" className="mt-6 space-y-4">
+                    <form onSubmit={handleLogin} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="login-email">Email</Label>
+                        <Input id="login-email" type="email" placeholder="your.email@cata.edu" value={formData.email} onChange={(e) => handleInputChange("email", e.target.value)} className="input-focus-effect" required />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="login-password">Password</Label>
+                        <Input id="login-password" type="password" placeholder="Enter your password" value={formData.password} onChange={(e) => handleInputChange("password", e.target.value)} className="input-focus-effect" required />
+                      </div>
+                      <Button type="submit" className="btn-primary w-full" disabled={isLoading}>
+                        {isLoading ? "Signing In..." : (
+                          <>
+                            Sign In
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </>
+                        )}
+                      </Button>
+                    </form>
+                  </TabsContent>
+
+                  <TabsContent value="register" className="mt-6 space-y-4">
+                    <form onSubmit={handleRegister} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="register-name">Full Name</Label>
+                        <Input id="register-name" type="text" placeholder="John Doe" value={formData.fullName} onChange={(e) => handleInputChange("fullName", e.target.value)} className="input-focus-effect" required />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="register-student-id">Student ID</Label>
+                        <Input id="register-student-id" type="text" inputMode="numeric" pattern="\d{10}" maxLength={10} title="Student ID must be exactly 10 digits" placeholder="10-digit Student ID" value={formData.studentId} onChange={(e) => handleInputChange("studentId", e.target.value)} className="input-focus-effect" required />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="register-email">Email</Label>
+                        <Input id="register-email" type="email" placeholder="your.email@cata.edu" value={formData.email} onChange={(e) => handleInputChange("email", e.target.value)} className="input-focus-effect" required />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="register-password">Password</Label>
+                        <Input id="register-password" type="password" placeholder="Create a password" value={formData.password} onChange={(e) => handleInputChange("password", e.target.value)} className="input-focus-effect" required />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="register-confirm-password">Confirm Password</Label>
+                        <Input id="register-confirm-password" type="password" placeholder="Confirm your password" value={formData.confirmPassword} onChange={(e) => handleInputChange("confirmPassword", e.target.value)} className="input-focus-effect" required />
+                      </div>
+                      <Button type="submit" className="btn-primary w-full" disabled={isLoading}>
+                        {isLoading ? "Creating Account..." : (
+                          <>
+                            Create Account
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </>
+                        )}
+                      </Button>
+                    </form>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+
+        {/* Features */}
+        <section className="py-12 md:py-16">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {[{
+              icon: Heart,
+              title: "Find Opportunities",
+              description: "Discover meaningful volunteer opportunities that match your interests.",
+              color: "from-pink-50 to-purple-50"
+            }, {
+              icon: Clock,
+              title: "Track Hours",
+              description: "Log hours instantly and keep everything verified and organized.",
+              color: "from-indigo-50 to-blue-50"
+            }, {
+              icon: Award,
+              title: "Earn Recognition",
+              description: "Showcase your impact with badges, certificates, and reports.",
+              color: "from-amber-50 to-rose-50"
+            }].map((item) => (
+              <motion.div
+                key={item.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-100px" }}
+                whileHover={{ y: -6, scale: 1.02 }}
+                transition={{ duration: 0.35 }}
+              >
+                <Card className="group card-hover-effect border-0 bg-white/80">
+                  <CardContent className="flex items-start gap-4 p-6">
+                    <motion.div
+                      className={`rounded-xl bg-gradient-to-br ${item.color} p-3 drop-shadow-md`}
+                      animate={{ y: [0, -4, 0] }}
+                      transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                      whileHover={{ rotate: 6, scale: 1.1 }}
+                    >
+                      <item.icon className="h-6 w-6 text-gradient" aria-hidden="true" />
+                    </motion.div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">{item.title}</h3>
+                      <p className="mt-1 text-sm leading-relaxed text-gray-600">{item.description}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        {/* How it works */}
+        <section className="py-12 md:py-16">
+          <div className="mb-8 text-center">
+            <h2 className="text-balance text-3xl font-bold text-gray-900 md:text-4xl">How it works</h2>
+            <p className="mx-auto mt-2 max-w-2xl text-gray-600">Three simple steps to start making an impact.</p>
+          </div>
+          <div className="grid gap-6 md:grid-cols-3">
+            {[{
+              icon: Search,
+              title: "Explore",
+              description: "Browse curated volunteer opportunities across causes and schedules."
+            }, {
+              icon: CalendarCheck2,
+              title: "Sign Up",
+              description: "Register for events in a click and receive confirmations."
+            }, {
+              icon: CheckCircle2,
+              title: "Log Hours",
+              description: "Track your hours with admin verification and real-time progress."
+            }].map((step, idx) => (
+              <motion.div
+                key={step.title}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-100px" }}
+                whileHover={{ y: -8, scale: 1.02 }}
+                transition={{ duration: 0.35 }}
+              >
+                <Card className="group border-0 bg-white/80 shadow-lg">
+                  <CardContent className="p-6">
+                    <div className="mb-4 flex items-center gap-3">
+                      <motion.div
+                        className="rounded-lg bg-gradient-purple p-2 text-white drop-shadow"
+                        animate={{ y: [0, -3, 0] }}
+                        transition={{ repeat: Infinity, duration: 3, ease: "easeInOut", delay: idx * 0.2 }}
+                        whileHover={{ rotate: 8, scale: 1.1 }}
+                      >
+                        <step.icon className="h-5 w-5" aria-hidden="true" />
+                      </motion.div>
+                      <span className="text-sm font-semibold text-gray-500">Step {idx + 1}</span>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900">{step.title}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-gray-600">{step.description}</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="py-16">
+          <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-purple-600 via-fuchsia-600 to-pink-600 text-white shadow-2xl">
+            <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+            <div className="absolute -left-10 -bottom-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+            <CardContent className="relative z-10 grid gap-6 p-8 md:grid-cols-2 md:p-12">
+              <div className="space-y-3">
+                <h3 className="text-3xl font-bold md:text-4xl">Ready to make a difference?</h3>
+                <p className="text-white/90">Create your account or jump straight into your dashboard to get started.</p>
+              </div>
+              <div className="flex items-center gap-3 md:justify-end">
+                <Link href="#auth" className="rounded-md bg-white px-5 py-3 font-medium text-purple-700 shadow-md transition hover:shadow-lg">Create account</Link>
+                <Link href="/dashboard" className="rounded-md bg-white/10 px-5 py-3 font-medium text-white backdrop-blur-sm ring-1 ring-white/30 transition hover:bg-white/20">Go to dashboard</Link>
+              </div>
+            </CardContent>
+          </Card>
         </section>
       </main>
+
+      <footer className="mt-8 border-t border-white/40 bg-white/60 py-8 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 text-center text-sm text-gray-600 md:flex-row">
+          <div className="flex items-center gap-2">
+            <Image src="/images/cata-logo.png" alt="CATA Logo" width={24} height={24} className="rounded" />
+            <span>CATA Volunteer</span>
+          </div>
+          <p>© {new Date().getFullYear()} Central High School. All rights reserved.</p>
+        </div>
+      </footer>
     </div>
   )
 }

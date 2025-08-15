@@ -19,5 +19,13 @@
       "src": "/(.*)",
       "dest": "/"
     }
-  ]
+  ],
+  "functions": {
+    "api/flask_app.py": {
+      "runtime": "python3.9"
+    }
+  },
+  "env": {
+    "NODE_ENV": "production"
+  }
 }
