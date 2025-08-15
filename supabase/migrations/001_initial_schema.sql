@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS opportunity_registrations (
 -- Create volunteer_hours table
 CREATE TABLE IF NOT EXISTS volunteer_hours (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    student_id UUID NOT NULL,
+    student_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
     opportunity_id UUID REFERENCES volunteer_opportunities(id) ON DELETE SET NULL,
     hours DECIMAL(5,2) NOT NULL,
     date DATE NOT NULL,
