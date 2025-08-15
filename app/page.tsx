@@ -22,7 +22,9 @@ import {
   ArrowRight,
   Search,
   CalendarCheck2,
-  CheckCircle2
+  CheckCircle2,
+  AlertCircle,
+  X
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
@@ -30,6 +32,7 @@ import { useRouter } from "next/navigation"
 export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState("login")
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -41,11 +44,22 @@ export default function HomePage() {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+    // Clear message when user starts typing
+    if (message) setMessage(null)
+  }
+
+  const showMessage = (type: 'success' | 'error', text: string) => {
+    setMessage({ type, text })
+    // Auto-hide success messages after 5 seconds
+    if (type === 'success') {
+      setTimeout(() => setMessage(null), 5000)
+    }
   }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setMessage(null)
 
     try {
       const supabase = createClient()
@@ -55,13 +69,14 @@ export default function HomePage() {
       })
 
       if (error) {
-        console.error("Login error:", error.message)
+        showMessage('error', `Login failed: ${error.message}`)
         return
       }
 
-      router.push("/dashboard")
+      showMessage('success', 'Login successful! Redirecting...')
+      setTimeout(() => router.push("/dashboard"), 1000)
     } catch (error) {
-      console.error("Login error:", error)
+      showMessage('error', 'An unexpected error occurred during login')
     } finally {
       setIsLoading(false)
     }
@@ -70,16 +85,17 @@ export default function HomePage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setMessage(null)
 
     if (formData.password !== formData.confirmPassword) {
-      console.error("Passwords do not match")
+      showMessage('error', 'Passwords do not match')
       setIsLoading(false)
       return
     }
 
     // Enforce 10-digit student ID on homepage register as well
     if (!/^\d{10}$/.test(formData.studentId)) {
-      console.error("Student ID must be exactly 10 digits")
+      showMessage('error', 'Student ID must be exactly 10 digits')
       setIsLoading(false)
       return
     }
@@ -99,13 +115,23 @@ export default function HomePage() {
       })
 
       if (error) {
-        console.error("Registration error:", error.message)
+        showMessage('error', `Registration failed: ${error.message}`)
         return
       }
 
-      setActiveTab("login")
+      showMessage('success', 'Account created successfully! Please check your email for verification.')
+      // Clear form data
+      setFormData({
+        email: "",
+        password: "",
+        fullName: "",
+        studentId: "",
+        confirmPassword: ""
+      })
+      // Switch to login tab after a short delay
+      setTimeout(() => setActiveTab("login"), 2000)
     } catch (error) {
-      console.error("Registration error:", error)
+      showMessage('error', 'An unexpected error occurred during registration')
     } finally {
       setIsLoading(false)
     }
@@ -186,6 +212,33 @@ export default function HomePage() {
                 <CardDescription>Sign in or create your account to continue</CardDescription>
               </CardHeader>
               <CardContent>
+                {/* Message Display */}
+                {message && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className={`mb-4 flex items-center gap-2 rounded-lg p-3 text-sm ${
+                      message.type === 'success' 
+                        ? 'bg-green-50 border border-green-200 text-green-800' 
+                        : 'bg-red-50 border border-red-200 text-red-800'
+                    }`}
+                  >
+                    {message.type === 'success' ? (
+                      <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                    )}
+                    <span className="flex-1">{message.text}</span>
+                    <button
+                      onClick={() => setMessage(null)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </motion.div>
+                )}
+                
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                   <TabsList className="grid w-full grid-cols-2 rounded-lg bg-gray-100 p-1">
                     <TabsTrigger value="login" className="rounded-md data-[state=active]:bg-white data-[state=active]:text-purple-600">Sign In</TabsTrigger>
