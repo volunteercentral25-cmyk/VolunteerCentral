@@ -3,16 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
-import { createClient } from '@/lib/supabase/client'
 import { motion } from 'framer-motion'
-import { Loader2 } from 'lucide-react'
 
 export default function DashboardPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
   const [userRole, setUserRole] = useState<string | null>(null)
   const [checkingRole, setCheckingRole] = useState(true)
-  const supabase = createClient()
 
   useEffect(() => {
     if (!loading && !user) {
@@ -27,18 +24,16 @@ export default function DashboardPage() {
 
   const checkUserRole = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user?.id)
-        .single()
-
-      if (error) {
-        console.error('Error fetching user role:', error)
+      // Use our API endpoint instead of direct Supabase call
+      const response = await fetch('/api/student/dashboard')
+      
+      if (response.ok) {
+        const data = await response.json()
+        setUserRole(data.profile?.role || 'student')
+      } else {
+        console.error('Error fetching user role:', response.statusText)
         // Default to student if role not found
         setUserRole('student')
-      } else {
-        setUserRole(data?.role || 'student')
       }
     } catch (error) {
       console.error('Error checking user role:', error)
