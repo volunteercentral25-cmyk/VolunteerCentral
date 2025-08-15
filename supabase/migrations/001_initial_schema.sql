@@ -8,7 +8,7 @@ CREATE TYPE hours_status AS ENUM ('pending', 'approved', 'denied', 'override_pen
 
 -- Create profiles table
 CREATE TABLE IF NOT EXISTS profiles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
     student_id TEXT UNIQUE,
     full_name TEXT NOT NULL,
