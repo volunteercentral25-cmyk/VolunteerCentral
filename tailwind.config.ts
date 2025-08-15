@@ -55,9 +55,54 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      animation: {
+        "fade-in-up": "fadeInUp 0.6s ease-out",
+        "slide-in-right": "slideInRight 0.6s ease-out",
+        "bounce-gentle": "bounceGentle 2s ease-in-out infinite",
+        "float": "float 3s ease-in-out infinite",
+        "glow": "glow 2s ease-in-out infinite alternate",
+        "shimmer": "shimmer 2s infinite",
+        "blob": "blob 7s infinite",
+      },
+      keyframes: {
+        fadeInUp: {
+          "0%": { opacity: "0", transform: "translateY(30px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        slideInRight: {
+          "0%": { opacity: "0", transform: "translateX(30px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        bounceGentle: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-10px)" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-20px)" },
+        },
+        glow: {
+          "0%": { boxShadow: "0 0 20px rgba(147, 51, 234, 0.3)" },
+          "100%": { boxShadow: "0 0 30px rgba(147, 51, 234, 0.6)" },
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
+        blob: {
+          "0%": { transform: "translate(0px, 0px) scale(1)" },
+          "33%": { transform: "translate(30px, -50px) scale(1.1)" },
+          "66%": { transform: "translate(-20px, 20px) scale(0.9)" },
+          "100%": { transform: "translate(0px, 0px) scale(1)" },
+        },
+      },
+      animationDelay: {
+        "2000": "2s",
+        "4000": "4s",
+      },
     },
   },
-  plugins: [],
+  plugins: [require("tailwindcss-animate")],
 };
 
 export default config;

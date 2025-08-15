@@ -245,7 +245,6 @@
   background: linear-gradient(45deg, #8b5cf6, #ec4899);
   color: white;
 }
-
 /* Focus styles */
 .focus-ring {
   @apply focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2;
@@ -341,3 +340,4 @@
 .shadow-glow-pink {
   box-shadow: 0 0 30px rgba(236, 72, 153, 0.5);
 }
+
