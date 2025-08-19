@@ -3,64 +3,28 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('Dashboard API: Starting request...')
-    
     const supabase = createClient()
     
-    // Get the current user with better error handling
+    // Get the current user
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     
-    console.log('Dashboard API: Auth result:', { 
-      user: user?.id, 
-      email: user?.email, 
-      error: userError?.message 
-    })
-    
-    if (userError) {
-      console.error('Dashboard API: User authentication error:', userError)
+    if (userError || !user) {
       return NextResponse.json({ 
-        error: 'Authentication failed', 
-        details: userError.message,
-        code: 'AUTH_ERROR'
-      }, { status: 401 })
-    }
-    
-    if (!user) {
-      console.error('Dashboard API: No user found in session')
-      return NextResponse.json({ 
-        error: 'No authenticated user found',
-        code: 'NO_USER'
+        error: 'Authentication required',
+        code: 'AUTH_REQUIRED'
       }, { status: 401 })
     }
 
-    console.log('Dashboard API: User authenticated:', user.email, 'User ID:', user.id)
-
-    // Get user profile with better error handling
+    // Get user profile with error handling
     let { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single()
 
-    console.log('Dashboard API: Profile lookup result:', {
-      profile: profile?.id,
-      error: profileError?.message,
-      errorCode: profileError?.code
-    })
-
     if (profileError) {
-      console.error('Dashboard API: Profile lookup error:', profileError)
-      console.error('Dashboard API: Profile error details:', {
-        code: profileError.code,
-        message: profileError.message,
-        details: profileError.details,
-        hint: profileError.hint
-      })
-      
-      // Check if it's a "not found" error vs other errors
+      // If profile not found, create it
       if (profileError.code === 'PGRST116') {
-        // Profile not found - try to create it
-        console.log('Dashboard API: Profile not found, attempting to create...')
         const { data: newProfile, error: createError } = await supabase
           .from('profiles')
           .insert({
@@ -73,57 +37,41 @@ export async function GET(request: NextRequest) {
           .single()
 
         if (createError) {
-          console.error('Dashboard API: Profile creation error:', createError)
           return NextResponse.json({ 
             error: 'Failed to create profile',
-            details: createError.message,
             code: 'PROFILE_CREATE_ERROR'
           }, { status: 500 })
         }
-
-        console.log('Dashboard API: Profile created successfully:', newProfile)
         profile = newProfile
       } else {
-        // Other error - return the error
-        console.error('Dashboard API: Unexpected profile error:', profileError)
         return NextResponse.json({ 
           error: 'Failed to fetch profile',
-          details: profileError.message,
           code: 'PROFILE_FETCH_ERROR'
         }, { status: 500 })
       }
-    } else {
-      console.log('Dashboard API: Profile found successfully:', profile)
     }
 
-    // Get volunteer hours statistics from volunteer_hours table
-    const { data: hoursData, error: hoursError } = await supabase
-      .from('volunteer_hours')
-      .select('*')
-      .eq('student_id', profile.id)
+    // Fetch all data in parallel for better performance
+    const [hoursResult, registrationsResult] = await Promise.allSettled([
+      supabase
+        .from('volunteer_hours')
+        .select('*')
+        .eq('student_id', profile.id),
+      supabase
+        .from('opportunity_registrations')
+        .select('*')
+        .eq('student_id', profile.id)
+    ])
 
-    if (hoursError) {
-      console.error('Dashboard API: Hours fetch error:', hoursError)
-      // Don't fail the entire request for hours error, just use empty array
-      console.log('Dashboard API: Using empty hours data due to error')
-    }
-
-    // Get opportunity registrations
-    const { data: registrationsData, error: registrationsError } = await supabase
-      .from('opportunity_registrations')
-      .select('*')
-      .eq('student_id', profile.id)
-
-    if (registrationsError) {
-      console.error('Dashboard API: Registrations fetch error:', registrationsError)
-      // Don't fail the entire request for registrations error, just use empty array
-      console.log('Dashboard API: Using empty registrations data due to error')
-    }
-
-    // Calculate statistics with safe defaults
-    const hours = hoursData || []
-    const registrations = registrationsData || []
+    // Extract data with fallbacks
+    const hours = hoursResult.status === 'fulfilled' && hoursResult.value.data 
+      ? hoursResult.value.data 
+      : []
+    const registrations = registrationsResult.status === 'fulfilled' && registrationsResult.value.data 
+      ? registrationsResult.value.data 
+      : []
     
+    // Calculate statistics
     const totalHours = hours.reduce((sum, hour) => sum + Number(hour.hours || 0), 0)
     const approvedHours = hours.filter(hour => hour.status === 'approved')
       .reduce((sum, hour) => sum + Number(hour.hours || 0), 0)
@@ -132,18 +80,21 @@ export async function GET(request: NextRequest) {
     const opportunities = registrations.length
 
     // Get recent activity (last 5 hours entries)
-    const recentActivity = hours.slice(0, 5).map(hour => ({
-      id: hour.id,
-      activity: hour.description || 'Volunteer Activity',
-      hours: hour.hours,
-      date: hour.date,
-      status: hour.status
-    }))
+    const recentActivity = hours
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 5)
+      .map(hour => ({
+        id: hour.id,
+        activity: hour.description || 'Volunteer Activity',
+        hours: hour.hours,
+        date: hour.date,
+        status: hour.status
+      }))
 
     // Calculate goal progress (assuming 100 hours goal)
     const goalProgress = Math.min(Math.round((totalHours / 100) * 100), 100)
 
-    // Mock achievements based on hours
+    // Generate achievements based on hours
     const achievements = []
     if (totalHours >= 10) achievements.push({ name: 'First Steps', description: 'Complete your first 10 hours', earned: true })
     if (totalHours >= 25) achievements.push({ name: 'Dedicated Helper', description: 'Complete 25 hours of service', earned: true })
@@ -164,13 +115,11 @@ export async function GET(request: NextRequest) {
       achievements
     }
 
-    console.log('Dashboard API: Dashboard data prepared successfully')
     return NextResponse.json(dashboardData)
   } catch (error) {
     console.error('Dashboard API: Unexpected error:', error)
     return NextResponse.json({ 
       error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error',
       code: 'INTERNAL_ERROR'
     }, { status: 500 })
   }

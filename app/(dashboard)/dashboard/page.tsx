@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { motion } from 'framer-motion'
+import { LoadingSpinner } from '@/components/dashboard/LoadingSpinner'
 
 export default function DashboardPage() {
   const { user, loading } = useAuth()
@@ -24,7 +25,6 @@ export default function DashboardPage() {
 
   const checkUserRole = async () => {
     try {
-      // Use our API endpoint instead of direct Supabase call
       const response = await fetch('/api/student/dashboard')
       
       if (response.ok) {
@@ -32,7 +32,6 @@ export default function DashboardPage() {
         setUserRole(data.profile?.role || 'student')
       } else {
         console.error('Error fetching user role:', response.statusText)
-        // Default to student if role not found
         setUserRole('student')
       }
     } catch (error) {
@@ -56,19 +55,11 @@ export default function DashboardPage() {
   if (loading || checkingRole) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
+        <LoadingSpinner 
+          size="lg" 
+          text="Loading Dashboard" 
           className="text-center"
-        >
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            className="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full mx-auto mb-4"
-          />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Loading Dashboard</h2>
-          <p className="text-gray-600">Please wait while we set up your experience...</p>
-        </motion.div>
+        />
       </div>
     )
   }
