@@ -12,6 +12,8 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { EmailVerificationField } from '@/components/hours/EmailVerificationField'
+import { isOrganizationalEmail } from '@/lib/utils/emailValidation'
 import { 
   Clock,
   Calendar,
@@ -22,7 +24,9 @@ import {
   CheckCircle,
   AlertCircle,
   Activity,
-  Target
+  Target,
+  Shield,
+  Info
 } from 'lucide-react'
 
 interface HourEntry {
@@ -33,6 +37,8 @@ interface HourEntry {
   description: string
   status: string
   location: string
+  verification_email?: string
+  verified_by?: string
 }
 
 interface HoursData {
@@ -51,11 +57,13 @@ export default function StudentHours() {
   const [submitting, setSubmitting] = useState(false)
   const [hoursData, setHoursData] = useState<HoursData | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [emailValid, setEmailValid] = useState(false)
   const [formData, setFormData] = useState({
     activity: '',
     hours: '',
     date: '',
-    description: ''
+    description: '',
+    verification_email: ''
   })
   const router = useRouter()
   const supabase = createClient()
@@ -96,7 +104,15 @@ export default function StudentHours() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validate email before submission
+    if (!isOrganizationalEmail(formData.verification_email)) {
+      setError('Please provide a valid organizational email address for verification')
+      return
+    }
+
     setSubmitting(true)
+    setError(null)
 
     try {
       const response = await fetch('/api/student/hours', {
@@ -113,8 +129,15 @@ export default function StudentHours() {
       }
 
       // Reset form and refresh data
-      setFormData({ activity: '', hours: '', date: '', description: '' })
+      setFormData({ 
+        activity: '', 
+        hours: '', 
+        date: '', 
+        description: '', 
+        verification_email: '' 
+      })
       setShowForm(false)
+      setEmailValid(false)
       await fetchHoursData()
     } catch (error) {
       console.error('Error submitting hours:', error)
@@ -224,6 +247,33 @@ export default function StudentHours() {
           </p>
         </motion.div>
 
+        {/* Verification Notice */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.1 }}
+          className="mb-8"
+        >
+          <Card className="glass-effect border-0 shadow-xl border-blue-200 bg-blue-50">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-4">
+                <Shield className="h-6 w-6 text-blue-600 mt-1 flex-shrink-0" />
+                <div>
+                  <h3 className="text-lg font-semibold text-blue-900 mb-2">Email Verification Required</h3>
+                  <p className="text-blue-800 mb-3">
+                    To ensure the integrity of volunteer hours, we require verification from an organizational email address. 
+                    This helps maintain the credibility of our volunteer tracking system.
+                  </p>
+                  <div className="flex items-center gap-2 text-sm text-blue-700">
+                    <Info className="h-4 w-4" />
+                    <span>Personal emails (Gmail, Yahoo, etc.) are not accepted for verification.</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
         {/* Add Hours Button */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -251,10 +301,10 @@ export default function StudentHours() {
             <Card className="glass-effect border-0 shadow-xl">
               <CardHeader>
                 <CardTitle className="text-gradient">Log New Hours</CardTitle>
-                <CardDescription>Record your volunteer activity and hours</CardDescription>
+                <CardDescription>Record your volunteer activity and hours with email verification</CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="activity">Activity Name</Label>
@@ -282,6 +332,7 @@ export default function StudentHours() {
                       />
                     </div>
                   </div>
+                  
                   <div className="space-y-2">
                     <Label htmlFor="date">Date</Label>
                     <Input 
@@ -293,6 +344,7 @@ export default function StudentHours() {
                       required
                     />
                   </div>
+                  
                   <div className="space-y-2">
                     <Label htmlFor="description">Description</Label>
                     <Textarea 
@@ -305,8 +357,29 @@ export default function StudentHours() {
                       required
                     />
                   </div>
+
+                  {/* Email Verification Field */}
+                  <EmailVerificationField
+                    value={formData.verification_email}
+                    onChange={(email) => setFormData({...formData, verification_email: email})}
+                    onValidationChange={setEmailValid}
+                    label="Supervisor/Organization Email"
+                    placeholder="supervisor@organization.com"
+                  />
+
+                  {/* Error Display */}
+                  {error && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-red-800 text-sm">{error}</p>
+                    </div>
+                  )}
+
                   <div className="flex gap-3">
-                    <Button type="submit" className="btn-primary" disabled={submitting}>
+                    <Button 
+                      type="submit" 
+                      className="btn-primary" 
+                      disabled={submitting || !emailValid}
+                    >
                       {submitting ? (
                         <>
                           <motion.div
@@ -326,7 +399,17 @@ export default function StudentHours() {
                     <Button 
                       type="button" 
                       variant="outline" 
-                      onClick={() => setShowForm(false)}
+                      onClick={() => {
+                        setShowForm(false)
+                        setError(null)
+                        setFormData({ 
+                          activity: '', 
+                          hours: '', 
+                          date: '', 
+                          description: '', 
+                          verification_email: '' 
+                        })
+                      }}
                       className="btn-secondary"
                       disabled={submitting}
                     >
@@ -394,6 +477,12 @@ export default function StudentHours() {
                                   </span>
                                 )}
                               </div>
+                              {hour.verification_email && (
+                                <div className="flex items-center gap-1 mt-1 text-xs text-gray-400">
+                                  <Shield className="h-3 w-3" />
+                                  <span>Verified by: {hour.verification_email}</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                           <Badge className={
