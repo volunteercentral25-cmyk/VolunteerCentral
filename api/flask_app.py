@@ -3,10 +3,17 @@ from flask_mail import Mail, Message
 from flask_cors import CORS
 import os
 import uuid
+import requests
+import hashlib
+import hmac
+import json
+import logging
 from datetime import datetime, timedelta
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+from typing import Dict, Any, Optional
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app)
@@ -19,7 +26,137 @@ app.config['MAIL_USERNAME'] = os.getenv('FLASK_MAIL_USERNAME', 'your_email@cata-
 app.config['MAIL_PASSWORD'] = os.getenv('FLASK_MAIL_PASSWORD', 'your_app_password')
 app.config['SECRET_KEY'] = os.getenv('JWT_SECRET', 'your-secret-key')
 
+# Supabase Configuration
+SUPABASE_URL = os.getenv('SUPABASE_URL')
+SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
+FRONTEND_URL = os.getenv('NEXT_PUBLIC_APP_URL', 'http://localhost:3000')
+SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')
+
 mail = Mail(app)
+
+class SupabaseService:
+    def __init__(self):
+        self.url = SUPABASE_URL
+        self.service_key = SUPABASE_SERVICE_KEY
+        self.headers = {
+            'apikey': self.service_key,
+            'Authorization': f'Bearer {self.service_key}',
+            'Content-Type': 'application/json'
+        }
+    
+    def get_hours_by_id(self, hours_id: str) -> Optional[Dict[str, Any]]:
+        """Get volunteer hours by ID"""
+        try:
+            response = requests.get(
+                f"{self.url}/rest/v1/volunteer_hours?id=eq.{hours_id}",
+                headers=self.headers
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data[0] if data else None
+        except Exception as e:
+            logger.error(f"Failed to get hours: {str(e)}")
+            return None
+    
+    def update_hours_status(self, hours_id: str, status: str, verified_by: str, notes: str = None) -> bool:
+        """Update volunteer hours status"""
+        try:
+            update_data = {
+                'status': status,
+                'verified_by': verified_by,
+                'verification_date': datetime.utcnow().isoformat(),
+                'verification_notes': notes,
+                'updated_at': datetime.utcnow().isoformat()
+            }
+            
+            response = requests.patch(
+                f"{self.url}/rest/v1/volunteer_hours?id=eq.{hours_id}",
+                headers=self.headers,
+                json=update_data
+            )
+            response.raise_for_status()
+            
+            logger.info(f"Hours {hours_id} status updated to {status}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to update hours status: {str(e)}")
+            return False
+    
+    def get_student_profile(self, student_id: str) -> Optional[Dict[str, Any]]:
+        """Get student profile by ID"""
+        try:
+            response = requests.get(
+                f"{self.url}/rest/v1/profiles?id=eq.{student_id}",
+                headers=self.headers
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data[0] if data else None
+        except Exception as e:
+            logger.error(f"Failed to get student profile: {str(e)}")
+            return None
+    
+    def log_email_sent(self, recipient: str, template: str, subject: str, data: Dict[str, Any]) -> bool:
+        """Log email sent to database"""
+        try:
+            log_data = {
+                'recipient': recipient,
+                'template': template,
+                'subject': subject,
+                'data': json.dumps(data),
+                'status': 'sent',
+                'sent_at': datetime.utcnow().isoformat()
+            }
+            
+            response = requests.post(
+                f"{self.url}/rest/v1/email_logs",
+                headers=self.headers,
+                json=log_data
+            )
+            response.raise_for_status()
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to log email: {str(e)}")
+            return False
+
+# Initialize Supabase service
+supabase_service = SupabaseService()
+
+def generate_verification_token(hours_id: str, action: str, verifier_email: str) -> str:
+    """Generate a secure verification token"""
+    timestamp = str(int(datetime.utcnow().timestamp()))
+    message = f"{hours_id}:{action}:{verifier_email}:{timestamp}"
+    signature = hmac.new(
+        SECRET_KEY.encode(),
+        message.encode(),
+        hashlib.sha256
+    ).hexdigest()
+    return f"{timestamp}:{signature}"
+
+def verify_token(token: str, hours_id: str, action: str, verifier_email: str) -> bool:
+    """Verify the token is valid and not expired"""
+    try:
+        timestamp_str, signature = token.split(':', 1)
+        timestamp = int(timestamp_str)
+        
+        # Check if token is expired (7 days)
+        if datetime.utcnow().timestamp() - timestamp > 7 * 24 * 60 * 60:
+            return False
+        
+        # Verify signature
+        message = f"{hours_id}:{action}:{verifier_email}:{timestamp_str}"
+        expected_signature = hmac.new(
+            SECRET_KEY.encode(),
+            message.encode(),
+            hashlib.sha256
+        ).hexdigest()
+        
+        return hmac.compare_digest(signature, expected_signature)
+        
+    except Exception:
+        return False
 
 # Email templates
 VERIFICATION_EMAIL_TEMPLATE = """
@@ -53,6 +190,74 @@ VERIFICATION_EMAIL_TEMPLATE = """
         </div>
         <div class="footer">
             <p>&copy; 2024 CATA Volunteer. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+
+HOURS_VERIFICATION_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Volunteer Hours Verification Request</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .hours-details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea; }
+        .button { display: inline-block; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; margin: 10px 5px; }
+        .button.approve { background: #28a745; }
+        .button.deny { background: #dc3545; }
+        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+        .student-info { background: #e3f2fd; padding: 15px; border-radius: 6px; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Volunteer Hours Verification</h1>
+            <p>CATA Volunteer Central</p>
+        </div>
+        
+        <div class="content">
+            <h2>Hello!</h2>
+            <p>A student has submitted volunteer hours for your verification. Please review the details below and approve or deny the submission.</p>
+            
+            <div class="student-info">
+                <h3>Student Information</h3>
+                <p><strong>Name:</strong> {{ student_name }}</p>
+                <p><strong>Email:</strong> {{ student_email }}</p>
+                <p><strong>Student ID:</strong> {{ student_id }}</p>
+            </div>
+            
+            <div class="hours-details">
+                <h3>Volunteer Hours Details</h3>
+                <p><strong>Activity:</strong> {{ activity }}</p>
+                <p><strong>Hours:</strong> {{ hours }}</p>
+                <p><strong>Date:</strong> {{ date }}</p>
+                <p><strong>Description:</strong> {{ description }}</p>
+                <p><strong>Submitted:</strong> {{ submitted_date }}</p>
+            </div>
+            
+            <p>Please click one of the buttons below to approve or deny these volunteer hours:</p>
+            
+            <div style="text-align: center;">
+                <a href="{{ approve_url }}" class="button approve">✓ Approve Hours</a>
+                <a href="{{ deny_url }}" class="button deny">✗ Deny Hours</a>
+            </div>
+            
+            <p style="margin-top: 30px; font-size: 14px; color: #666;">
+                <strong>Note:</strong> This verification link will expire in 7 days. If you have any questions, please contact the CATA Volunteer Central team.
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p>CATA Volunteer Central - Building Community Through Service</p>
+            <p>This is an automated message. Please do not reply to this email.</p>
         </div>
     </div>
 </body>
@@ -210,9 +415,243 @@ def send_notification():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/email/send-verification-email', methods=['POST'])
+def send_verification_email():
+    """Send verification email to supervisor/organization"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['hours_id', 'verifier_email', 'student_id']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        hours_id = data['hours_id']
+        verifier_email = data['verifier_email']
+        student_id = data['student_id']
+        
+        # Get hours details from database
+        hours_data = supabase_service.get_hours_by_id(hours_id)
+        if not hours_data:
+            return jsonify({'error': 'Hours record not found'}), 404
+        
+        # Get student profile
+        student_profile = supabase_service.get_student_profile(student_id)
+        if not student_profile:
+            return jsonify({'error': 'Student profile not found'}), 404
+        
+        # Generate verification URLs
+        approve_token = generate_verification_token(hours_id, 'approve', verifier_email)
+        deny_token = generate_verification_token(hours_id, 'deny', verifier_email)
+        
+        approve_url = f"{FRONTEND_URL}/verify-hours?token={approve_token}&action=approve&hours_id={hours_id}&email={verifier_email}"
+        deny_url = f"{FRONTEND_URL}/verify-hours?token={deny_token}&action=deny&hours_id={hours_id}&email={verifier_email}"
+        
+        # Prepare email content
+        template_data = {
+            'student_name': student_profile.get('full_name', 'Unknown'),
+            'student_email': student_profile.get('email', 'Unknown'),
+            'student_id': student_profile.get('student_id', 'Unknown'),
+            'activity': hours_data.get('description', 'Volunteer Activity'),
+            'hours': hours_data.get('hours', 0),
+            'date': hours_data.get('date', 'Unknown'),
+            'description': hours_data.get('description', 'No description provided'),
+            'submitted_date': hours_data.get('created_at', 'Unknown'),
+            'approve_url': approve_url,
+            'deny_url': deny_url
+        }
+        
+        # Render email template
+        html_content = render_template_string(HOURS_VERIFICATION_TEMPLATE, **template_data)
+        
+        # Send email using Flask-Mail
+        msg = Message(
+            f"Volunteer Hours Verification Request - {template_data['student_name']}",
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[verifier_email]
+        )
+        msg.html = html_content
+        
+        mail.send(msg)
+        
+        # Log email sent
+        supabase_service.log_email_sent(
+            recipient=verifier_email,
+            template='verification_request',
+            subject=msg.subject,
+            data=template_data
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Verification email sent successfully',
+            'hours_id': hours_id,
+            'verifier_email': verifier_email
+        })
+        
+    except Exception as e:
+        logger.error(f"Error sending verification email: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/email/verify-hours', methods=['GET'])
+def verify_hours():
+    """Handle hours verification (approve/deny)"""
+    try:
+        # Get parameters from URL
+        token = request.args.get('token')
+        action = request.args.get('action')
+        hours_id = request.args.get('hours_id')
+        verifier_email = request.args.get('email')
+        
+        if not all([token, action, hours_id, verifier_email]):
+            return jsonify({'error': 'Missing required parameters'}), 400
+        
+        # Verify token
+        if not verify_token(token, hours_id, action, verifier_email):
+            return jsonify({'error': 'Invalid or expired verification token'}), 400
+        
+        # Get hours data
+        hours_data = supabase_service.get_hours_by_id(hours_id)
+        if not hours_data:
+            return jsonify({'error': 'Hours record not found'}), 404
+        
+        # Get student profile
+        student_profile = supabase_service.get_student_profile(hours_data['student_id'])
+        if not student_profile:
+            return jsonify({'error': 'Student profile not found'}), 404
+        
+        # Update hours status
+        status = 'approved' if action == 'approve' else 'denied'
+        notes = request.args.get('notes', '')
+        
+        success = supabase_service.update_hours_status(hours_id, status, verifier_email, notes)
+        if not success:
+            return jsonify({'error': 'Failed to update hours status'}), 500
+        
+        # Send confirmation email to verifier
+        template_data = {
+            'student_name': student_profile.get('full_name', 'Unknown'),
+            'activity': hours_data.get('description', 'Volunteer Activity'),
+            'hours': hours_data.get('hours', 0),
+            'date': hours_data.get('date', 'Unknown'),
+            'verifier_email': verifier_email,
+            'approval_date': datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'),
+            'denial_date': datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'),
+            'notes': notes
+        }
+        
+        if action == 'approve':
+            subject = f"Hours Approved - {template_data['student_name']}"
+            html_content = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: #28a745; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                    <h1>✓ Hours Approved Successfully</h1>
+                </div>
+                <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
+                    <h2>Thank you for your verification!</h2>
+                    <p>The volunteer hours have been approved and the student has been notified.</p>
+                    
+                    <h3>Approved Details:</h3>
+                    <ul>
+                        <li><strong>Student:</strong> {template_data['student_name']}</li>
+                        <li><strong>Activity:</strong> {template_data['activity']}</li>
+                        <li><strong>Hours:</strong> {template_data['hours']}</li>
+                        <li><strong>Date:</strong> {template_data['date']}</li>
+                        <li><strong>Approved by:</strong> {template_data['verifier_email']}</li>
+                        <li><strong>Approved on:</strong> {template_data['approval_date']}</li>
+                    </ul>
+                    
+                    <p>Thank you for supporting our volunteer program!</p>
+                </div>
+            </div>
+            """
+        else:
+            subject = f"Hours Denied - {template_data['student_name']}"
+            html_content = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: #dc3545; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                    <h1>✗ Hours Denied</h1>
+                </div>
+                <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
+                    <h2>Verification Complete</h2>
+                    <p>The volunteer hours have been denied and the student has been notified.</p>
+                    
+                    <h3>Denied Details:</h3>
+                    <ul>
+                        <li><strong>Student:</strong> {template_data['student_name']}</li>
+                        <li><strong>Activity:</strong> {template_data['activity']}</li>
+                        <li><strong>Hours:</strong> {template_data['hours']}</li>
+                        <li><strong>Date:</strong> {template_data['date']}</li>
+                        <li><strong>Denied by:</strong> {template_data['verifier_email']}</li>
+                        <li><strong>Denied on:</strong> {template_data['denial_date']}</li>
+                        {f'<li><strong>Reason:</strong> {template_data["notes"]}</li>' if template_data["notes"] else ''}
+                    </ul>
+                    
+                    <p>Thank you for your time and attention to this matter.</p>
+                </div>
+            </div>
+            """
+        
+        msg = Message(subject, sender=app.config['MAIL_USERNAME'], recipients=[verifier_email])
+        msg.html = html_content
+        mail.send(msg)
+        
+        # Log the verification
+        supabase_service.log_email_sent(
+            recipient=verifier_email,
+            template=f'hours_{action}',
+            subject=subject,
+            data=template_data
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'Hours {action} successfully',
+            'hours_id': hours_id,
+            'status': status,
+            'verifier_email': verifier_email
+        })
+        
+    except Exception as e:
+        logger.error(f"Error verifying hours: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
 @app.route('/health', methods=['GET'])
 def health_check():
-    return jsonify({'status': 'healthy', 'service': 'CATA Volunteer Email Service'}), 200
+    return jsonify({
+        'status': 'healthy', 
+        'service': 'CATA Volunteer Email Service',
+        'timestamp': datetime.utcnow().isoformat(),
+        'supabase_configured': bool(SUPABASE_URL and SUPABASE_SERVICE_KEY),
+        'mail_configured': bool(app.config['MAIL_USERNAME'] and app.config['MAIL_PASSWORD'])
+    }), 200
+
+@app.route('/api/email/test', methods=['GET'])
+def test_email_service():
+    """Test endpoint to verify email service is working"""
+    try:
+        # Test Supabase connection
+        if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+            supabase_status = "configured"
+        else:
+            supabase_status = "not configured"
+        
+        # Test mail configuration
+        if app.config['MAIL_USERNAME'] and app.config['MAIL_PASSWORD']:
+            mail_status = "configured"
+        else:
+            mail_status = "not configured"
+        
+        return jsonify({
+            'status': 'email service test',
+            'supabase': supabase_status,
+            'mail': mail_status,
+            'frontend_url': FRONTEND_URL,
+            'timestamp': datetime.utcnow().isoformat()
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
