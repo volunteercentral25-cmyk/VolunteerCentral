@@ -1,23 +1,5 @@
-// List of popular email providers to exclude
-const POPULAR_EMAIL_PROVIDERS = [
-  'gmail.com',
-  'yahoo.com',
-  'hotmail.com',
-  'outlook.com',
-  'aol.com',
-  'icloud.com',
-  'mail.com',
-  'protonmail.com',
-  'tutanota.com',
-  'zoho.com',
-  'yandex.com',
-  'gmx.com',
-  'live.com',
-  'msn.com',
-  'me.com',
-  'mac.com',
-  'fastmail.com',
-  'hushmail.com',
+// List of disposable/temporary email providers to block
+const DISPOSABLE_EMAIL_PROVIDERS = [
   'guerrillamail.com',
   '10minutemail.com',
   'tempmail.org',
@@ -39,11 +21,9 @@ const POPULAR_EMAIL_PROVIDERS = [
   'fakemailgenerator.com',
   'maildrop.cc',
   'mailmetrash.com',
-  'mailnesia.com',
   'mintemail.com',
   'mytrashmail.com',
   'nwldx.com',
-  'sharklasers.com',
   'spamspot.com',
   'tempr.email',
   'trashmail.com',
@@ -60,10 +40,6 @@ const POPULAR_EMAIL_PROVIDERS = [
   'wegwrfmail.de',
   'wegwrfmail.net',
   'wegwrfmail.org',
-  'wegwrfmailadresse.com',
-  'wegwrfmailadresse.de',
-  'wegwrfmailadresse.net',
-  'wegwrfmailadresse.org',
   'wegwrfmailadresse.com',
   'wegwrfmailadresse.de',
   'wegwrfmailadresse.net',
@@ -95,15 +71,15 @@ export function validateEmail(email: string): EmailValidationResult {
   // Extract domain
   const domain = email.split('@')[1].toLowerCase()
 
-  // Check if it's a popular email provider
-  const isPopularProvider = POPULAR_EMAIL_PROVIDERS.includes(domain)
+  // Check if it's a disposable email provider
+  const isDisposableProvider = DISPOSABLE_EMAIL_PROVIDERS.includes(domain)
 
-  if (isPopularProvider) {
+  if (isDisposableProvider) {
     return {
-      isValid: true,
+      isValid: false,
       isCustomDomain: false,
       domain,
-      error: 'Please use an organizational email address (not a personal email like Gmail, Yahoo, etc.)'
+      error: 'Please use a valid email address (disposable/temporary emails are not allowed)'
     }
   }
 
@@ -115,28 +91,28 @@ export function validateEmail(email: string): EmailValidationResult {
 }
 
 /**
- * Checks if an email domain is from a recognized organization
+ * Checks if an email is valid (allows popular providers)
  */
 export function isOrganizationalEmail(email: string): boolean {
   const result = validateEmail(email)
-  return result.isValid && result.isCustomDomain
+  return result.isValid
 }
 
 /**
- * Gets a list of example organizational email domains
+ * Gets a list of example email domains (including popular providers)
  */
 export function getExampleOrganizationalDomains(): string[] {
   return [
+    'gmail.com',
+    'yahoo.com',
+    'outlook.com',
+    'hotmail.com',
     'company.com',
     'organization.org',
     'school.edu',
     'university.edu',
     'hospital.org',
-    'nonprofit.org',
-    'charity.org',
-    'foundation.org',
-    'institute.org',
-    'association.org'
+    'nonprofit.org'
   ]
 }
 

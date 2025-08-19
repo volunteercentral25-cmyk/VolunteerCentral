@@ -35,7 +35,7 @@ export function EmailVerificationField({
     if (value && hasInteracted) {
       const result = validateEmail(value)
       setValidationResult(result)
-      onValidationChange(result.isValid && result.isCustomDomain)
+      onValidationChange(result.isValid)
     } else {
       setValidationResult(null)
       onValidationChange(false)
@@ -61,22 +61,16 @@ export function EmailVerificationField({
 
   const getInputBorderClass = () => {
     if (!hasInteracted || !value) return ''
-    if (validationResult?.isValid && validationResult?.isCustomDomain) {
+    if (validationResult?.isValid) {
       return 'border-green-500 focus:border-green-500'
-    }
-    if (validationResult?.isValid && !validationResult?.isCustomDomain) {
-      return 'border-yellow-500 focus:border-yellow-500'
     }
     return 'border-red-500 focus:border-red-500'
   }
 
   const getInputIcon = () => {
     if (!hasInteracted || !value) return <Mail className="h-4 w-4 text-gray-400" />
-    if (validationResult?.isValid && validationResult?.isCustomDomain) {
+    if (validationResult?.isValid) {
       return <CheckCircle className="h-4 w-4 text-green-500" />
-    }
-    if (validationResult?.isValid && !validationResult?.isCustomDomain) {
-      return <AlertCircle className="h-4 w-4 text-yellow-500" />
     }
     return <XCircle className="h-4 w-4 text-red-500" />
   }
@@ -111,20 +105,11 @@ export function EmailVerificationField({
       {/* Validation Messages */}
       {hasInteracted && value && (
         <div className="space-y-2">
-          {validationResult?.isValid && validationResult?.isCustomDomain && (
+          {validationResult?.isValid && (
             <Alert className="border-green-200 bg-green-50">
               <CheckCircle className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-800">
-                <strong>Valid organizational email:</strong> {formatDomain(validationResult.domain)}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {validationResult?.isValid && !validationResult?.isCustomDomain && (
-            <Alert className="border-yellow-200 bg-yellow-50">
-              <AlertCircle className="h-4 w-4 text-yellow-600" />
-              <AlertDescription className="text-yellow-800">
-                <strong>Personal email detected:</strong> Please use an organizational email address for verification.
+                <strong>Valid email address:</strong> {formatDomain(validationResult.domain)}
               </AlertDescription>
             </Alert>
           )}
@@ -143,12 +128,12 @@ export function EmailVerificationField({
       {/* Help Text */}
       {isFocused && (
         <div className="text-sm text-gray-600 space-y-2">
-          <p>This email will be used to verify your volunteer hours. Please use an organizational email address.</p>
+          <p>This email will be used to verify your volunteer hours. Any valid email address is accepted.</p>
           
           <div>
             <p className="font-medium mb-1">Examples of acceptable domains:</p>
             <div className="flex flex-wrap gap-1">
-              {getExampleOrganizationalDomains().slice(0, 6).map((domain) => (
+              {getExampleOrganizationalDomains().slice(0, 8).map((domain) => (
                 <Badge key={domain} variant="outline" className="text-xs">
                   @{domain}
                 </Badge>
@@ -160,13 +145,10 @@ export function EmailVerificationField({
             <p className="font-medium mb-1 text-red-600">Not accepted:</p>
             <div className="flex flex-wrap gap-1">
               <Badge variant="outline" className="text-xs text-red-600 border-red-300">
-                @gmail.com
+                Disposable emails
               </Badge>
               <Badge variant="outline" className="text-xs text-red-600 border-red-300">
-                @yahoo.com
-              </Badge>
-              <Badge variant="outline" className="text-xs text-red-600 border-red-300">
-                @hotmail.com
+                Temporary emails
               </Badge>
             </div>
           </div>
