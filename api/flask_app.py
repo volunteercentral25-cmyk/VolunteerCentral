@@ -633,25 +633,137 @@ def test_email_service():
     try:
         # Test Supabase connection
         if SUPABASE_URL and SUPABASE_SERVICE_KEY:
-            supabase_status = "configured"
+            supabase_status = "✅ configured"
+            try:
+                # Test actual connection
+                response = requests.get(
+                    f"{SUPABASE_URL}/rest/v1/",
+                    headers={'apikey': SUPABASE_SERVICE_KEY},
+                    timeout=5
+                )
+                if response.status_code in [200, 400]:  # 400 is expected for root endpoint
+                    supabase_connection = "✅ connected"
+                else:
+                    supabase_connection = f"❌ connection failed ({response.status_code})"
+            except Exception as e:
+                supabase_connection = f"❌ connection error: {str(e)}"
         else:
-            supabase_status = "not configured"
+            supabase_status = "❌ not configured"
+            supabase_connection = "❌ no credentials"
         
-        # Test mail configuration
-        if app.config['MAIL_USERNAME'] and app.config['MAIL_PASSWORD']:
-            mail_status = "configured"
-        else:
-            mail_status = "not configured"
+        # Test Flask Mail configuration
+        mail_config = {
+            'server': app.config.get('MAIL_SERVER', 'not set'),
+            'port': app.config.get('MAIL_PORT', 'not set'),
+            'use_tls': app.config.get('MAIL_USE_TLS', 'not set'),
+            'username': app.config.get('MAIL_USERNAME', 'not set'),
+            'password_set': '✅ yes' if app.config.get('MAIL_PASSWORD') and app.config.get('MAIL_PASSWORD') != 'your_app_password' else '❌ no'
+        }
+        
+        # Check if Flask-Mail is properly initialized
+        try:
+            mail_initialized = "✅ yes" if hasattr(mail, 'app') and mail.app == app else "❌ no"
+        except:
+            mail_initialized = "❌ error"
+        
+        # Environment variable check
+        env_vars = {
+            'FLASK_MAIL_SERVER': '✅ set' if os.getenv('FLASK_MAIL_SERVER') else '❌ not set',
+            'FLASK_MAIL_PORT': '✅ set' if os.getenv('FLASK_MAIL_PORT') else '❌ not set',
+            'FLASK_MAIL_USERNAME': '✅ set' if os.getenv('FLASK_MAIL_USERNAME') else '❌ not set',
+            'FLASK_MAIL_PASSWORD': '✅ set' if os.getenv('FLASK_MAIL_PASSWORD') else '❌ not set',
+            'SUPABASE_URL': '✅ set' if os.getenv('SUPABASE_URL') else '❌ not set',
+            'SUPABASE_SERVICE_ROLE_KEY': '✅ set' if os.getenv('SUPABASE_SERVICE_ROLE_KEY') else '❌ not set',
+            'SECRET_KEY': '✅ set' if os.getenv('SECRET_KEY') else '❌ not set'
+        }
         
         return jsonify({
-            'status': 'email service test',
-            'supabase': supabase_status,
-            'mail': mail_status,
+            'status': 'Flask Email Service Diagnostics',
+            'flask_mail': {
+                'initialized': mail_initialized,
+                'configuration': mail_config
+            },
+            'environment_variables': env_vars,
+            'supabase': {
+                'status': supabase_status,
+                'connection': supabase_connection
+            },
             'frontend_url': FRONTEND_URL,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.utcnow().isoformat(),
+            'ready_to_send_emails': mail_config['password_set'] == '✅ yes' and supabase_status == '✅ configured'
         }), 200
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Test endpoint error: {str(e)}")
+        return jsonify({'error': str(e), 'status': 'error'}), 500
+
+@app.route('/api/email/test-send', methods=['POST'])
+def test_send_email():
+    """Test endpoint to actually send a test email"""
+    try:
+        data = request.get_json()
+        test_email = data.get('email')
+        
+        if not test_email:
+            return jsonify({'error': 'Email address is required'}), 400
+        
+        # Check if Flask-Mail is configured
+        if not (app.config.get('MAIL_USERNAME') and app.config.get('MAIL_PASSWORD')):
+            return jsonify({'error': 'Flask-Mail not configured properly'}), 500
+        
+        # Create test email
+        msg = Message(
+            'CATA Volunteer Central - Email Service Test',
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[test_email]
+        )
+        
+        msg.html = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                <h1>✅ Email Service Test</h1>
+                <p>CATA Volunteer Central</p>
+            </div>
+            <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
+                <h2>Success! 🎉</h2>
+                <p>This email confirms that the Flask mail service is working properly.</p>
+                
+                <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h3>Configuration Details:</h3>
+                    <ul>
+                        <li><strong>Server:</strong> {app.config.get('MAIL_SERVER')}</li>
+                        <li><strong>Port:</strong> {app.config.get('MAIL_PORT')}</li>
+                        <li><strong>TLS:</strong> {app.config.get('MAIL_USE_TLS')}</li>
+                        <li><strong>From:</strong> {app.config.get('MAIL_USERNAME')}</li>
+                    </ul>
+                </div>
+                
+                <p>Your volunteer hours verification emails will now be sent successfully!</p>
+            </div>
+            <div style="text-align: center; margin-top: 30px; color: #666; font-size: 14px;">
+                <p>CATA Volunteer Central - Email Service Test</p>
+                <p>Timestamp: {datetime.utcnow().isoformat()}</p>
+            </div>
+        </div>
+        """
+        
+        # Send the email
+        mail.send(msg)
+        
+        logger.info(f"Test email sent successfully to {test_email}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Test email sent successfully!',
+            'recipient': test_email,
+            'timestamp': datetime.utcnow().isoformat()
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Failed to send test email: {str(e)}")
+        return jsonify({
+            'error': f'Failed to send test email: {str(e)}',
+            'timestamp': datetime.utcnow().isoformat()
+        }), 500
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))

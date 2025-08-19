@@ -102,10 +102,11 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Validate email format and domain
-    if (!isOrganizationalEmail(verification_email)) {
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(verification_email)) {
       return NextResponse.json({ 
-        error: 'Please provide a valid organizational email address for verification. Personal email providers (Gmail, Yahoo, etc.) are not accepted.' 
+        error: 'Please provide a valid email address for verification.' 
       }, { status: 400 })
     }
 
@@ -156,7 +157,7 @@ export async function POST(request: NextRequest) {
 
                     // Send verification email to the supervisor/organization
                 try {
-                  const emailResponse = await fetch(`${process.env.EMAIL_SERVICE_URL || 'http://localhost:5000'}/send-verification-email`, {
+                  const emailResponse = await fetch('/api/email-service/email/send-verification-email', {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',

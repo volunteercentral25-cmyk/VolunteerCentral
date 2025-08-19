@@ -105,9 +105,10 @@ export default function StudentHours() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Validate email before submission
-    if (!isOrganizationalEmail(formData.verification_email)) {
-      setError('Please provide a valid organizational email address for verification')
+    // Validate email format before submission
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.verification_email)) {
+      setError('Please provide a valid email address for verification')
       return
     }
 
