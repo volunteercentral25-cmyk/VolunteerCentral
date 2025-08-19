@@ -4,10 +4,11 @@ const EMAIL_SERVICE_URL = process.env.EMAIL_SERVICE_URL || 'http://localhost:500
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
-    const path = params.path.join('/')
+    const resolvedParams = await params
+    const path = resolvedParams.path.join('/')
     const url = new URL(request.url)
     const queryString = url.search
     
@@ -31,10 +32,11 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
-    const path = params.path.join('/')
+    const resolvedParams = await params
+    const path = resolvedParams.path.join('/')
     const body = await request.json()
     
     const response = await fetch(`${EMAIL_SERVICE_URL}/${path}`, {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -44,7 +44,7 @@ interface StudentProfile {
   student_id: string
 }
 
-export default function VerifyHoursPage() {
+function VerifyHoursContent() {
   const searchParams = useSearchParams()
   const [verificationData, setVerificationData] = useState<VerificationData | null>(null)
   const [hoursDetails, setHoursDetails] = useState<HoursDetails | null>(null)
@@ -405,5 +405,23 @@ export default function VerifyHoursPage() {
         </motion.div>
       </div>
     </div>
+  )
+}
+
+export default function VerifyHoursPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen gradient-bg flex items-center justify-center">
+        <Card className="glass-effect border-0 shadow-xl">
+          <CardContent className="p-8 text-center">
+            <Loader2 className="h-12 w-12 animate-spin text-purple-600 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Loading...</h2>
+            <p className="text-gray-600">Please wait while we load the verification page...</p>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <VerifyHoursContent />
+    </Suspense>
   )
 }
