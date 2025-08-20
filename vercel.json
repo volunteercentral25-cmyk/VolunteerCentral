@@ -6,14 +6,14 @@
       "use": "@vercel/next"
     },
     {
-      "src": "api/flask_app.py",
+      "src": "api/email/flask_app.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/api/email/(.*)",
-      "dest": "api/flask_app.py"
+      "dest": "/api/email/flask_app.py"
     },
     {
       "src": "/(.*)",
