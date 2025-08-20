@@ -157,7 +157,12 @@ export async function POST(request: NextRequest) {
 
                     // Send verification email to the supervisor/organization
                 try {
-                  const emailResponse = await fetch('/api/email/send-verification-email', {
+                  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+                  const emailEndpoint = baseUrl
+                    ? `${baseUrl}/api/email/send-verification-email`
+                    : '/api/email/send-verification-email'
+
+                  const emailResponse = await fetch(emailEndpoint, {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',
@@ -173,7 +178,8 @@ export async function POST(request: NextRequest) {
                     const emailData = await emailResponse.json()
                     console.log('Verification email sent:', emailData)
                   } else {
-                    console.error('Failed to send verification email:', await emailResponse.text())
+                    const errText = await emailResponse.text()
+                    console.error('Failed to send verification email:', errText)
                   }
                 } catch (emailError) {
                   console.error('Error sending verification email:', emailError)
