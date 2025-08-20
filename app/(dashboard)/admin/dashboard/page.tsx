@@ -3,18 +3,68 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { 
+  Users,
+  Calendar,
+  Clock,
+  Award,
+  TrendingUp,
+  Activity,
+  User,
+  LogOut,
+  ArrowRight,
+  CheckCircle,
+  AlertCircle,
+  Star
+} from 'lucide-react'
+
+interface DashboardData {
+  stats: {
+    totalStudents: number
+    totalOpportunities: number
+    pendingHours: number
+    totalHours: number
+  }
+  recentHours: Array<{
+    id: string
+    hours: number
+    status: string
+    created_at: string
+    profiles: {
+      full_name: string
+      email: string
+    }
+  }>
+  recentOpportunities: Array<{
+    id: string
+    title: string
+    date: string
+    location: string
+  }>
+  recentRegistrations: Array<{
+    id: string
+    status: string
+    volunteer_opportunities: {
+      title: string
+    }
+    profiles: {
+      full_name: string
+    }
+  }>
+  profile: any
+}
 
 export default function AdminDashboard() {
   const [user, setUser] = useState<any>(null)
-  const [stats, setStats] = useState({
-    totalStudents: 0,
-    totalOpportunities: 0,
-    pendingHours: 0,
-    totalHours: 0
-  })
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -22,28 +72,8 @@ export default function AdminDashboard() {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        // Check if user is admin using our API
-        try {
-          const response = await fetch('/api/student/dashboard')
-          if (response.ok) {
-            const data = await response.json()
-            if (data.profile?.role !== 'admin') {
-              router.push('/student/dashboard')
-              return
-            }
-          } else {
-            // If API fails, redirect to student dashboard
-            router.push('/student/dashboard')
-            return
-          }
-        } catch (error) {
-          console.error('Error checking admin role:', error)
-          router.push('/student/dashboard')
-          return
-        }
-        
         setUser(user)
-        await loadStats()
+        await loadDashboardData()
       } else {
         router.push('/login')
       }
@@ -53,147 +83,322 @@ export default function AdminDashboard() {
     getUser()
   }, [router, supabase])
 
-  const loadStats = async () => {
+  const loadDashboardData = async () => {
     try {
-      // Use API endpoints instead of direct Supabase calls
-      // For now, we'll use placeholder data since we don't have admin API endpoints yet
-      // In a real implementation, you'd create admin-specific API endpoints
-      
-      setStats({
-        totalStudents: 5, // Placeholder
-        totalOpportunities: 8, // Placeholder
-        pendingHours: 12, // Placeholder
-        totalHours: 150 // Placeholder
-      })
+      const response = await fetch('/api/admin/dashboard')
+      if (!response.ok) {
+        if (response.status === 403) {
+          router.push('/student/dashboard')
+          return
+        }
+        throw new Error('Failed to load dashboard data')
+      }
+      const data = await response.json()
+      setDashboardData(data)
     } catch (error) {
-      console.error('Error loading stats:', error)
+      console.error('Error loading dashboard data:', error)
+      setError('Failed to load dashboard data')
     }
+  }
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push('/')
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen gradient-bg flex items-center justify-center">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full"
+          className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full"
         />
       </div>
     )
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen gradient-bg flex items-center justify-center">
+        <Card className="glass-effect border-0 shadow-xl">
+          <CardContent className="p-8 text-center">
+            <div className="text-red-500 mb-4">
+              <Activity className="h-12 w-12 mx-auto" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Dashboard</h2>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button onClick={loadDashboardData} className="btn-primary">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen gradient-bg overflow-hidden">
+      {/* Decorative blobs */}
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute -top-32 -right-16 h-72 w-72 rounded-full bg-purple-300/70 blur-3xl animate-blob" />
+        <div className="absolute bottom-0 left-0 h-72 w-72 rounded-full bg-pink-300/60 blur-3xl animate-blob animation-delay-2000" />
+        <div className="absolute top-40 left-10 h-72 w-72 rounded-full bg-blue-300/60 blur-3xl animate-blob animation-delay-4000" />
+      </div>
+
+      {/* Header */}
+      <motion.header
+        initial={{ y: -24, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="sticky top-0 z-40 border-b border-white/30 bg-white/70 backdrop-blur-md"
+      >
+        <div className="mx-auto max-w-7xl px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link href="/" className="flex items-center gap-3">
+                <Image src="/images/cata-logo.png" alt="CATA Logo" width={32} height={32} className="rounded-lg shadow-glow" />
+                <div>
+                  <p className="text-sm font-semibold text-gradient">CATA Volunteer</p>
+                  <p className="text-xs text-gray-600">Admin Dashboard</p>
+                </div>
+              </Link>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="hidden md:flex items-center gap-2 text-sm text-gray-600">
+                <User className="h-4 w-4" />
+                <span>{dashboardData?.profile?.full_name || 'Admin'}</span>
+              </div>
+              <Button 
+                onClick={handleSignOut}
+                variant="outline" 
+                className="btn-secondary btn-hover-effect"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </Button>
+            </div>
+          </div>
+        </div>
+      </motion.header>
+
+      <main className="mx-auto max-w-7xl px-4 py-8">
+        {/* Header Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
           className="text-center mb-12"
         >
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="flex justify-center mb-6"
-          >
-            <Image
-              src="/images/cata-logo.png"
-              alt="CATA Logo"
-              width={100}
-              height={100}
-              className="rounded-lg shadow-lg"
-            />
-          </motion.div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">Admin Dashboard</h1>
-          <p className="text-xl text-gray-600">Manage CATA Volunteer System</p>
+          <Badge className="mb-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white">
+            Admin Control Center
+          </Badge>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            Admin <span className="text-gradient">Dashboard</span>
+          </h1>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Manage the CATA Volunteer Central system. Monitor students, opportunities, and volunteer hours.
+          </p>
         </motion.div>
 
         {/* Stats Cards */}
-        <div className="grid md:grid-cols-4 gap-6 mb-12">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-            className="bg-white p-6 rounded-lg shadow-md"
-          >
-            <div className="text-3xl font-bold text-blue-600 mb-2">{stats.totalStudents}</div>
-            <div className="text-gray-600">Total Students</div>
-          </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          className="grid md:grid-cols-4 gap-6 mb-12"
+        >
+          <Card className="glass-effect border-0 shadow-xl">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Students</p>
+                  <p className="text-3xl font-bold text-blue-600">{dashboardData?.stats.totalStudents || 0}</p>
+                </div>
+                <div className="p-3 bg-blue-100 rounded-full">
+                  <Users className="h-6 w-6 text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="bg-white p-6 rounded-lg shadow-md"
-          >
-            <div className="text-3xl font-bold text-green-600 mb-2">{stats.totalOpportunities}</div>
-            <div className="text-gray-600">Opportunities</div>
-          </motion.div>
+          <Card className="glass-effect border-0 shadow-xl">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Opportunities</p>
+                  <p className="text-3xl font-bold text-green-600">{dashboardData?.stats.totalOpportunities || 0}</p>
+                </div>
+                <div className="p-3 bg-green-100 rounded-full">
+                  <Calendar className="h-6 w-6 text-green-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.5 }}
-            className="bg-white p-6 rounded-lg shadow-md"
-          >
-            <div className="text-3xl font-bold text-orange-600 mb-2">{stats.pendingHours}</div>
-            <div className="text-gray-600">Pending Hours</div>
-          </motion.div>
+          <Card className="glass-effect border-0 shadow-xl">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Pending Hours</p>
+                  <p className="text-3xl font-bold text-orange-600">{dashboardData?.stats.pendingHours || 0}</p>
+                </div>
+                <div className="p-3 bg-orange-100 rounded-full">
+                  <Clock className="h-6 w-6 text-orange-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-            className="bg-white p-6 rounded-lg shadow-md"
-          >
-            <div className="text-3xl font-bold text-purple-600 mb-2">{stats.totalHours}</div>
-            <div className="text-gray-600">Total Hours</div>
-          </motion.div>
-        </div>
+          <Card className="glass-effect border-0 shadow-xl">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Hours</p>
+                  <p className="text-3xl font-bold text-purple-600">{dashboardData?.stats.totalHours || 0}</p>
+                </div>
+                <div className="p-3 bg-purple-100 rounded-full">
+                  <Award className="h-6 w-6 text-purple-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Management Cards */}
-        <div className="grid md:grid-cols-3 gap-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.7 }}
-            className="bg-white p-6 rounded-lg shadow-md"
-          >
-            <h3 className="text-xl font-semibold mb-4">Student Management</h3>
-            <p className="text-gray-600 mb-4">View and manage student accounts, profiles, and permissions.</p>
-            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-              Manage Students
-            </button>
-          </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.4 }}
+          className="grid md:grid-cols-3 gap-8 mb-12"
+        >
+          <Card className="glass-effect border-0 shadow-xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-blue-600" />
+                Student Management
+              </CardTitle>
+              <CardDescription>View and manage student accounts, profiles, and permissions.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link href="/admin/students">
+                <Button className="w-full btn-primary">
+                  Manage Students
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.8 }}
-            className="bg-white p-6 rounded-lg shadow-md"
-          >
-            <h3 className="text-xl font-semibold mb-4">Opportunity Management</h3>
-            <p className="text-gray-600 mb-4">Create, edit, and manage volunteer opportunities.</p>
-            <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
-              Manage Opportunities
-            </button>
-          </motion.div>
+          <Card className="glass-effect border-0 shadow-xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-green-600" />
+                Opportunity Management
+              </CardTitle>
+              <CardDescription>Create, edit, and manage volunteer opportunities.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link href="/admin/opportunities">
+                <Button className="w-full btn-primary">
+                  Manage Opportunities
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.9 }}
-            className="bg-white p-6 rounded-lg shadow-md"
-          >
-            <h3 className="text-xl font-semibold mb-4">Hours Approval</h3>
-            <p className="text-gray-600 mb-4">Review and approve pending volunteer hours.</p>
-            <button className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors">
-              Review Hours
-            </button>
-          </motion.div>
-        </div>
-      </div>
+          <Card className="glass-effect border-0 shadow-xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-orange-600" />
+                Hours Approval
+              </CardTitle>
+              <CardDescription>Review and approve pending volunteer hours.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link href="/admin/hours">
+                <Button className="w-full btn-primary">
+                  Review Hours
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Recent Activity */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.6 }}
+          className="grid md:grid-cols-2 gap-8"
+        >
+          {/* Recent Hours */}
+          <Card className="glass-effect border-0 shadow-xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-purple-600" />
+                Recent Hours
+              </CardTitle>
+              <CardDescription>Latest volunteer hours submissions</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {dashboardData?.recentHours.length ? (
+                  dashboardData.recentHours.map((hour) => (
+                    <div key={hour.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <p className="font-medium text-gray-900">{hour.profiles.full_name}</p>
+                        <p className="text-sm text-gray-600">{hour.hours} hours</p>
+                      </div>
+                      <Badge className={
+                        hour.status === 'approved' ? 'bg-green-100 text-green-800' :
+                        hour.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }>
+                        {hour.status}
+                      </Badge>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-center py-4">No recent hours</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Recent Opportunities */}
+          <Card className="glass-effect border-0 shadow-xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Star className="h-5 w-5 text-yellow-600" />
+                Upcoming Opportunities
+              </CardTitle>
+              <CardDescription>Latest volunteer opportunities</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {dashboardData?.recentOpportunities.length ? (
+                  dashboardData.recentOpportunities.map((opportunity) => (
+                    <div key={opportunity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <p className="font-medium text-gray-900">{opportunity.title}</p>
+                        <p className="text-sm text-gray-600">{opportunity.location}</p>
+                      </div>
+                      <p className="text-sm text-gray-500">
+                        {new Date(opportunity.date).toLocaleDateString()}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-center py-4">No upcoming opportunities</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </main>
     </div>
   )
 }
