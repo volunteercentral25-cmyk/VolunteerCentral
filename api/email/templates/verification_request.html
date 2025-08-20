@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% set subject = 'Action Needed: Verify Student Volunteer Hours' %}
+{% set preheader = 'Review and approve/deny the hours for ' ~ student_name %}
+{% block content %}
+  <h2 style="margin:0 0 12px 0; font-size:20px;">Volunteer Hours Verification</h2>
+  <p>Hello,</p>
+  <p>A student has submitted volunteer hours for your verification. Please review the details below and choose Approve or Deny.</p>
+
+  <div class="card">
+    <table class="data" role="presentation" width="100%" cellspacing="0" cellpadding="0">
+      <tr><td class="key">Student</td><td>{{ student_name }} ({{ student_email }})</td></tr>
+      <tr><td class="key">Activity</td><td>{{ activity }}</td></tr>
+      <tr><td class="key">Hours</td><td>{{ hours }}</td></tr>
+      <tr><td class="key">Date</td><td>{{ date }}</td></tr>
+      <tr><td class="key">Submitted</td><td>{{ submitted_date }}</td></tr>
+    </table>
+  </div>
+
+  <div class="btn-row">
+    <a class="btn" href="{{ approve_url }}">✓ Approve Hours</a>
+    <a class="btn" href="{{ deny_url }}" style="background:#dc2626; background-image:none;">✗ Deny Hours</a>
+  </div>
+
+  <p style="color:#6b7280; font-size:13px;">This verification link will expire in 7 days.</p>
+{% endblock %}

@@ -102,11 +102,10 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(verification_email)) {
+    // Validate email must be an organizational (non-personal) address
+    if (!isOrganizationalEmail(verification_email)) {
       return NextResponse.json({ 
-        error: 'Please provide a valid email address for verification.' 
+        error: 'Please provide an organizational email address (personal providers like Gmail, Yahoo, Outlook are not accepted).' 
       }, { status: 400 })
     }
 

@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, request, jsonify, render_template, render_template_string
 from flask_mail import Mail, Message
 from flask_cors import CORS
 import os
@@ -10,6 +10,7 @@ import json
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
+from premailer import transform
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -33,6 +34,19 @@ FRONTEND_URL = os.getenv('NEXT_PUBLIC_APP_URL', 'http://localhost:3000')
 SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')
 
 mail = Mail(app)
+
+# Template rendering with CSS inlining
+def render_email(template_name: str, **context) -> str:
+    try:
+        html = render_template(template_name, **context)
+    except Exception:
+        # Fallback to string template rendering if file not found
+        html = render_template_string(template_name, **context)
+    # Inline CSS for email client compatibility
+    try:
+        return transform(html, remove_classes=False)
+    except Exception:
+        return html
 
 class SupabaseService:
     def __init__(self):
@@ -276,8 +290,13 @@ def send_verification_email():
             'deny_url': deny_url
         }
         
-        # Render email template
-        html_content = render_template_string(HOURS_VERIFICATION_TEMPLATE, **template_data)
+        # Render email template via Jinja file and inline CSS
+        html_content = render_email(
+            'verification_request.html',
+            subject='Action Needed: Verify Student Volunteer Hours',
+            preheader=f"Review and approve/deny the hours for {template_data['student_name']}",
+            **template_data
+        )
         
         # Send email using Flask-Mail
         logger.info(f"Preparing to send email to: {verifier_email}")
@@ -347,20 +366,36 @@ def verify_hours():
 
         # Optionally send confirmation email to verifier (non-blocking best-effort)
         try:
-            subject = f"Hours {'Approved' if status=='approved' else 'Denied'} - {student_profile.get('full_name','Student')}"
+            if status == 'approved':
+                subject = f"Hours Approved — {student_profile.get('full_name','Student')}"
+                html_conf = render_email(
+                    'approval.html',
+                    subject=subject,
+                    preheader=f"Thanks for reviewing. Hours approved for {student_profile.get('full_name','Student')}",
+                    student_name=student_profile.get('full_name','Unknown'),
+                    activity=hours_data.get('description',''),
+                    hours=hours_data.get('hours',0),
+                    date=hours_data.get('date',''),
+                    verifier_email=verifier_email,
+                    approval_date=datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
+                )
+            else:
+                subject = f"Hours Denied — {student_profile.get('full_name','Student')}"
+                html_conf = render_email(
+                    'denial.html',
+                    subject=subject,
+                    preheader=f"Hours were denied for {student_profile.get('full_name','Student')}",
+                    student_name=student_profile.get('full_name','Unknown'),
+                    activity=hours_data.get('description',''),
+                    hours=hours_data.get('hours',0),
+                    date=hours_data.get('date',''),
+                    verifier_email=verifier_email,
+                    denial_date=datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'),
+                    notes=notes
+                )
+
             msg = Message(subject, sender=app.config['MAIL_USERNAME'], recipients=[verifier_email])
-            msg.html = f"""
-            <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
-              <h2>Hours {status.title()}</h2>
-              <p>The volunteer hours have been {status}.</p>
-              <ul>
-                <li><strong>Student:</strong> {student_profile.get('full_name','Unknown')}</li>
-                <li><strong>Activity:</strong> {hours_data.get('description','')}</li>
-                <li><strong>Hours:</strong> {hours_data.get('hours',0)}</li>
-                <li><strong>Date:</strong> {hours_data.get('date','')}</li>
-              </ul>
-            </div>
-            """
+            msg.html = html_conf
             mail.send(msg)
         except Exception as e:
             logger.warning(f"Failed to send confirmation email: {str(e)}")

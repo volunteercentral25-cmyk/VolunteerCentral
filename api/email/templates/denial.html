@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% set subject = 'Hours Denied — ' ~ student_name %}
+{% set preheader = 'Hours were denied for ' ~ student_name %}
+{% block content %}
+  <h2 style="margin:0 0 12px 0; font-size:20px; color:#dc2626;">✗ Hours Denied</h2>
+  <p>The volunteer hours have been reviewed and denied. The student has been notified.</p>
+  <div class="card">
+    <table class="data" role="presentation" width="100%" cellspacing="0" cellpadding="0">
+      <tr><td class="key">Student</td><td>{{ student_name }}</td></tr>
+      <tr><td class="key">Activity</td><td>{{ activity }}</td></tr>
+      <tr><td class="key">Hours</td><td>{{ hours }}</td></tr>
+      <tr><td class="key">Date</td><td>{{ date }}</td></tr>
+      <tr><td class="key">Denied by</td><td>{{ verifier_email }}</td></tr>
+      <tr><td class="key">Denied on</td><td>{{ denial_date }}</td></tr>
+      {% if notes %}<tr><td class="key">Reason</td><td>{{ notes }}</td></tr>{% endif %}
+    </table>
+  </div>
+{% endblock %}

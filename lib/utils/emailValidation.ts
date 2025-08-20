@@ -46,6 +46,22 @@ const DISPOSABLE_EMAIL_PROVIDERS = [
   'wegwrfmailadresse.org'
 ]
 
+// List of popular personal email providers that are NOT accepted for verification
+const POPULAR_EMAIL_PROVIDERS = [
+  'gmail.com',
+  'yahoo.com',
+  'hotmail.com',
+  'outlook.com',
+  'aol.com',
+  'icloud.com',
+  'protonmail.com',
+  'zoho.com',
+  'yandex.com',
+  'gmx.com',
+  'live.com',
+  'msn.com',
+]
+
 export interface EmailValidationResult {
   isValid: boolean
   isCustomDomain: boolean
@@ -71,10 +87,8 @@ export function validateEmail(email: string): EmailValidationResult {
   // Extract domain
   const domain = email.split('@')[1].toLowerCase()
 
-  // Check if it's a disposable email provider
-  const isDisposableProvider = DISPOSABLE_EMAIL_PROVIDERS.includes(domain)
-
-  if (isDisposableProvider) {
+  // Block disposable/temporary domains
+  if (DISPOSABLE_EMAIL_PROVIDERS.includes(domain)) {
     return {
       isValid: false,
       isCustomDomain: false,
@@ -83,9 +97,12 @@ export function validateEmail(email: string): EmailValidationResult {
     }
   }
 
+  // If it's a popular personal provider, mark as not custom
+  const isPersonal = POPULAR_EMAIL_PROVIDERS.includes(domain)
+
   return {
     isValid: true,
-    isCustomDomain: true,
+    isCustomDomain: !isPersonal,
     domain
   }
 }
@@ -95,7 +112,7 @@ export function validateEmail(email: string): EmailValidationResult {
  */
 export function isOrganizationalEmail(email: string): boolean {
   const result = validateEmail(email)
-  return result.isValid
+  return result.isValid && result.isCustomDomain
 }
 
 /**
@@ -103,10 +120,6 @@ export function isOrganizationalEmail(email: string): boolean {
  */
 export function getExampleOrganizationalDomains(): string[] {
   return [
-    'gmail.com',
-    'yahoo.com',
-    'outlook.com',
-    'hotmail.com',
     'company.com',
     'organization.org',
     'school.edu',

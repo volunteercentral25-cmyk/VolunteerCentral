@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% set subject = 'Hours Approved — ' ~ student_name %}
+{% set preheader = 'Thanks for reviewing. Hours approved for ' ~ student_name %}
+{% block content %}
+  <h2 style="margin:0 0 12px 0; font-size:20px; color:#16a34a;">✓ Hours Approved</h2>
+  <p>Thank you for your verification. The volunteer hours have been approved and the student has been notified.</p>
+  <div class="card">
+    <table class="data" role="presentation" width="100%" cellspacing="0" cellpadding="0">
+      <tr><td class="key">Student</td><td>{{ student_name }}</td></tr>
+      <tr><td class="key">Activity</td><td>{{ activity }}</td></tr>
+      <tr><td class="key">Hours</td><td>{{ hours }}</td></tr>
+      <tr><td class="key">Date</td><td>{{ date }}</td></tr>
+      <tr><td class="key">Approved by</td><td>{{ verifier_email }}</td></tr>
+      <tr><td class="key">Approved on</td><td>{{ approval_date }}</td></tr>
+    </table>
+  </div>
+{% endblock %}

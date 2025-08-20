@@ -35,7 +35,7 @@ export function EmailVerificationField({
     if (value && hasInteracted) {
       const result = validateEmail(value)
       setValidationResult(result)
-      onValidationChange(result.isValid)
+      onValidationChange(result.isValid && result.isCustomDomain)
     } else {
       setValidationResult(null)
       onValidationChange(false)
@@ -61,7 +61,7 @@ export function EmailVerificationField({
 
   const getInputBorderClass = () => {
     if (!hasInteracted || !value) return ''
-    if (validationResult?.isValid) {
+    if (validationResult?.isValid && validationResult?.isCustomDomain) {
       return 'border-green-500 focus:border-green-500'
     }
     return 'border-red-500 focus:border-red-500'
@@ -69,7 +69,7 @@ export function EmailVerificationField({
 
   const getInputIcon = () => {
     if (!hasInteracted || !value) return <Mail className="h-4 w-4 text-gray-400" />
-    if (validationResult?.isValid) {
+    if (validationResult?.isValid && validationResult?.isCustomDomain) {
       return <CheckCircle className="h-4 w-4 text-green-500" />
     }
     return <XCircle className="h-4 w-4 text-red-500" />
@@ -105,11 +105,11 @@ export function EmailVerificationField({
       {/* Validation Messages */}
       {hasInteracted && value && (
         <div className="space-y-2">
-          {validationResult?.isValid && (
+          {validationResult?.isValid && validationResult?.isCustomDomain && (
             <Alert className="border-green-200 bg-green-50">
               <CheckCircle className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-800">
-                <strong>Valid email address:</strong> {formatDomain(validationResult.domain)}
+                <strong>Valid organizational email:</strong> {formatDomain(validationResult.domain)}
               </AlertDescription>
             </Alert>
           )}
@@ -128,7 +128,7 @@ export function EmailVerificationField({
       {/* Help Text */}
       {isFocused && (
         <div className="text-sm text-gray-600 space-y-2">
-          <p>This email will be used to verify your volunteer hours. Any valid email address is accepted.</p>
+          <p>This email will be used to verify your volunteer hours. Personal email providers (Gmail, Yahoo, Outlook, etc.) are not accepted.</p>
           
           <div>
             <p className="font-medium mb-1">Examples of acceptable domains:</p>
