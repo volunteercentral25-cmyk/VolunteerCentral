@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
 
                     // Send verification email to the supervisor/organization
                 try {
-                  const emailResponse = await fetch('/api/email-service/email/send-verification-email', {
+                  const emailResponse = await fetch('/api/email/send-verification-email', {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',

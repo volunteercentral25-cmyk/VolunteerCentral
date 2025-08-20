@@ -22,9 +22,9 @@ CORS(app)
 app.config['MAIL_SERVER'] = os.getenv('FLASK_MAIL_SERVER', 'smtp.gmail.com')
 app.config['MAIL_PORT'] = int(os.getenv('FLASK_MAIL_PORT', 587))
 app.config['MAIL_USE_TLS'] = os.getenv('FLASK_MAIL_USE_TLS', 'true').lower() == 'true'
-app.config['MAIL_USERNAME'] = os.getenv('FLASK_MAIL_USERNAME', 'your_email@cata-volunteer.org')
-app.config['MAIL_PASSWORD'] = os.getenv('FLASK_MAIL_PASSWORD', 'your_app_password')
-app.config['SECRET_KEY'] = os.getenv('JWT_SECRET', 'your-secret-key')
+app.config['MAIL_USERNAME'] = os.getenv('FLASK_MAIL_USERNAME', 'CLTVolunteerCentral@gmail.com')
+app.config['MAIL_PASSWORD'] = os.getenv('FLASK_MAIL_PASSWORD', 'jnkb gfpz qxjz nflx')
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
 
 # Supabase Configuration
 SUPABASE_URL = os.getenv('SUPABASE_URL')
@@ -228,17 +228,22 @@ HOURS_VERIFICATION_TEMPLATE = """
 def send_verification_email():
     """Send verification email to supervisor/organization"""
     try:
+        logger.info("Received verification email request")
         data = request.get_json()
+        logger.info(f"Request data: {data}")
         
         # Validate required fields
         required_fields = ['hours_id', 'verifier_email', 'student_id']
         for field in required_fields:
             if field not in data:
+                logger.error(f"Missing required field: {field}")
                 return jsonify({'error': f'Missing required field: {field}'}), 400
         
         hours_id = data['hours_id']
         verifier_email = data['verifier_email']
         student_id = data['student_id']
+        
+        logger.info(f"Processing verification email for hours_id: {hours_id}, verifier: {verifier_email}, student: {student_id}")
         
         # Get hours details from database
         hours_data = supabase_service.get_hours_by_id(hours_id)
@@ -275,6 +280,9 @@ def send_verification_email():
         html_content = render_template_string(HOURS_VERIFICATION_TEMPLATE, **template_data)
         
         # Send email using Flask-Mail
+        logger.info(f"Preparing to send email to: {verifier_email}")
+        logger.info(f"Mail configuration - Server: {app.config['MAIL_SERVER']}, Port: {app.config['MAIL_PORT']}, Username: {app.config['MAIL_USERNAME']}")
+        
         msg = Message(
             f"Volunteer Hours Verification Request - {template_data['student_name']}",
             sender=app.config['MAIL_USERNAME'],
@@ -282,7 +290,9 @@ def send_verification_email():
         )
         msg.html = html_content
         
+        logger.info("Sending email...")
         mail.send(msg)
+        logger.info("Email sent successfully!")
         
         # Log email sent
         supabase_service.log_email_sent(
@@ -448,7 +458,20 @@ def health_check():
         'service': 'CATA Volunteer Email Service',
         'timestamp': datetime.utcnow().isoformat(),
         'supabase_configured': bool(SUPABASE_URL and SUPABASE_SERVICE_KEY),
-        'mail_configured': bool(app.config['MAIL_USERNAME'] and app.config['MAIL_PASSWORD'])
+        'mail_configured': bool(app.config['MAIL_USERNAME'] and app.config['MAIL_PASSWORD']),
+        'mail_config': {
+            'server': app.config.get('MAIL_SERVER'),
+            'port': app.config.get('MAIL_PORT'),
+            'username': app.config.get('MAIL_USERNAME'),
+            'password_set': bool(app.config.get('MAIL_PASSWORD')),
+            'use_tls': app.config.get('MAIL_USE_TLS')
+        },
+        'env_vars': {
+            'FLASK_MAIL_SERVER': os.getenv('FLASK_MAIL_SERVER'),
+            'FLASK_MAIL_PORT': os.getenv('FLASK_MAIL_PORT'),
+            'FLASK_MAIL_USERNAME': os.getenv('FLASK_MAIL_USERNAME'),
+            'FLASK_MAIL_PASSWORD': '***set***' if os.getenv('FLASK_MAIL_PASSWORD') else 'not set'
+        }
     }), 200
 
 if __name__ == '__main__':
