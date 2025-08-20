@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% set subject = 'Your Volunteer Hours Were ' ~ status|title %}
+{% set preheader = 'Your hours have been ' ~ status %}
+{% block content %}
+  <h2 style="margin:0 0 12px 0; font-size:20px;">Your Hours Were {{ status|title }}</h2>
+  <p>Hi {{ student_name }},</p>
+  <p>Your volunteer hours submission has been {{ status }}. See the details below.</p>
+  <div class="card">
+    <table class="data" role="presentation" width="100%" cellspacing="0" cellpadding="0">
+      <tr><td class="key">Activity</td><td>{{ activity }}</td></tr>
+      <tr><td class="key">Hours</td><td>{{ hours }}</td></tr>
+      <tr><td class="key">Date</td><td>{{ date }}</td></tr>
+      <tr><td class="key">Reviewed by</td><td>{{ verifier_email }}</td></tr>
+      {% if notes %}<tr><td class="key">Notes</td><td>{{ notes }}</td></tr>{% endif %}
+    </table>
+  </div>
+  <p style="color:#6b7280; font-size:13px;">If you have questions, reply to your program coordinator.</p>
+{% endblock %}

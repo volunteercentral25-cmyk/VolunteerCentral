@@ -40,8 +40,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch hours' }, { status: 500 })
     }
 
-    // Calculate summary statistics
-    const totalHours = hoursData?.reduce((sum, hour) => sum + Number(hour.hours), 0) || 0
+    // Calculate summary statistics (only approved count toward totals)
+    const totalHours = hoursData
+      ?.filter(hour => hour.status === 'approved')
+      .reduce((sum, hour) => sum + Number(hour.hours), 0) || 0
     const approvedCount = hoursData?.filter(hour => hour.status === 'approved').length || 0
     const pendingCount = hoursData?.filter(hour => hour.status === 'pending').length || 0
 

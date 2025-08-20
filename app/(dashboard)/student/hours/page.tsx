@@ -65,6 +65,7 @@ export default function StudentHours() {
     description: '',
     verification_email: ''
   })
+  const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'info', message: string } | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -74,6 +75,42 @@ export default function StudentHours() {
       if (user) {
         setUser(user)
         await fetchHoursData()
+        
+        // Set up realtime subscription for hours updates
+        const channel = supabase
+          .channel('hours-updates')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'volunteer_hours',
+              filter: `student_id=eq.${user.id}`
+            },
+            (payload) => {
+              console.log('Hours update received:', payload)
+              // Show notification for status changes
+              if (payload.eventType === 'UPDATE' && payload.new && payload.old) {
+                const oldStatus = payload.old.status
+                const newStatus = payload.new.status
+                if (oldStatus !== newStatus) {
+                  setNotification({
+                    type: newStatus === 'approved' ? 'success' : newStatus === 'denied' ? 'error' : 'info',
+                    message: `Your hours were ${newStatus}!`
+                  })
+                  // Auto-hide notification after 5 seconds
+                  setTimeout(() => setNotification(null), 5000)
+                }
+              }
+              // Refresh hours data when there's an update
+              fetchHoursData()
+            }
+          )
+          .subscribe()
+
+        return () => {
+          supabase.removeChannel(channel)
+        }
       } else {
         router.push('/')
       }
@@ -230,6 +267,31 @@ export default function StudentHours() {
       </motion.header>
 
       <main className="mx-auto max-w-7xl px-4 py-8">
+        {/* Notification */}
+        {notification && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className={`fixed top-20 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm ${
+              notification.type === 'success' ? 'bg-green-500 text-white' :
+              notification.type === 'error' ? 'bg-red-500 text-white' :
+              'bg-blue-500 text-white'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {notification.type === 'success' ? (
+                <CheckCircle className="h-5 w-5" />
+              ) : notification.type === 'error' ? (
+                <AlertCircle className="h-5 w-5" />
+              ) : (
+                <Info className="h-5 w-5" />
+              )}
+              <span className="font-medium">{notification.message}</span>
+            </div>
+          </motion.div>
+        )}
+
         {/* Header Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

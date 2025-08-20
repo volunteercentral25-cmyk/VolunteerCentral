@@ -72,7 +72,9 @@ export async function GET(request: NextRequest) {
       : []
     
     // Calculate statistics
-    const totalHours = hours.reduce((sum, hour) => sum + Number(hour.hours || 0), 0)
+    const totalHours = hours
+      .filter((hour: any) => hour.status === 'approved')
+      .reduce((sum: number, hour: any) => sum + Number(hour.hours || 0), 0)
     const approvedHours = hours.filter(hour => hour.status === 'approved')
       .reduce((sum, hour) => sum + Number(hour.hours || 0), 0)
     const pendingHours = hours.filter(hour => hour.status === 'pending')

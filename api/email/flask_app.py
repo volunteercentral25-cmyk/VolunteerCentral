@@ -400,6 +400,29 @@ def verify_hours():
         except Exception as e:
             logger.warning(f"Failed to send confirmation email: {str(e)}")
 
+        # Notify student (best-effort)
+        try:
+            student_email = student_profile.get('email')
+            if student_email:
+                subject_s = f"Your Volunteer Hours Were {status.title()}"
+                html_s = render_email(
+                    'student_notification.html',
+                    subject=subject_s,
+                    preheader=f"Your hours have been {status}",
+                    student_name=student_profile.get('full_name','Student'),
+                    activity=hours_data.get('description',''),
+                    hours=hours_data.get('hours',0),
+                    date=hours_data.get('date',''),
+                    status=status,
+                    verifier_email=verifier_email,
+                    notes=notes
+                )
+                msg_s = Message(subject_s, sender=app.config['MAIL_USERNAME'], recipients=[student_email])
+                msg_s.html = html_s
+                mail.send(msg_s)
+        except Exception as e:
+            logger.warning(f"Failed to notify student: {str(e)}")
+
         return jsonify({
             'success': True,
             'message': f"Hours {status} successfully",
@@ -549,6 +572,111 @@ def test_send_email():
             'error': f'Failed to send test email: {str(e)}',
             'timestamp': datetime.utcnow().isoformat()
         }), 500
+
+@app.route('/api/email/opportunity-confirmation', methods=['POST'])
+def opportunity_confirmation():
+    try:
+        data = request.get_json()
+        student_email = data.get('student_email')
+        student_name = data.get('student_name', 'Student')
+        title = data.get('title')
+        organization = data.get('organization', 'Community Organization')
+        location = data.get('location', 'TBD')
+        date = data.get('date', '')
+        time = data.get('time', '')
+        duration = data.get('duration', '')
+
+        if not (student_email and title):
+            return jsonify({'error': 'Missing required fields'}), 400
+
+        html = render_email('opportunity_confirmation.html',
+            subject=f'You are registered: {title}',
+            preheader=f'Registration confirmed for {title}',
+            student_name=student_name,
+            title=title,
+            organization=organization,
+            location=location,
+            date=date,
+            time=time,
+            duration=duration
+        )
+        msg = Message(f'You are registered: {title}', sender=app.config['MAIL_USERNAME'], recipients=[student_email])
+        msg.html = html
+        mail.send(msg)
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Opportunity confirmation error: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/email/opportunity-reminder', methods=['POST'])
+def opportunity_reminder():
+    try:
+        data = request.get_json()
+        student_email = data.get('student_email')
+        student_name = data.get('student_name', 'Student')
+        title = data.get('title')
+        organization = data.get('organization', 'Community Organization')
+        location = data.get('location', 'TBD')
+        date = data.get('date', '')
+        time = data.get('time', '')
+        duration = data.get('duration', '')
+
+        if not (student_email and title):
+            return jsonify({'error': 'Missing required fields'}), 400
+
+        html = render_email('opportunity_reminder.html',
+            subject=f'Reminder: {title} is coming up',
+            preheader='Your volunteer opportunity starts soon',
+            student_name=student_name,
+            title=title,
+            organization=organization,
+            location=location,
+            date=date,
+            time=time,
+            duration=duration
+        )
+        msg = Message(f'Reminder: {title} is coming up', sender=app.config['MAIL_USERNAME'], recipients=[student_email])
+        msg.html = html
+        mail.send(msg)
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Opportunity reminder error: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/email/opportunity-cancellation', methods=['POST'])
+def opportunity_cancellation():
+    try:
+        data = request.get_json()
+        student_email = data.get('student_email')
+        student_name = data.get('student_name', 'Student')
+        title = data.get('title')
+        organization = data.get('organization', 'Community Organization')
+        location = data.get('location', 'TBD')
+        date = data.get('date', '')
+        time = data.get('time', '')
+        duration = data.get('duration', '')
+
+        if not (student_email and title):
+            return jsonify({'error': 'Missing required fields'}), 400
+
+        html = render_email('opportunity_cancellation.html',
+            subject=f'Registration cancelled: {title}',
+            preheader=f'You have left {title}',
+            student_name=student_name,
+            title=title,
+            organization=organization,
+            location=location,
+            date=date,
+            time=time,
+            duration=duration
+        )
+        msg = Message(f'Registration cancelled: {title}', sender=app.config['MAIL_USERNAME'], recipients=[student_email])
+        msg.html = html
+        mail.send(msg)
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Opportunity cancellation error: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/health', methods=['GET'])
 def health_check():

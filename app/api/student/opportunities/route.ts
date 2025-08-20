@@ -157,12 +157,119 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to register for opportunity' }, { status: 500 })
     }
 
+    // Send confirmation email (best-effort)
+    try {
+      // Fetch opportunity details
+      const { data: opportunity } = await supabase
+        .from('volunteer_opportunities')
+        .select('*')
+        .eq('id', opportunityId)
+        .single()
+
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+      const emailEndpoint = baseUrl ? `${baseUrl}/api/email/opportunity-confirmation` : '/api/email/opportunity-confirmation'
+      await fetch(emailEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_email: profile.email,
+          student_name: profile.full_name || 'Student',
+          title: opportunity?.title || 'Volunteer Opportunity',
+          organization: 'Community Organization',
+          location: opportunity?.location || 'TBD',
+          date: opportunity?.date || '',
+          time: opportunity?.start_time && opportunity?.end_time ? `${opportunity.start_time} - ${opportunity.end_time}` : '',
+          duration: 4
+        })
+      })
+    } catch (e) {
+      console.error('Failed to send opportunity confirmation email:', e)
+    }
+
     return NextResponse.json({ 
       success: true, 
       registration 
     })
   } catch (error) {
     console.error('Opportunities POST API error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const supabase = createClient()
+    
+    // Get the current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Get user profile
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single()
+
+    if (profileError) {
+      return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
+    }
+
+    const body = await request.json()
+    const { opportunityId } = body
+
+    if (!opportunityId) {
+      return NextResponse.json({ error: 'Opportunity ID is required' }, { status: 400 })
+    }
+
+    // Delete the registration
+    const { error: deleteError } = await supabase
+      .from('opportunity_registrations')
+      .delete()
+      .eq('opportunity_id', opportunityId)
+      .eq('student_id', profile.id)
+
+    if (deleteError) {
+      return NextResponse.json({ error: 'Failed to leave opportunity' }, { status: 500 })
+    }
+
+    // Send cancellation email (best-effort)
+    try {
+      // Fetch opportunity details
+      const { data: opportunity } = await supabase
+        .from('volunteer_opportunities')
+        .select('*')
+        .eq('id', opportunityId)
+        .single()
+
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+      const emailEndpoint = baseUrl ? `${baseUrl}/api/email/opportunity-cancellation` : '/api/email/opportunity-cancellation'
+      await fetch(emailEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_email: profile.email,
+          student_name: profile.full_name || 'Student',
+          title: opportunity?.title || 'Volunteer Opportunity',
+          organization: 'Community Organization',
+          location: opportunity?.location || 'TBD',
+          date: opportunity?.date || '',
+          time: opportunity?.start_time && opportunity?.end_time ? `${opportunity.start_time} - ${opportunity.end_time}` : '',
+          duration: 4
+        })
+      })
+    } catch (e) {
+      console.error('Failed to send opportunity cancellation email:', e)
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Successfully left opportunity'
+    })
+  } catch (error) {
+    console.error('Opportunities DELETE API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

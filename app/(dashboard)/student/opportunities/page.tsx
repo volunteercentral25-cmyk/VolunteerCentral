@@ -52,6 +52,7 @@ export default function StudentOpportunities() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([])
   const [error, setError] = useState<string | null>(null)
   const [registering, setRegistering] = useState<string | null>(null)
+  const [leaving, setLeaving] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -122,6 +123,42 @@ export default function StudentOpportunities() {
       setError(error instanceof Error ? error.message : 'Failed to register')
     } finally {
       setRegistering(null)
+    }
+  }
+
+  const handleLeave = async (opportunityId: string) => {
+    setLeaving(opportunityId)
+    
+    try {
+      const response = await fetch('/api/student/opportunities', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ opportunityId }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to leave opportunity')
+      }
+
+      // Update local state to reflect leaving
+      setOpportunities(prev => prev.map(opp => 
+        opp.id === opportunityId 
+          ? { 
+              ...opp, 
+              isRegistered: false,
+              volunteersRegistered: Math.max(0, opp.volunteersRegistered - 1),
+              isFull: Math.max(0, opp.volunteersRegistered - 1) >= opp.volunteersNeeded
+            }
+          : opp
+      ))
+    } catch (error) {
+      console.error('Error leaving opportunity:', error)
+      setError(error instanceof Error ? error.message : 'Failed to leave opportunity')
+    } finally {
+      setLeaving(null)
     }
   }
 
@@ -365,23 +402,23 @@ export default function StudentOpportunities() {
                           {opportunity.difficulty}
                         </Badge>
                         <Button 
-                          onClick={() => handleRegister(opportunity.id)}
-                          className="btn-primary"
-                          disabled={opportunity.isFull || opportunity.isRegistered || registering === opportunity.id}
+                          onClick={() => opportunity.isRegistered ? handleLeave(opportunity.id) : handleRegister(opportunity.id)}
+                          className={opportunity.isRegistered ? "btn-secondary" : "btn-primary"}
+                          disabled={opportunity.isFull && !opportunity.isRegistered || registering === opportunity.id || leaving === opportunity.id}
                         >
-                          {registering === opportunity.id ? (
+                          {registering === opportunity.id || leaving === opportunity.id ? (
                             <>
                               <motion.div
                                 animate={{ rotate: 360 }}
                                 transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                                 className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
                               />
-                              Registering...
+                              {leaving === opportunity.id ? 'Leaving...' : 'Registering...'}
                             </>
                           ) : opportunity.isRegistered ? (
                             <>
                               <CheckCircle className="h-4 w-4 mr-2" />
-                              Registered
+                              Leave
                             </>
                           ) : opportunity.isFull ? (
                             'Full'
@@ -461,23 +498,23 @@ export default function StudentOpportunities() {
                           {opportunity.difficulty}
                         </Badge>
                         <Button 
-                          onClick={() => handleRegister(opportunity.id)}
-                          className="btn-primary"
-                          disabled={opportunity.isFull || opportunity.isRegistered || registering === opportunity.id}
+                          onClick={() => opportunity.isRegistered ? handleLeave(opportunity.id) : handleRegister(opportunity.id)}
+                          className={opportunity.isRegistered ? "btn-secondary" : "btn-primary"}
+                          disabled={opportunity.isFull && !opportunity.isRegistered || registering === opportunity.id || leaving === opportunity.id}
                         >
-                          {registering === opportunity.id ? (
+                          {registering === opportunity.id || leaving === opportunity.id ? (
                             <>
                               <motion.div
                                 animate={{ rotate: 360 }}
                                 transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                                 className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
                               />
-                              Registering...
+                              {leaving === opportunity.id ? 'Leaving...' : 'Registering...'}
                             </>
                           ) : opportunity.isRegistered ? (
                             <>
                               <CheckCircle className="h-4 w-4 mr-2" />
-                              Registered
+                              Leave
                             </>
                           ) : opportunity.isFull ? (
                             'Full'

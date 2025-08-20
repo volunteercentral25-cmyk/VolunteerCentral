@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% set subject = 'Reminder: ' ~ title ~ ' is coming up' %}
+{% set preheader = 'Your volunteer opportunity starts soon' %}
+{% block content %}
+  <h2 style="margin:0 0 12px 0; font-size:20px;">Upcoming Volunteer Opportunity</h2>
+  <p>Hi {{ student_name }},</p>
+  <p>This is a reminder for your upcoming opportunity:</p>
+  <div class="card">
+    <table class="data" role="presentation" width="100%" cellspacing="0" cellpadding="0">
+      <tr><td class="key">Opportunity</td><td>{{ title }}</td></tr>
+      <tr><td class="key">Organization</td><td>{{ organization }}</td></tr>
+      <tr><td class="key">Location</td><td>{{ location }}</td></tr>
+      <tr><td class="key">Date</td><td>{{ date }}</td></tr>
+      <tr><td class="key">Time</td><td>{{ time }}</td></tr>
+      <tr><td class="key">Duration</td><td>{{ duration }} hours</td></tr>
+    </table>
+  </div>
+  <p style="color:#6b7280; font-size:13px;">Please arrive 10 minutes early and check in with the organizer.</p>
+{% endblock %}
