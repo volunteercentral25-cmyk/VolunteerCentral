@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const EMAIL_SERVICE_URL = process.env.EMAIL_SERVICE_URL || 'http://localhost:5000'
-
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
@@ -11,31 +9,22 @@ export async function GET(
     const path = resolvedParams.path.join('/')
     const url = new URL(request.url)
     const queryString = url.search
-    
-    // For Flask routes, we need to handle them differently
-    if (path.startsWith('email/')) {
-      const flaskPath = path.replace('email/', '')
-      const response = await fetch(`${EMAIL_SERVICE_URL}/${flaskPath}${queryString}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
-      const data = await response.json()
-      return NextResponse.json(data, { status: response.status })
-    }
-    
-    // For other routes, use the original logic
-    const response = await fetch(`${EMAIL_SERVICE_URL}/${path}${queryString}`, {
+    const origin = `${url.protocol}//${url.host}`
+    const base = process.env.EMAIL_SERVICE_URL || `${origin}/api/email`
+    const response = await fetch(`${base}/${path}${queryString}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
     })
 
-    const data = await response.json()
-    return NextResponse.json(data, { status: response.status })
+    const raw = await response.text()
+    try {
+      const data = JSON.parse(raw)
+      return NextResponse.json(data, { status: response.status })
+    } catch {
+      return new NextResponse(raw, { status: response.status })
+    }
   } catch (error) {
     console.error('Email service proxy error:', error)
     return NextResponse.json(
@@ -53,24 +42,11 @@ export async function POST(
     const resolvedParams = await params
     const path = resolvedParams.path.join('/')
     const body = await request.json()
+    const url = new URL(request.url)
+    const origin = `${url.protocol}//${url.host}`
+    const base = process.env.EMAIL_SERVICE_URL || `${origin}/api/email`
     
-    // For Flask routes, we need to handle them differently
-    if (path.startsWith('email/')) {
-      const flaskPath = path.replace('email/', '')
-      const response = await fetch(`${EMAIL_SERVICE_URL}/${flaskPath}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      })
-
-      const data = await response.json()
-      return NextResponse.json(data, { status: response.status })
-    }
-    
-    // For other routes, use the original logic
-    const response = await fetch(`${EMAIL_SERVICE_URL}/${path}`, {
+    const response = await fetch(`${base}/${path}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -78,8 +54,13 @@ export async function POST(
       body: JSON.stringify(body),
     })
 
-    const data = await response.json()
-    return NextResponse.json(data, { status: response.status })
+    const raw = await response.text()
+    try {
+      const data = JSON.parse(raw)
+      return NextResponse.json(data, { status: response.status })
+    } catch {
+      return new NextResponse(raw, { status: response.status })
+    }
   } catch (error) {
     console.error('Email service proxy error:', error)
     return NextResponse.json(

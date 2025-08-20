@@ -313,6 +313,70 @@ def send_verification_email():
         logger.error(f"Error sending verification email: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
+@app.route('/api/email/verify-hours', methods=['GET'])
+def verify_hours():
+    """Handle hours verification (approve/deny) from email link"""
+    try:
+        token = request.args.get('token')
+        action = request.args.get('action')
+        hours_id = request.args.get('hours_id')
+        verifier_email = request.args.get('email')
+
+        if not all([token, action, hours_id, verifier_email]):
+            return jsonify({'error': 'Missing required parameters'}), 400
+
+        if not verify_token(token, hours_id, action, verifier_email):
+            return jsonify({'error': 'Invalid or expired verification token'}), 400
+
+        # Get hours data
+        hours_data = supabase_service.get_hours_by_id(hours_id)
+        if not hours_data:
+            return jsonify({'error': 'Hours record not found'}), 404
+
+        # Get student profile
+        student_profile = supabase_service.get_student_profile(hours_data['student_id'])
+        if not student_profile:
+            return jsonify({'error': 'Student profile not found'}), 404
+
+        # Update status
+        status = 'approved' if action == 'approve' else 'denied'
+        notes = request.args.get('notes', '')
+        updated = supabase_service.update_hours_status(hours_id, status, verifier_email, notes)
+        if not updated:
+            return jsonify({'error': 'Failed to update hours status'}), 500
+
+        # Optionally send confirmation email to verifier (non-blocking best-effort)
+        try:
+            subject = f"Hours {'Approved' if status=='approved' else 'Denied'} - {student_profile.get('full_name','Student')}"
+            msg = Message(subject, sender=app.config['MAIL_USERNAME'], recipients=[verifier_email])
+            msg.html = f"""
+            <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
+              <h2>Hours {status.title()}</h2>
+              <p>The volunteer hours have been {status}.</p>
+              <ul>
+                <li><strong>Student:</strong> {student_profile.get('full_name','Unknown')}</li>
+                <li><strong>Activity:</strong> {hours_data.get('description','')}</li>
+                <li><strong>Hours:</strong> {hours_data.get('hours',0)}</li>
+                <li><strong>Date:</strong> {hours_data.get('date','')}</li>
+              </ul>
+            </div>
+            """
+            mail.send(msg)
+        except Exception as e:
+            logger.warning(f"Failed to send confirmation email: {str(e)}")
+
+        return jsonify({
+            'success': True,
+            'message': f"Hours {status} successfully",
+            'hours_id': hours_id,
+            'status': status,
+            'verifier_email': verifier_email
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error verifying hours: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
 @app.route('/api/email/test', methods=['GET'])
 def test_email_service():
     """Test endpoint to verify email service is working"""
