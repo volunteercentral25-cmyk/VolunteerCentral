@@ -70,6 +70,8 @@ export default function StudentHours() {
   const supabase = createClient()
 
   useEffect(() => {
+    let channel: any = null
+
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
@@ -77,7 +79,7 @@ export default function StudentHours() {
         await fetchHoursData()
         
         // Set up realtime subscription for hours updates
-        const channel = supabase
+        channel = supabase
           .channel('hours-updates')
           .on(
             'postgres_changes',
@@ -107,10 +109,6 @@ export default function StudentHours() {
             }
           )
           .subscribe()
-
-        return () => {
-          supabase.removeChannel(channel)
-        }
       } else {
         router.push('/')
       }
@@ -118,6 +116,13 @@ export default function StudentHours() {
     }
 
     getUser()
+
+    // Cleanup function
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel)
+      }
+    }
   }, [router, supabase])
 
   const fetchHoursData = async () => {
