@@ -47,14 +47,8 @@ export async function GET(request: NextRequest) {
       query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%,student_id.ilike.%${search}%`)
     }
 
-    // Add status filter (we'll use is_admin field as status for now)
-    if (status) {
-      if (status === 'active') {
-        query = query.eq('is_admin', false)
-      } else if (status === 'inactive') {
-        query = query.eq('is_admin', true)
-      }
-    }
+    // Note: Removed status filter since all students should be active
+    // If you need status filtering, you can add it based on other criteria
 
     // Get total count for pagination
     const { count } = await query
@@ -80,7 +74,7 @@ export async function GET(request: NextRequest) {
         pendingHours: hours.filter((h: any) => h.status === 'pending').length,
         totalRegistrations: registrations.length,
         activeRegistrations: registrations.filter((r: any) => r.status === 'pending').length,
-        status: student.is_admin ? 'inactive' : 'active' // Map is_admin to status
+        status: 'active' // All students are considered active
       }
     }) || []
 
