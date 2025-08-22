@@ -13,23 +13,34 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Call EmailListVerify API
+    // Call EmailListVerify API with correct parameters
     const response = await fetch('https://api.emaillistverify.com/api/verify', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
       body: JSON.stringify({
         email: email,
-        key: EMAIL_LIST_VERIFY_API_KEY
+        key: EMAIL_LIST_VERIFY_API_KEY,
+        format: 'json'
       })
     })
 
+    console.log('EmailListVerify API Response Status:', response.status)
+    
     if (!response.ok) {
-      throw new Error(`EmailListVerify API error: ${response.status}`)
+      const errorText = await response.text()
+      console.error('EmailListVerify API Error Response:', errorText)
+      throw new Error(`EmailListVerify API error: ${response.status} - ${errorText}`)
     }
 
     const result = await response.json()
+    console.log('EmailListVerify API Result:', result)
+
+    // Handle different response formats
+    let status = result.status || result.code || 0
+    let message = result.message || result.msg || 'Unknown response'
 
     // EmailListVerify returns different status codes
     // 200: Valid email
@@ -38,20 +49,30 @@ export async function POST(request: NextRequest) {
     // 402: Invalid domain
     // 403: Invalid format
 
-    const isDisposable = result.status === 401
-    const isValid = result.status === 200
+    const isDisposable = status === 401
+    const isValid = status === 200
 
     return NextResponse.json({
       isValid: isValid && !isDisposable,
       isDisposable: isDisposable,
-      status: result.status,
-      message: result.message || getStatusMessage(result.status)
+      status: status,
+      message: message || getStatusMessage(status)
     })
 
   } catch (error) {
     console.error('Email verification error:', error)
+    
+    // Return a more specific error message
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to verify email' },
+      { 
+        error: 'Failed to verify email',
+        details: errorMessage,
+        isValid: false,
+        isDisposable: false,
+        status: 500,
+        message: 'Email verification service unavailable'
+      },
       { status: 500 }
     )
   }

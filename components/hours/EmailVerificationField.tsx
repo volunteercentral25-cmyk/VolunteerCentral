@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { CheckCircle, XCircle, AlertCircle, Mail, Building2, Loader2 } from 'lucide-react'
+import { isDisposableEmail, isDisposableEmailSync, preloadDisposableDomains } from '@/lib/utils/disposableEmailDomains'
 
 interface EmailVerificationFieldProps {
   value: string
@@ -22,6 +23,7 @@ interface EmailValidationResult {
   isDisposable: boolean
   status: number
   message: string
+  source?: 'api' | 'fallback' | 'local'
 }
 
 export function EmailVerificationField({
@@ -38,6 +40,11 @@ export function EmailVerificationField({
   const [hasInteracted, setHasInteracted] = useState(false)
   const [isVerifying, setIsVerifying] = useState(false)
 
+  // Preload disposable domains on component mount
+  useEffect(() => {
+    preloadDisposableDomains()
+  }, [])
+
   useEffect(() => {
     if (value && hasInteracted) {
       verifyEmail(value)
@@ -50,6 +57,7 @@ export function EmailVerificationField({
   const verifyEmail = async (email: string) => {
     setIsVerifying(true)
     try {
+      // First try the EmailListVerify API
       const response = await fetch('/api/email-verification', {
         method: 'POST',
         headers: {
@@ -58,22 +66,49 @@ export function EmailVerificationField({
         body: JSON.stringify({ email }),
       })
 
-      if (!response.ok) {
-        throw new Error('Verification failed')
+      if (response.ok) {
+        const result = await response.json()
+        
+        if (!result.error) {
+          setValidationResult({
+            ...result,
+            source: 'api'
+          })
+          onValidationChange(result.isValid && !result.isDisposable)
+          return
+        }
       }
 
-      const result = await response.json()
-      setValidationResult(result)
-      onValidationChange(result.isValid && !result.isDisposable)
+      // Fallback to comprehensive disposable email check
+      const isDisposable = await isDisposableEmail(email)
+      
+      setValidationResult({
+        isValid: !isDisposable,
+        isDisposable: isDisposable,
+        status: isDisposable ? 401 : 200,
+        message: isDisposable 
+          ? 'Disposable email detected (comprehensive check)' 
+          : 'Email appears valid (comprehensive check)',
+        source: 'fallback'
+      })
+      onValidationChange(!isDisposable)
+
     } catch (error) {
       console.error('Email verification error:', error)
+      
+      // Final fallback to local list only
+      const isDisposableLocal = isDisposableEmailSync(email)
+      
       setValidationResult({
-        isValid: false,
-        isDisposable: false,
-        status: 500,
-        message: 'Failed to verify email'
+        isValid: !isDisposableLocal,
+        isDisposable: isDisposableLocal,
+        status: isDisposableLocal ? 401 : 200,
+        message: isDisposableLocal 
+          ? 'Disposable email detected (local check)' 
+          : 'Email appears valid (local check)',
+        source: 'local'
       })
-      onValidationChange(false)
+      onValidationChange(!isDisposableLocal)
     } finally {
       setIsVerifying(false)
     }
@@ -121,22 +156,34 @@ export function EmailVerificationField({
     if (!validationResult) return null
 
     if (validationResult.isValid && !validationResult.isDisposable) {
+      const sourceText = validationResult.source === 'api' 
+        ? 'EmailListVerify API' 
+        : validationResult.source === 'fallback'
+        ? 'comprehensive check'
+        : 'local check'
+      
       return (
         <Alert className="border-green-200 bg-green-50">
           <CheckCircle className="h-4 w-4 text-green-600" />
           <AlertDescription className="text-green-800">
-            <strong>Valid email:</strong> {validationResult.message}
+            <strong>Valid email:</strong> Verified via {sourceText}
           </AlertDescription>
         </Alert>
       )
     }
 
     if (validationResult.isDisposable) {
+      const sourceText = validationResult.source === 'api' 
+        ? 'EmailListVerify API' 
+        : validationResult.source === 'fallback'
+        ? 'comprehensive check'
+        : 'local check'
+      
       return (
         <Alert className="border-red-200 bg-red-50">
           <XCircle className="h-4 w-4 text-red-600" />
           <AlertDescription className="text-red-800">
-            <strong>Disposable email detected:</strong> {validationResult.message}
+            <strong>Disposable email detected:</strong> Blocked via {sourceText}
           </AlertDescription>
         </Alert>
       )
@@ -185,7 +232,7 @@ export function EmailVerificationField({
       {/* Help Text */}
       {isFocused && (
         <div className="text-sm text-gray-600 space-y-2">
-          <p>This email will be verified using EmailListVerify API to ensure it's not a disposable or temporary email address.</p>
+          <p>This email is verified using multiple sources to ensure it's not a disposable or temporary email address.</p>
           
           <div>
             <p className="font-medium mb-1">Examples of acceptable domains:</p>
@@ -210,6 +257,10 @@ export function EmailVerificationField({
                 Personal emails (Gmail, Yahoo, etc.)
               </Badge>
             </div>
+          </div>
+
+          <div className="text-xs text-gray-500 mt-2">
+            <p>Verification sources: EmailListVerify API → Comprehensive domain lists → Local fallback</p>
           </div>
         </div>
       )}
