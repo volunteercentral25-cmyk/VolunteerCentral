@@ -20,34 +20,76 @@ import {
   Calendar,
   Target,
   Edit,
-  Shield
+  Shield,
+  Loader2,
+  XCircle
 } from 'lucide-react'
+
+interface ProfileData {
+  profile: {
+    id: string
+    email: string
+    student_id: string | null
+    full_name: string
+    role: string
+    created_at: string
+  }
+  stats: {
+    totalHours: number
+    pendingHours: number
+    opportunities: number
+    achievements: number
+    goalProgress: number
+    goalHours: number
+  }
+  achievements: Array<{
+    id: string
+    title: string
+    description: string
+    earned: boolean
+    earnedAt?: string
+    progress?: number
+    target?: number
+  }>
+}
 
 export default function StudentProfile() {
   const [user, setUser] = useState<any>(null)
+  const [profileData, setProfileData] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState({
-    totalHours: 24,
-    opportunities: 3,
-    achievements: 2,
-    pendingHours: 8,
-    goalProgress: 24
-  })
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        setUser(user)
-      } else {
-        router.push('/login')
+    const fetchData = async () => {
+      try {
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          setUser(user)
+          
+          // Fetch profile data from API
+          const response = await fetch('/api/student/profile')
+          if (response.ok) {
+            const data = await response.json()
+            setProfileData(data)
+          } else {
+            const errorData = await response.json()
+            setError(errorData.error || 'Failed to fetch profile data')
+          }
+        } else {
+          router.push('/login')
+        }
+      } catch (err) {
+        console.error('Error fetching data:', err)
+        setError('Failed to load profile data')
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
 
-    getUser()
+    fetchData()
   }, [router, supabase])
 
   const handleSignOut = async () => {
@@ -66,6 +108,43 @@ export default function StudentProfile() {
       </div>
     )
   }
+
+  if (error) {
+    return (
+      <div className="min-h-screen gradient-bg flex items-center justify-center">
+        <Card className="glass-effect border-0 shadow-xl max-w-md">
+          <CardContent className="p-6 text-center">
+            <div className="mb-4">
+              <XCircle className="h-12 w-12 text-red-500 mx-auto" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Error Loading Profile</h2>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()} className="btn-primary">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!profileData) {
+    return (
+      <div className="min-h-screen gradient-bg flex items-center justify-center">
+        <Card className="glass-effect border-0 shadow-xl max-w-md">
+          <CardContent className="p-6 text-center">
+            <div className="mb-4">
+              <Loader2 className="h-12 w-12 text-purple-600 mx-auto animate-spin" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Loading Profile</h2>
+            <p className="text-gray-600">Please wait while we load your data...</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const { profile, stats, achievements } = profileData
 
   return (
     <div className="min-h-screen gradient-bg overflow-hidden">
@@ -102,7 +181,7 @@ export default function StudentProfile() {
             <div className="flex items-center gap-3">
               <div className="hidden md:flex items-center gap-2 text-sm text-gray-600">
                 <User className="h-4 w-4" />
-                <span>{user?.user_metadata?.full_name || 'Student'}</span>
+                <span>{profile.full_name}</span>
               </div>
               <Button 
                 onClick={handleSignOut}
@@ -132,7 +211,7 @@ export default function StudentProfile() {
             Student <span className="text-gradient">Profile</span>
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            View your volunteer history, achievements, and progress towards your community service goals.
+            View your volunteer history, achievements, and progress towards your {stats.goalHours}-hour community service goal.
           </p>
         </motion.div>
 
@@ -150,8 +229,8 @@ export default function StudentProfile() {
                   <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 to-pink-600">
                     <User className="h-12 w-12 text-white" />
                   </div>
-                  <h2 className="text-2xl font-bold text-gray-900">{user?.user_metadata?.full_name || 'Student'}</h2>
-                  <p className="text-gray-600">{user?.email}</p>
+                  <h2 className="text-2xl font-bold text-gray-900">{profile.full_name}</h2>
+                  <p className="text-gray-600">{profile.email}</p>
                   <Badge className="mt-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white">
                     Student Volunteer
                   </Badge>
@@ -162,14 +241,14 @@ export default function StudentProfile() {
                     <Mail className="h-5 w-5 text-purple-600" />
                     <div>
                       <p className="font-medium text-gray-900">Email</p>
-                      <p className="text-sm text-gray-600">{user?.email}</p>
+                      <p className="text-sm text-gray-600">{profile.email}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 rounded-lg bg-white/50">
                     <GraduationCap className="h-5 w-5 text-purple-600" />
                     <div>
                       <p className="font-medium text-gray-900">Student ID</p>
-                      <p className="text-sm text-gray-600">{user?.user_metadata?.student_id || 'N/A'}</p>
+                      <p className="text-sm text-gray-600">{profile.student_id || 'N/A'}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 rounded-lg bg-white/50">
@@ -177,6 +256,15 @@ export default function StudentProfile() {
                     <div>
                       <p className="font-medium text-gray-900">Account Status</p>
                       <p className="text-sm text-green-600">Verified</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-white/50">
+                    <Calendar className="h-5 w-5 text-purple-600" />
+                    <div>
+                      <p className="font-medium text-gray-900">Member Since</p>
+                      <p className="text-sm text-gray-600">
+                        {new Date(profile.created_at).toLocaleDateString()}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -243,12 +331,12 @@ export default function StudentProfile() {
             <Card className="glass-effect border-0 shadow-xl">
               <CardHeader>
                 <CardTitle className="text-gradient">Hours Goal Progress</CardTitle>
-                <CardDescription>Track your progress towards your 100-hour community service goal</CardDescription>
+                <CardDescription>Track your progress towards your {stats.goalHours}-hour community service goal</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Current Progress</span>
-                  <span className="font-medium">{stats.totalHours}/100 hours</span>
+                  <span className="font-medium">{stats.totalHours}/{stats.goalHours} hours</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-4">
                   <motion.div
@@ -259,54 +347,73 @@ export default function StudentProfile() {
                   />
                 </div>
                 <p className="text-sm text-gray-600">
-                  {100 - stats.totalHours} hours remaining to reach your goal
+                  {Math.max(0, stats.goalHours - stats.totalHours)} hours remaining to reach your goal
                 </p>
+                {stats.pendingHours > 0 && (
+                  <p className="text-sm text-blue-600">
+                    {stats.pendingHours} hours pending approval
+                  </p>
+                )}
               </CardContent>
             </Card>
 
             {/* Recent Achievements */}
             <Card className="glass-effect border-0 shadow-xl">
               <CardHeader>
-                <CardTitle className="text-gradient">Recent Achievements</CardTitle>
+                <CardTitle className="text-gradient">Achievements</CardTitle>
                 <CardDescription>Celebrate your milestones and accomplishments</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex items-center gap-4 p-4 rounded-lg bg-white/50">
-                    <div className="rounded-full bg-purple-100 p-3">
-                      <Award className="h-6 w-6 text-purple-600" />
+                  {achievements.length > 0 ? (
+                    achievements.map((achievement, index) => (
+                      <div 
+                        key={achievement.id}
+                        className={`flex items-center gap-4 p-4 rounded-lg bg-white/50 ${
+                          !achievement.earned ? 'opacity-50' : ''
+                        }`}
+                      >
+                        <div className={`rounded-full p-3 ${
+                          achievement.earned 
+                            ? 'bg-purple-100' 
+                            : 'bg-gray-100'
+                        }`}>
+                          <Award className={`h-6 w-6 ${
+                            achievement.earned 
+                              ? 'text-purple-600' 
+                              : 'text-gray-400'
+                          }`} />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900">{achievement.title}</h3>
+                          <p className="text-sm text-gray-600">{achievement.description}</p>
+                          {achievement.earned ? (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Earned {achievement.earnedAt ? new Date(achievement.earnedAt).toLocaleDateString() : 'recently'}
+                            </p>
+                          ) : achievement.progress !== undefined && achievement.target !== undefined ? (
+                            <p className="text-xs text-gray-500 mt-1">
+                              {achievement.progress}/{achievement.target} hours completed
+                            </p>
+                          ) : (
+                            <p className="text-xs text-gray-500 mt-1">In progress</p>
+                          )}
+                        </div>
+                        <Badge className={
+                          achievement.earned 
+                            ? 'bg-purple-100 text-purple-800' 
+                            : 'bg-gray-100 text-gray-600'
+                        }>
+                          {achievement.earned ? 'Achieved' : 'In Progress'}
+                        </Badge>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8">
+                      <Award className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600">No achievements yet. Start volunteering to earn your first badge!</p>
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900">First Steps</h3>
-                      <p className="text-sm text-gray-600">Complete your first 10 hours of community service</p>
-                      <p className="text-xs text-gray-500 mt-1">Earned 2 weeks ago</p>
-                    </div>
-                    <Badge className="bg-purple-100 text-purple-800">Achieved</Badge>
-                  </div>
-
-                  <div className="flex items-center gap-4 p-4 rounded-lg bg-white/50">
-                    <div className="rounded-full bg-pink-100 p-3">
-                      <Target className="h-6 w-6 text-pink-600" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900">Consistent Helper</h3>
-                      <p className="text-sm text-gray-600">Volunteer for 3 consecutive weeks</p>
-                      <p className="text-xs text-gray-500 mt-1">Earned 1 week ago</p>
-                    </div>
-                    <Badge className="bg-pink-100 text-pink-800">Achieved</Badge>
-                  </div>
-
-                  <div className="flex items-center gap-4 p-4 rounded-lg bg-white/50 opacity-50">
-                    <div className="rounded-full bg-gray-100 p-3">
-                      <Award className="h-6 w-6 text-gray-400" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900">Community Champion</h3>
-                      <p className="text-sm text-gray-600">Complete 50 hours of community service</p>
-                      <p className="text-xs text-gray-500 mt-1">26 hours remaining</p>
-                    </div>
-                    <Badge className="bg-gray-100 text-gray-600">In Progress</Badge>
-                  </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
