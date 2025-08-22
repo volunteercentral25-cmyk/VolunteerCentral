@@ -61,7 +61,7 @@ export function Navigation({
           >
             <Image src="/cata-logo.png" alt="CATA Logo" width={40} height={40} className="animate-pulse-cata" />
             <div>
-              <h1 className="text-xl font-serif font-bold text-primary">CATA Volunteer</h1>
+              <h1 className="text-xl font-serif font-bold text-primary">volunteer</h1>
               <p className="text-sm text-muted-foreground font-sans">
                 {userRole === "admin" ? "Admin Portal" : "Student Portal"}
               </p>
@@ -154,7 +154,7 @@ export function Navigation({
               </SheetTrigger>
               <SheetContent side="right" className="w-80">
                 <SheetHeader>
-                  <SheetTitle className="font-serif text-primary">CATA Volunteer</SheetTitle>
+                  <SheetTitle className="font-serif text-primary">volunteer</SheetTitle>
                   <SheetDescription className="font-sans">
                     {userRole === "admin" ? "Admin Portal" : "Student Portal"}
                   </SheetDescription>

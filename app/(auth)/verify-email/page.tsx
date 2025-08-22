@@ -54,7 +54,7 @@ function VerifyEmailInner() {
           <div className="flex justify-center mb-4">
             <Image
               src="/images/cata-logo.png"
-              alt="CATA Volunteer"
+              alt="volunteer"
               width={80}
               height={80}
               className="rounded-lg"

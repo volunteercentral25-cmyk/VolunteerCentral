@@ -96,7 +96,7 @@ export default function LoginPage() {
             />
           </motion.div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-          <p className="text-gray-600">Sign in to your CATA Volunteer account</p>
+          <p className="text-gray-600">Sign in to your volunteer account</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">

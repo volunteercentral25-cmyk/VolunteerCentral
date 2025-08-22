@@ -40,7 +40,7 @@ export default function Header() {
               height={40}
               className="rounded-lg"
             />
-            <span className="text-xl font-bold text-gray-900">CATA Volunteer</span>
+            <span className="text-xl font-bold text-gray-900">volunteer</span>
           </Link>
 
           <nav className="hidden md:flex items-center space-x-8">

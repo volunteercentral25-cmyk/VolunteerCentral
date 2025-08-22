@@ -202,7 +202,7 @@ export default function RegisterPage() {
             />
           </motion.div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h1>
-          <p className="text-gray-600">Join CATA Volunteer</p>
+          <p className="text-gray-600">Join volunteer</p>
         </div>
 
         <form onSubmit={handleRegister} className="space-y-6">

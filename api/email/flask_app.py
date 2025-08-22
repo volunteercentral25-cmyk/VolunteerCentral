@@ -25,6 +25,7 @@ app.config['MAIL_PORT'] = int(os.getenv('FLASK_MAIL_PORT', 587))
 app.config['MAIL_USE_TLS'] = os.getenv('FLASK_MAIL_USE_TLS', 'true').lower() == 'true'
 app.config['MAIL_USERNAME'] = os.getenv('FLASK_MAIL_USERNAME', 'CLTVolunteerCentral@gmail.com')
 app.config['MAIL_PASSWORD'] = os.getenv('FLASK_MAIL_PASSWORD', 'jnkb gfpz qxjz nflx')
+app.config['MAIL_DEFAULT_SENDER'] = (os.getenv('FLASK_MAIL_USERNAME', 'CLTVolunteerCentral@gmail.com'), os.getenv('FLASK_MAIL_DISPLAY_NAME', 'volunteer'))
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
 
 # Supabase Configuration
@@ -194,7 +195,7 @@ HOURS_VERIFICATION_TEMPLATE = """
     <div class="container">
         <div class="header">
             <h1>Volunteer Hours Verification</h1>
-            <p>CATA Volunteer Central</p>
+            <p>volunteer</p>
         </div>
         
         <div class="content">
@@ -225,12 +226,12 @@ HOURS_VERIFICATION_TEMPLATE = """
             </div>
             
             <p style="margin-top: 30px; font-size: 14px; color: #666;">
-                <strong>Note:</strong> This verification link will expire in 7 days. If you have any questions, please contact the CATA Volunteer Central team.
+                <strong>Note:</strong> This verification link will expire in 7 days. If you have any questions, please contact the volunteer team.
             </p>
         </div>
         
         <div class="footer">
-            <p>CATA Volunteer Central - Building Community Through Service</p>
+            <p>volunteer - Building Community Through Service</p>
             <p>This is an automated message. Please do not reply to this email.</p>
         </div>
     </div>
@@ -520,7 +521,7 @@ def test_send_email():
         
         # Create test email
         msg = Message(
-            'CATA Volunteer Central - Email Service Test',
+            'volunteer - Email Service Test',
             sender=app.config['MAIL_USERNAME'],
             recipients=[test_email]
         )
@@ -529,7 +530,7 @@ def test_send_email():
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
                 <h1>✅ Email Service Test</h1>
-                <p>CATA Volunteer Central</p>
+                <p>volunteer</p>
             </div>
             <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
                 <h2>Success! 🎉</h2>
@@ -548,7 +549,7 @@ def test_send_email():
                 <p>Your volunteer hours verification emails will now be sent successfully!</p>
             </div>
             <div style="text-align: center; margin-top: 30px; color: #666; font-size: 14px;">
-                <p>CATA Volunteer Central - Email Service Test</p>
+                <p>volunteer - Email Service Test</p>
                 <p>Timestamp: {datetime.utcnow().isoformat()}</p>
             </div>
         </div>
@@ -682,7 +683,7 @@ def opportunity_cancellation():
 def health_check():
     return jsonify({
         'status': 'healthy', 
-        'service': 'CATA Volunteer Email Service',
+                    'service': 'volunteer Email Service',
         'timestamp': datetime.utcnow().isoformat(),
         'supabase_configured': bool(SUPABASE_URL and SUPABASE_SERVICE_KEY),
         'mail_configured': bool(app.config['MAIL_USERNAME'] and app.config['MAIL_PASSWORD']),

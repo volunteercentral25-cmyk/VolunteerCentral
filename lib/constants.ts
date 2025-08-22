@@ -1,4 +1,4 @@
-export const APP_NAME = 'CATA Volunteer'
+export const APP_NAME = 'volunteer'
 export const APP_DESCRIPTION = 'Community Action Through Volunteering'
 
 export const ROUTES = {

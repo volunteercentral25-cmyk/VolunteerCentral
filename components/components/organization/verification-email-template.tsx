@@ -35,7 +35,7 @@ export function VerificationEmailTemplate({
           borderRadius: "8px 8px 0 0",
         }}
       >
-        <h1 style={{ margin: "0", fontSize: "24px" }}>CATA Volunteer Central</h1>
+        <h1 style={{ margin: "0", fontSize: "24px" }}>volunteer</h1>
         <p style={{ margin: "5px 0 0 0", fontSize: "14px", opacity: "0.9" }}>
           {isOverride ? "Override Verification Request" : "Volunteer Hour Verification Request"}
         </p>
@@ -163,14 +163,14 @@ export function VerificationEmailTemplate({
             hours if you can confirm the student's participation in the volunteer activity.
           </p>
           <p style={{ margin: "0 0 10px 0" }}>
-            If you have any questions or concerns, please contact the CATA Volunteer program administrator at{" "}
+            If you have any questions or concerns, please contact the volunteer program administrator at{" "}
             <a href="mailto:support@catavolunteer.org" style={{ color: "#9b1b30" }}>
               support@catavolunteer.org
             </a>{" "}
             or (559) 327-3000.
           </p>
           <p style={{ margin: "0", fontSize: "11px", color: "#999" }}>
-            This email was sent by the CATA Volunteer Central system. Please do not reply to this email.
+            This email was sent by the volunteer system. Please do not reply to this email.
           </p>
         </div>
       </div>
@@ -178,7 +178,7 @@ export function VerificationEmailTemplate({
       {/* Footer */}
       <div style={{ textAlign: "center", padding: "20px 0", fontSize: "12px", color: "#999" }}>
         <p style={{ margin: "0" }}>© 2024 CATA Central High School. All rights reserved.</p>
-        <p style={{ margin: "5px 0 0 0" }}>CATA Volunteer Central - Empowering students to make a difference</p>
+        <p style={{ margin: "5px 0 0 0" }}>volunteer - Empowering students to make a difference</p>
       </div>
     </div>
   )

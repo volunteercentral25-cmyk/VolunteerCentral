@@ -184,7 +184,7 @@ VERIFICATION_EMAIL_TEMPLATE = """
     <div class="container">
         <div class="header">
             <h1>Volunteer Hours Verification</h1>
-            <p>CATA Volunteer Central</p>
+            <p>volunteer</p>
         </div>
         
         <div class="content">
@@ -215,12 +215,12 @@ VERIFICATION_EMAIL_TEMPLATE = """
             </div>
             
             <p style="margin-top: 30px; font-size: 14px; color: #666;">
-                <strong>Note:</strong> This verification link will expire in 7 days. If you have any questions, please contact the CATA Volunteer Central team.
+                <strong>Note:</strong> This verification link will expire in 7 days. If you have any questions, please contact the volunteer team.
             </p>
         </div>
         
         <div class="footer">
-            <p>CATA Volunteer Central - Building Community Through Service</p>
+            <p>volunteer - Building Community Through Service</p>
             <p>This is an automated message. Please do not reply to this email.</p>
         </div>
     </div>
@@ -269,7 +269,7 @@ APPROVAL_CONFIRMATION_TEMPLATE = """
         </div>
         
         <div class="footer">
-            <p>CATA Volunteer Central - Building Community Through Service</p>
+            <p>volunteer - Building Community Through Service</p>
         </div>
     </div>
 </body>
@@ -320,7 +320,7 @@ DENIAL_CONFIRMATION_TEMPLATE = """
         </div>
         
         <div class="footer">
-            <p>CATA Volunteer Central - Building Community Through Service</p>
+            <p>volunteer - Building Community Through Service</p>
         </div>
     </div>
 </body>

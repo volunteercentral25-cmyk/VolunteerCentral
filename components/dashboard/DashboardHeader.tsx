@@ -40,7 +40,7 @@ export function DashboardHeader({ profile }: DashboardHeaderProps) {
               className="rounded-lg shadow-glow" 
             />
             <div>
-              <p className="text-lg font-semibold text-gradient">CATA Volunteer</p>
+              <p className="text-lg font-semibold text-gradient">volunteer</p>
               <p className="text-xs text-gray-600">Student Dashboard</p>
             </div>
           </Link>
