@@ -21,10 +21,57 @@ interface EmailVerificationFieldProps {
 interface EmailValidationResult {
   isValid: boolean
   isDisposable: boolean
+  isPersonal: boolean
   status: number
   message: string
   source?: 'api' | 'fallback' | 'local'
 }
+
+// Popular personal email providers that should be blocked
+const POPULAR_PERSONAL_EMAIL_PROVIDERS = [
+  'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com',
+  'icloud.com', 'protonmail.com', 'zoho.com', 'yandex.com', 'gmx.com',
+  'live.com', 'msn.com', 'mail.com', 'inbox.com', 'fastmail.com',
+  'tutanota.com', 'mail.ru', 'qq.com', '163.com', '126.com',
+  'sina.com', 'sohu.com', 'yeah.net', 'foxmail.com', '139.com',
+  '189.cn', 'wo.cn', '21cn.com', '263.net', 'tom.com',
+  'sogou.com', 'netease.com', 'aliyun.com', 'baidu.com', 'tencent.com',
+  'me.com', 'mac.com', 'rocketmail.com', 'ymail.com', 'att.net',
+  'verizon.net', 'comcast.net', 'charter.net', 'cox.net', 'earthlink.net',
+  'juno.com', 'netzero.net', 'bellsouth.net', 'sbcglobal.net', 'pacbell.net',
+  'ameritech.net', 'swbell.net', 'prodigy.net', 'mindspring.com', 'compuserve.com',
+  'aol.co.uk', 'gmail.co.uk', 'yahoo.co.uk', 'hotmail.co.uk', 'outlook.co.uk',
+  'live.co.uk', 'btinternet.com', 'talktalk.net', 'virginmedia.com', 'sky.com',
+  'orange.net', 'wanadoo.fr', 'laposte.net', 'free.fr', 'sfr.fr',
+  'orange.fr', 'gmail.fr', 'yahoo.fr', 'hotmail.fr', 'outlook.fr',
+  'web.de', 'gmx.de', 'yahoo.de', 'hotmail.de', 'outlook.de',
+  't-online.de', 'freenet.de', 'arcor.de', '1und1.de', 'vodafone.de',
+  'gmail.it', 'yahoo.it', 'hotmail.it', 'outlook.it', 'libero.it',
+  'virgilio.it', 'alice.it', 'tiscali.it', 'fastwebnet.it', 'tim.it',
+  'gmail.es', 'yahoo.es', 'hotmail.es', 'outlook.es', 'terra.es',
+  'wanadoo.es', 'telefonica.net', 'ono.es', 'jazztel.com', 'vodafone.es',
+  'gmail.nl', 'yahoo.nl', 'hotmail.nl', 'outlook.nl', 'ziggo.nl',
+  'kpn.nl', 'telfort.nl', 'online.nl', 'planet.nl', 'chello.nl',
+  'gmail.ca', 'yahoo.ca', 'hotmail.ca', 'outlook.ca', 'rogers.com',
+  'bell.ca', 'shaw.ca', 'telus.net', 'sympatico.ca', 'cogeco.ca',
+  'gmail.com.au', 'yahoo.com.au', 'hotmail.com.au', 'outlook.com.au', 'bigpond.com',
+  'optusnet.com.au', 'iinet.net.au', 'tpg.com.au', 'dodo.com.au', 'internode.on.net',
+  'gmail.co.za', 'yahoo.co.za', 'hotmail.co.za', 'outlook.co.za', 'mweb.co.za',
+  'telkomsa.net', 'vodamail.co.za', 'webmail.co.za', 'absamail.co.za', 'icon.co.za',
+  'gmail.com.br', 'yahoo.com.br', 'hotmail.com.br', 'outlook.com.br', 'uol.com.br',
+  'bol.com.br', 'ig.com.br', 'terra.com.br', 'globo.com', 'oi.com.br',
+  'gmail.com.mx', 'yahoo.com.mx', 'hotmail.com.mx', 'outlook.com.mx', 'prodigy.net.mx',
+  'telmex.com', 'uninet.net.mx', 'grupored.com.mx', 'avantel.net.mx', 'att.net.mx',
+  'gmail.in', 'yahoo.in', 'hotmail.in', 'outlook.in', 'rediffmail.com',
+  'sify.com', 'vsnl.net', 'airtelmail.com', 'bsnl.in', 'mtnl.net.in',
+  'gmail.co.jp', 'yahoo.co.jp', 'hotmail.co.jp', 'outlook.co.jp', 'docomo.ne.jp',
+  'ezweb.ne.jp', 'softbank.ne.jp', 'au.com', 'nifty.com', 'biglobe.ne.jp',
+  'gmail.co.kr', 'yahoo.co.kr', 'hotmail.co.kr', 'outlook.co.kr', 'naver.com',
+  'daum.net', 'hanmail.net', 'nate.com', 'empas.com', 'dreamwiz.com',
+  'gmail.cn', 'yahoo.cn', 'hotmail.cn', 'outlook.cn', 'qq.com',
+  '163.com', '126.com', 'sina.com', 'sohu.com', 'yeah.net',
+  'foxmail.com', '139.com', '189.cn', 'wo.cn', '21cn.com'
+]
 
 export function EmailVerificationField({
   value,
@@ -57,6 +104,23 @@ export function EmailVerificationField({
   const verifyEmail = async (email: string) => {
     setIsVerifying(true)
     try {
+      // First check if it's a popular personal email provider
+      const domain = email.split('@')[1]?.toLowerCase()
+      const isPersonal = POPULAR_PERSONAL_EMAIL_PROVIDERS.includes(domain)
+      
+      if (isPersonal) {
+        setValidationResult({
+          isValid: false,
+          isDisposable: false,
+          isPersonal: true,
+          status: 400,
+          message: 'Personal email providers are not accepted for verification',
+          source: 'local'
+        })
+        onValidationChange(false)
+        return
+      }
+
       // First try the EmailListVerify API
       const response = await fetch('/api/email-verification', {
         method: 'POST',
@@ -72,6 +136,7 @@ export function EmailVerificationField({
         if (!result.error) {
           setValidationResult({
             ...result,
+            isPersonal: false,
             source: 'api'
           })
           onValidationChange(result.isValid && !result.isDisposable)
@@ -85,6 +150,7 @@ export function EmailVerificationField({
       setValidationResult({
         isValid: !isDisposable,
         isDisposable: isDisposable,
+        isPersonal: false,
         status: isDisposable ? 401 : 200,
         message: isDisposable 
           ? 'Disposable email detected (comprehensive check)' 
@@ -102,6 +168,7 @@ export function EmailVerificationField({
       setValidationResult({
         isValid: !isDisposableLocal,
         isDisposable: isDisposableLocal,
+        isPersonal: false,
         status: isDisposableLocal ? 401 : 200,
         message: isDisposableLocal 
           ? 'Disposable email detected (local check)' 
@@ -133,7 +200,7 @@ export function EmailVerificationField({
 
   const getInputBorderClass = () => {
     if (!hasInteracted || !value || isVerifying) return ''
-    if (validationResult?.isValid && !validationResult?.isDisposable) {
+    if (validationResult?.isValid && !validationResult?.isDisposable && !validationResult?.isPersonal) {
       return 'border-green-500 focus:border-green-500'
     }
     return 'border-red-500 focus:border-red-500'
@@ -146,7 +213,7 @@ export function EmailVerificationField({
     if (!hasInteracted || !value) {
       return <Mail className="h-4 w-4 text-gray-400" />
     }
-    if (validationResult?.isValid && !validationResult?.isDisposable) {
+    if (validationResult?.isValid && !validationResult?.isDisposable && !validationResult?.isPersonal) {
       return <CheckCircle className="h-4 w-4 text-green-500" />
     }
     return <XCircle className="h-4 w-4 text-red-500" />
@@ -155,7 +222,18 @@ export function EmailVerificationField({
   const getValidationMessage = () => {
     if (!validationResult) return null
 
-    if (validationResult.isValid && !validationResult.isDisposable) {
+    if (validationResult.isPersonal) {
+      return (
+        <Alert className="border-red-200 bg-red-50">
+          <XCircle className="h-4 w-4 text-red-600" />
+          <AlertDescription className="text-red-800">
+            <strong>Personal email detected:</strong> {validationResult.message}
+          </AlertDescription>
+        </Alert>
+      )
+    }
+
+    if (validationResult.isValid && !validationResult.isDisposable && !validationResult.isPersonal) {
       const sourceText = validationResult.source === 'api' 
         ? 'EmailListVerify API' 
         : validationResult.source === 'fallback'
@@ -166,7 +244,7 @@ export function EmailVerificationField({
         <Alert className="border-green-200 bg-green-50">
           <CheckCircle className="h-4 w-4 text-green-600" />
           <AlertDescription className="text-green-800">
-            <strong>Valid email:</strong> Verified via {sourceText}
+            <strong>Valid organizational email:</strong> Verified via {sourceText}
           </AlertDescription>
         </Alert>
       )
@@ -232,7 +310,7 @@ export function EmailVerificationField({
       {/* Help Text */}
       {isFocused && (
         <div className="text-sm text-gray-600 space-y-2">
-          <p>This email is verified using multiple sources to ensure it's not a disposable or temporary email address.</p>
+          <p>This email is verified using multiple sources to ensure it's from a legitimate organization.</p>
           
           <div>
             <p className="font-medium mb-1">Examples of acceptable domains:</p>
@@ -248,19 +326,19 @@ export function EmailVerificationField({
             <p className="font-medium mb-1 text-red-600">Not accepted:</p>
             <div className="flex flex-wrap gap-1">
               <Badge variant="outline" className="text-xs text-red-600 border-red-300">
-                Disposable emails (tempmailo, guerrillamail, etc.)
+                Personal emails (Gmail, Yahoo, etc.)
+              </Badge>
+              <Badge variant="outline" className="text-xs text-red-600 border-red-300">
+                Disposable emails (tempmailo, tempumail, qqveo, guerrillamail, etc.)
               </Badge>
               <Badge variant="outline" className="text-xs text-red-600 border-red-300">
                 Temporary emails
-              </Badge>
-              <Badge variant="outline" className="text-xs text-red-600 border-red-300">
-                Personal emails (Gmail, Yahoo, etc.)
               </Badge>
             </div>
           </div>
 
           <div className="text-xs text-gray-500 mt-2">
-            <p>Verification sources: EmailListVerify API → Comprehensive domain lists → Local fallback</p>
+            <p>Verification sources: Personal email check → EmailListVerify API → Comprehensive domain lists → Local fallback</p>
           </div>
         </div>
       )}
