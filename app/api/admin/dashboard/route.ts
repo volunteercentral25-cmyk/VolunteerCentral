@@ -22,30 +22,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
-    // Fetch real statistics
+    // Use the test function to get student count reliably
+    const { data: studentCount, error: studentCountError } = await supabase.rpc('test_admin_student_count')
+    
+    if (studentCountError) {
+      console.error('Error getting student count:', studentCountError)
+    }
+
+    // Fetch other statistics
     const [
-      studentsResult,
       opportunitiesResult,
       pendingHoursResult,
       totalHoursResult,
       recentHoursResult,
       recentOpportunitiesResult
     ] = await Promise.all([
-      // Total students
-      supabase
-        .from('profiles')
-        .select('id', { count: 'exact' })
-        .eq('role', 'student'),
-      
       // Total opportunities
       supabase
         .from('volunteer_opportunities')
-        .select('id', { count: 'exact' }),
+        .select('id'),
       
       // Pending hours
       supabase
         .from('volunteer_hours')
-        .select('id', { count: 'exact' })
+        .select('id')
         .eq('status', 'pending'),
       
       // Total approved hours
@@ -77,6 +77,11 @@ export async function GET(request: NextRequest) {
         .limit(5)
     ])
 
+    // Calculate counts manually
+    const totalStudents = studentCount?.[0]?.total_students || 0
+    const totalOpportunities = opportunitiesResult.data?.length || 0
+    const pendingHours = pendingHoursResult.data?.length || 0
+    
     // Calculate total hours
     const totalHours = totalHoursResult.data?.reduce((sum, hour) => sum + (hour.hours || 0), 0) || 0
 
@@ -94,9 +99,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       stats: {
-        totalStudents: studentsResult.count || 0,
-        totalOpportunities: opportunitiesResult.count || 0,
-        pendingHours: pendingHoursResult.count || 0,
+        totalStudents: totalStudents,
+        totalOpportunities: totalOpportunities,
+        pendingHours: pendingHours,
         totalHours: totalHours
       },
       recentHours: recentHoursResult.data || [],

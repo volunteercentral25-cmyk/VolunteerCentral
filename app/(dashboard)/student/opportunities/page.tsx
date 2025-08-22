@@ -42,6 +42,7 @@ interface Opportunity {
   featured: boolean
   isRegistered: boolean
   isFull: boolean
+  requirements?: string
 }
 
 export default function StudentOpportunities() {
@@ -337,17 +338,15 @@ export default function StudentOpportunities() {
           </Card>
         </motion.div>
 
-        {/* Featured Opportunities */}
-        {filteredOpportunities.filter(opp => opp.featured).length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="mb-12"
-          >
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Featured Opportunities</h2>
+        {/* All Opportunities */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.4 }}
+        >
+          {filteredOpportunities.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredOpportunities.filter(opp => opp.featured).map((opportunity) => (
+              {filteredOpportunities.map((opportunity) => (
                 <motion.div
                   key={opportunity.id}
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -360,9 +359,14 @@ export default function StudentOpportunities() {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            <Badge className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
-                              Featured
-                            </Badge>
+                            {opportunity.featured && (
+                              <>
+                                <Badge className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
+                                  Featured
+                                </Badge>
+                                <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                              </>
+                            )}
                             <Badge className={getCategoryColor(opportunity.category)}>
                               {opportunity.category}
                             </Badge>
@@ -372,7 +376,6 @@ export default function StudentOpportunities() {
                             {opportunity.organization}
                           </CardDescription>
                         </div>
-                        <Star className="h-5 w-5 text-yellow-500 fill-current" />
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -397,100 +400,18 @@ export default function StudentOpportunities() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between pt-2">
-                        <Badge className={getDifficultyColor(opportunity.difficulty)}>
-                          {opportunity.difficulty}
-                        </Badge>
-                        <Button 
-                          onClick={() => opportunity.isRegistered ? handleLeave(opportunity.id) : handleRegister(opportunity.id)}
-                          className={opportunity.isRegistered ? "btn-secondary" : "btn-primary"}
-                          disabled={opportunity.isFull && !opportunity.isRegistered || registering === opportunity.id || leaving === opportunity.id}
-                        >
-                          {registering === opportunity.id || leaving === opportunity.id ? (
-                            <>
-                              <motion.div
-                                animate={{ rotate: 360 }}
-                                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
-                              />
-                              {leaving === opportunity.id ? 'Leaving...' : 'Registering...'}
-                            </>
-                          ) : opportunity.isRegistered ? (
-                            <>
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Leave
-                            </>
-                          ) : opportunity.isFull ? (
-                            'Full'
-                          ) : (
-                            <>
-                              <Heart className="h-4 w-4 mr-2" />
-                              Register
-                            </>
+                      {/* Requirements Section */}
+                      <div className="bg-gray-50 p-3 rounded-lg">
+                        <h4 className="font-semibold text-sm text-gray-900 mb-2">Requirements:</h4>
+                        <ul className="text-sm text-gray-600 space-y-1">
+                          <li>• Comfortable clothing and closed-toe shoes</li>
+                          <li>• Bring water and snacks</li>
+                          <li>• Arrive 10 minutes early</li>
+                          <li>• Complete safety orientation</li>
+                          {opportunity.requirements && (
+                            <li>• {opportunity.requirements}</li>
                           )}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* All Opportunities */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.6 }}
-        >
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-            {filteredOpportunities.filter(opp => !opp.featured).length > 0 ? 'All Opportunities' : 'No Opportunities Found'}
-          </h2>
-          {filteredOpportunities.filter(opp => !opp.featured).length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredOpportunities.filter(opp => !opp.featured).map((opportunity) => (
-                <motion.div
-                  key={opportunity.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5 }}
-                  whileHover={{ y: -5, scale: 1.02 }}
-                >
-                  <Card className="glass-effect border-0 shadow-xl card-hover-effect h-full">
-                    <CardHeader className="pb-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <Badge className={`mb-2 ${getCategoryColor(opportunity.category)}`}>
-                            {opportunity.category}
-                          </Badge>
-                          <CardTitle className="text-lg">{opportunity.title}</CardTitle>
-                          <CardDescription className="text-sm font-medium text-purple-600">
-                            {opportunity.organization}
-                          </CardDescription>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <p className="text-sm text-gray-600 line-clamp-3">{opportunity.description}</p>
-                      
-                      <div className="space-y-2 text-sm">
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <MapPin className="h-4 w-4" />
-                          <span>{opportunity.location}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Calendar className="h-4 w-4" />
-                          <span>{new Date(opportunity.date).toLocaleDateString()}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Clock className="h-4 w-4" />
-                          <span>{opportunity.time} ({opportunity.duration} hours)</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Users className="h-4 w-4" />
-                          <span>{opportunity.volunteersRegistered}/{opportunity.volunteersNeeded} volunteers</span>
-                        </div>
+                        </ul>
                       </div>
 
                       <div className="flex items-center justify-between pt-2">

@@ -3,13 +3,17 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('Admin hours API called')
     const supabase = createClient()
     
     // Get the current user
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError || !user) {
+      console.log('User not authenticated')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    console.log('User authenticated:', user.id)
 
     // Get user profile and check if admin
     const { data: profile, error: profileError } = await supabase
@@ -19,8 +23,11 @@ export async function GET(request: NextRequest) {
       .single()
 
     if (profileError || !profile || profile.role !== 'admin') {
+      console.log('User not admin:', profile?.role)
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
+
+    console.log('Admin access confirmed')
 
     // Get URL parameters for pagination and search
     const { searchParams } = new URL(request.url)
@@ -29,55 +36,78 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || ''
     const status = searchParams.get('status') || ''
 
-    // Calculate offset
-    const offset = (page - 1) * limit
+    console.log('Parameters:', { page, limit, search, status })
 
-    // Build query
-    let query = supabase
-      .from('volunteer_hours')
-      .select(`
-        *,
-        profiles!inner(full_name, email, student_id)
-      `)
+    // Use RPC functions to bypass RLS
+    const [hoursResult, countResult] = await Promise.all([
+      // Get hours with details
+      supabase.rpc('get_admin_hours_with_details', {
+        search_term: search,
+        status_filter: status,
+        page_num: page,
+        page_size: limit
+      }),
+      // Get total count
+      supabase.rpc('get_admin_hours_count', {
+        search_term: search,
+        status_filter: status
+      })
+    ])
 
-    // Add search filter
-    if (search) {
-      query = query.or(`description.ilike.%${search}%,profiles.full_name.ilike.%${search}%,profiles.email.ilike.%${search}%`)
+    console.log('Hours result:', hoursResult)
+    console.log('Count result:', countResult)
+
+    if (hoursResult.error) {
+      console.error('Error getting hours:', hoursResult.error)
+      throw hoursResult.error
     }
 
-    // Add status filter
-    if (status) {
-      query = query.eq('status', status)
+    if (countResult.error) {
+      console.error('Error getting count:', countResult.error)
+      throw countResult.error
     }
 
-    // Get total count for pagination
-    const { count } = await query
+    const hours = hoursResult.data || []
+    const totalCount = countResult.data || 0
 
-    // Get paginated results
-    const { data: hours, error } = await query
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
-
-    if (error) {
-      throw error
-    }
+    console.log('Raw hours data:', hours)
+    console.log('Total count:', totalCount)
 
     // Transform the data to match the expected interface
-    const transformedHours = hours?.map(hour => ({
-      ...hour,
-      activity: hour.description || 'No description provided', // Map description to activity for frontend compatibility
-      location: hour.location || 'N/A' // Add location field if it doesn't exist
-    })) || []
+    const transformedHours = hours.map((hour: any) => ({
+      id: hour.id,
+      hours: hour.hours,
+      activity: hour.description || 'No description provided',
+      date: hour.created_at,
+      description: hour.description,
+      status: hour.status,
+      location: 'N/A', // Add location field for frontend compatibility
+      verification_email: hour.verification_email,
+      verified_by: hour.verified_by,
+      verification_date: hour.verification_date,
+      verification_notes: hour.verification_notes,
+      created_at: hour.created_at,
+      profiles: {
+        full_name: hour.full_name,
+        email: hour.email,
+        student_id: hour.student_id_text
+      }
+    }))
 
-    return NextResponse.json({
+    console.log('Transformed hours data:', transformedHours)
+
+    const response = {
       hours: transformedHours,
       pagination: {
         page,
         limit,
-        total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit)
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit)
       }
-    })
+    }
+
+    console.log('Final response:', response)
+    return NextResponse.json(response)
   } catch (error) {
     console.error('Admin hours API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -106,35 +136,32 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { hoursId, status, notes } = body
+    const { hourId, status, notes } = body
 
-    if (!hoursId || !status) {
+    if (!hourId || !status) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Update hours status
+    // Update hour status
     const { data, error } = await supabase
       .from('volunteer_hours')
       .update({
-        status,
-        verified_by: profile.email,
+        status: status,
+        verified_by: user.id,
         verification_date: new Date().toISOString(),
         verification_notes: notes || null
       })
-      .eq('id', hoursId)
-      .select(`
-        *,
-        profiles!inner(full_name, email)
-      `)
+      .eq('id', hourId)
+      .select()
       .single()
 
     if (error) {
       throw error
     }
 
-    return NextResponse.json({ success: true, hours: data })
+    return NextResponse.json({ success: true, hour: data })
   } catch (error) {
-    console.error('Admin update hours API error:', error)
+    console.error('Admin update hour API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

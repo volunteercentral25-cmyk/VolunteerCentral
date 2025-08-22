@@ -3,13 +3,17 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('Admin students API called')
     const supabase = createClient()
     
     // Get the current user
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError || !user) {
+      console.log('User not authenticated')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    console.log('User authenticated:', user.id)
 
     // Get user profile and check if admin
     const { data: profile, error: profileError } = await supabase
@@ -19,8 +23,11 @@ export async function GET(request: NextRequest) {
       .single()
 
     if (profileError || !profile || profile.role !== 'admin') {
+      console.log('User not admin:', profile?.role)
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
+
+    console.log('Admin access confirmed')
 
     // Get URL parameters for pagination and search
     const { searchParams } = new URL(request.url)
@@ -29,64 +36,75 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || ''
     const status = searchParams.get('status') || ''
 
-    // Calculate offset
-    const offset = (page - 1) * limit
+    console.log('Parameters:', { page, limit, search, status })
 
-    // Build query
-    let query = supabase
-      .from('profiles')
-      .select(`
-        *,
-        volunteer_hours(id, hours, status),
-        opportunity_registrations(id, status)
-      `)
-      .eq('role', 'student')
+    // Use RPC functions to bypass RLS
+    const [studentsResult, countResult] = await Promise.all([
+      // Get students with stats
+      supabase.rpc('get_admin_students_with_stats', {
+        search_term: search,
+        status_filter: status,
+        page_num: page,
+        page_size: limit
+      }),
+      // Get total count
+      supabase.rpc('get_admin_students_count', {
+        search_term: search
+      })
+    ])
 
-    // Add search filter
-    if (search) {
-      query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%,student_id.ilike.%${search}%`)
+    console.log('Students result:', studentsResult)
+    console.log('Count result:', countResult)
+
+    if (studentsResult.error) {
+      console.error('Error getting students:', studentsResult.error)
+      throw studentsResult.error
     }
 
-    // Note: Removed status filter since all students should be active
-    // If you need status filtering, you can add it based on other criteria
-
-    // Get total count for pagination
-    const { count } = await query
-
-    // Get paginated results
-    const { data: students, error } = await query
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
-
-    if (error) {
-      throw error
+    if (countResult.error) {
+      console.error('Error getting count:', countResult.error)
+      throw countResult.error
     }
 
-    // Calculate additional stats for each student
-    const studentsWithStats = students?.map(student => {
-      const hours = student.volunteer_hours || []
-      const registrations = student.opportunity_registrations || []
-      
-      return {
-        ...student,
-        totalHours: hours.reduce((sum: any, h: any) => sum + (h.hours || 0), 0),
-        approvedHours: hours.filter((h: any) => h.status === 'approved').reduce((sum: any, h: any) => sum + (h.hours || 0), 0),
-        pendingHours: hours.filter((h: any) => h.status === 'pending').length,
-        totalRegistrations: registrations.length,
-        activeRegistrations: registrations.filter((r: any) => r.status === 'pending').length,
-        status: 'active' // All students are considered active
-      }
-    }) || []
+    const students = studentsResult.data || []
+    const totalCount = countResult.data || 0
 
-    return NextResponse.json({
+    console.log('Raw students data:', students)
+    console.log('Total count:', totalCount)
+
+    // Transform the data to match the expected interface
+    const studentsWithStats = students.map((student: any) => ({
+      id: student.id,
+      full_name: student.full_name,
+      email: student.email,
+      student_id: student.student_id,
+      phone: student.phone,
+      bio: student.bio,
+      role: student.role,
+      created_at: student.created_at,
+      updated_at: student.updated_at,
+      totalHours: student.total_hours || 0,
+      approvedHours: student.approved_hours || 0,
+      pendingHours: student.pending_hours_count || 0,
+      totalRegistrations: student.total_registrations || 0,
+      activeRegistrations: student.active_registrations || 0,
+      status: student.status || 'active'
+    }))
+
+    console.log('Transformed students data:', studentsWithStats)
+
+    const response = {
       students: studentsWithStats,
       pagination: {
         page,
         limit,
-        total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit)
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit)
       }
-    })
+    }
+
+    console.log('Final response:', response)
+    return NextResponse.json(response)
   } catch (error) {
     console.error('Admin students API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

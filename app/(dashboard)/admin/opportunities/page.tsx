@@ -29,7 +29,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Activity,
-  Star
+  Star,
+  X
 } from 'lucide-react'
 
 interface Opportunity {
@@ -47,6 +48,17 @@ interface Opportunity {
   confirmedRegistrations: number
   isFull: boolean
   isPast: boolean
+}
+
+interface Registration {
+  id: string
+  student_id: string
+  status: string
+  registered_at: string
+  profile_id: string
+  profile_full_name: string
+  profile_email: string
+  profile_student_id: string
 }
 
 interface OpportunitiesData {
@@ -76,8 +88,15 @@ export default function AdminOpportunities() {
     date: '',
     start_time: '',
     end_time: '',
-    max_volunteers: 10
+    max_volunteers: 10,
+    requirements: ''
   })
+  const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null)
+  const [showRegistrations, setShowRegistrations] = useState(false)
+  const [registrations, setRegistrations] = useState<Registration[]>([])
+  const [loadingRegistrations, setLoadingRegistrations] = useState(false)
+  const [managingRegistration, setManagingRegistration] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -100,11 +119,13 @@ export default function AdminOpportunities() {
     loadOpportunities()
   }, [currentPage, search, statusFilter])
 
+
+
   const loadOpportunities = async () => {
     try {
       const params = new URLSearchParams({
         page: currentPage.toString(),
-        limit: '20'
+        limit: '50'
       })
       
       if (search) params.append('search', search)
@@ -166,7 +187,8 @@ export default function AdminOpportunities() {
         date: '',
         start_time: '',
         end_time: '',
-        max_volunteers: 10
+        max_volunteers: 10,
+        requirements: ''
       })
       setShowCreateForm(false)
       await loadOpportunities()
@@ -198,6 +220,82 @@ export default function AdminOpportunities() {
     } catch (error) {
       console.error('Error deleting opportunity:', error)
       setError('Failed to delete opportunity')
+    }
+  }
+
+  const handleViewRegistrations = async (opportunity: Opportunity) => {
+    setSelectedOpportunity(opportunity)
+    setShowRegistrations(true)
+    await loadRegistrations(opportunity.id)
+  }
+
+  const loadRegistrations = async (opportunityId: string) => {
+    try {
+      setLoadingRegistrations(true)
+      console.log('Loading registrations for opportunity:', opportunityId)
+      const response = await fetch(`/api/admin/opportunities/${opportunityId}/registrations`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to load registrations')
+      }
+      
+      const data = await response.json()
+      console.log('Registrations data received:', data)
+      console.log('Registrations array:', data.registrations)
+      setRegistrations(data.registrations || [])
+    } catch (error) {
+      console.error('Error loading registrations:', error)
+      setError('Failed to load registrations')
+    } finally {
+      setLoadingRegistrations(false)
+    }
+  }
+
+  const handleManageRegistration = async (registrationId: string, action: 'approve' | 'decline' | 'kick') => {
+    if (!selectedOpportunity) return
+
+    // Add confirmation for kick action
+    if (action === 'kick') {
+      if (!confirm('Are you sure you want to remove this student from the opportunity? This action cannot be undone.')) {
+        return
+      }
+    }
+
+    try {
+      setManagingRegistration(registrationId)
+      console.log(`Frontend - ${action}ing registration:`, registrationId)
+      
+      const response = await fetch(`/api/admin/opportunities/${selectedOpportunity.id}/registrations`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ registrationId, action }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Failed to ${action} registration`)
+      }
+
+      const result = await response.json()
+      console.log(`Frontend - ${action} result:`, result)
+
+             // Clear registrations state and reload with a small delay to ensure database updates
+       setRegistrations([])
+       await new Promise(resolve => setTimeout(resolve, 500))
+       await loadRegistrations(selectedOpportunity.id)
+       await loadOpportunities()
+      
+      // Show success message
+      console.log(`Successfully ${action}ed registration`)
+      setSuccessMessage(`Successfully ${action}ed registration`)
+      setTimeout(() => setSuccessMessage(null), 3000) // Clear after 3 seconds
+    } catch (error) {
+      console.error(`Error ${action}ing registration:`, error)
+      setError(`Failed to ${action} registration: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setManagingRegistration(null)
     }
   }
 
@@ -241,8 +339,20 @@ export default function AdminOpportunities() {
         <div className="absolute top-40 left-10 h-72 w-72 rounded-full bg-blue-300/60 blur-3xl animate-blob animation-delay-4000" />
       </div>
 
-      {/* Header */}
-      <motion.header
+             {/* Success Message */}
+       {successMessage && (
+         <motion.div
+           initial={{ opacity: 0, y: -20 }}
+           animate={{ opacity: 1, y: 0 }}
+           exit={{ opacity: 0, y: -20 }}
+           className="fixed top-4 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg"
+         >
+           {successMessage}
+         </motion.div>
+       )}
+
+       {/* Header */}
+       <motion.header
         initial={{ y: -24, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5 }}
@@ -441,6 +551,17 @@ export default function AdminOpportunities() {
                     </div>
                   </div>
 
+                  <div className="space-y-2">
+                    <Label htmlFor="requirements">Requirements (Optional)</Label>
+                    <Textarea
+                      id="requirements"
+                      value={formData.requirements}
+                      onChange={(e) => setFormData({...formData, requirements: e.target.value})}
+                      placeholder="Any specific requirements for volunteers (e.g., age restrictions, skills needed, equipment required)..."
+                      rows={2}
+                    />
+                  </div>
+
                   <div className="flex gap-3">
                     <Button 
                       type="submit" 
@@ -532,8 +653,14 @@ export default function AdminOpportunities() {
 
                         {/* Actions */}
                         <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm" className="btn-secondary">
-                            <Eye className="h-4 w-4" />
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="btn-secondary"
+                            onClick={() => handleViewRegistrations(opportunity)}
+                          >
+                            <Users className="h-4 w-4 mr-1" />
+                            View ({opportunity.totalRegistrations})
                           </Button>
                           <Button variant="outline" size="sm" className="btn-secondary">
                             <Edit className="h-4 w-4" />
@@ -608,6 +735,114 @@ export default function AdminOpportunities() {
           </motion.div>
         )}
       </main>
+
+                           {/* Registrations Modal */}
+       {showRegistrations && selectedOpportunity && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Registrations for {selectedOpportunity.title}</h2>
+                  <p className="text-gray-600 mt-1">
+                    {selectedOpportunity.location} • {new Date(selectedOpportunity.date).toLocaleDateString()}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowRegistrations(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+              </div>
+
+              {loadingRegistrations ? (
+                <div className="flex items-center justify-center py-12">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full"
+                  />
+                </div>
+              ) : registrations.length > 0 ? (
+                <div className="space-y-4">
+
+                  {registrations.map((registration) => (
+                    <Card key={registration.id} className="border border-gray-200">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                                                         <div className="flex items-center gap-3 mb-2">
+                               <h3 className="font-semibold text-gray-900">
+                                 {registration.profile_full_name || 'Unknown Student'}
+                               </h3>
+                               <Badge className={
+                                 registration.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                 registration.status === 'denied' ? 'bg-red-100 text-red-800' :
+                                 'bg-orange-100 text-orange-800'
+                               }>
+                                 {registration.status}
+                               </Badge>
+                             </div>
+                             <div className="text-sm text-gray-600 space-y-1">
+                               <p>Email: {registration.profile_email || 'No email available'}</p>
+                               <p>Student ID: {registration.profile_student_id || 'No student ID'}</p>
+                               <p>Registered: {new Date(registration.registered_at).toLocaleDateString()}</p>
+                             </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            {registration.status === 'pending' && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  className="btn-primary"
+                                  onClick={() => handleManageRegistration(registration.id, 'approve')}
+                                  disabled={managingRegistration === registration.id}
+                                >
+                                  {managingRegistration === registration.id ? 'Approving...' : 'Approve'}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="btn-secondary"
+                                  onClick={() => handleManageRegistration(registration.id, 'decline')}
+                                  disabled={managingRegistration === registration.id}
+                                >
+                                  {managingRegistration === registration.id ? 'Declining...' : 'Decline'}
+                                </Button>
+                              </>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="btn-secondary text-red-600 hover:text-red-700"
+                              onClick={() => handleManageRegistration(registration.id, 'kick')}
+                              disabled={managingRegistration === registration.id}
+                            >
+                              {managingRegistration === registration.id ? 'Removing...' : 'Remove'}
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No registrations yet</h3>
+                  <p className="text-gray-600">Students can sign up for this opportunity from their dashboard.</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   )
 }

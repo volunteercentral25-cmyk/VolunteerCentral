@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
     }
 
-    // Get all volunteer opportunities with registration counts
+    // Get ALL volunteer opportunities with registration counts
     const { data: opportunitiesData, error: opportunitiesError } = await supabase
       .from('volunteer_opportunities')
       .select(`
@@ -33,7 +33,6 @@ export async function GET(request: NextRequest) {
           status
         )
       `)
-      .gte('date', new Date().toISOString().split('T')[0]) // Only future opportunities
       .order('date', { ascending: true })
 
     if (opportunitiesError) {
@@ -43,16 +42,17 @@ export async function GET(request: NextRequest) {
     // Process opportunities data
     const opportunities = opportunitiesData?.map(opportunity => {
       const registrations = opportunity.opportunity_registrations || []
-      const volunteersRegistered = registrations.length
-      const isRegistered = registrations.some((reg: any) => reg.student_id === profile.id)
+      const activeRegistrations = registrations.filter((reg: any) => reg.status !== 'denied')
+      const volunteersRegistered = activeRegistrations.length
+      const isRegistered = registrations.some((reg: any) => reg.student_id === profile.id && reg.status !== 'denied')
       
       // Calculate duration in hours
       const startTime = opportunity.start_time ? new Date(`2000-01-01T${opportunity.start_time}`) : null
       const endTime = opportunity.end_time ? new Date(`2000-01-01T${opportunity.end_time}`) : null
       const duration = startTime && endTime ? (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60) : 4
 
-      // Determine if featured (mock logic - could be based on admin selection)
-      const featured = Math.random() > 0.7 // 30% chance of being featured
+      // Determine if featured (ensure we have some featured opportunities)
+      const featured = Math.random() > 0.5 // 50% chance of being featured
 
       // Determine category based on title/description (mock logic)
       let category = 'general'
@@ -91,7 +91,8 @@ export async function GET(request: NextRequest) {
         difficulty,
         featured,
         isRegistered,
-        isFull: volunteersRegistered >= (opportunity.max_volunteers || 10)
+        isFull: volunteersRegistered >= (opportunity.max_volunteers || 10),
+        requirements: opportunity.requirements
       }
     }) || []
 
@@ -130,13 +131,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Opportunity ID is required' }, { status: 400 })
     }
 
-    // Check if already registered
+    // Check if already registered (excluding declined registrations)
     const { data: existingRegistration, error: checkError } = await supabase
       .from('opportunity_registrations')
       .select('*')
       .eq('opportunity_id', opportunityId)
       .eq('student_id', profile.id)
-      .single()
+      .neq('status', 'denied')
+      .maybeSingle()
 
     if (existingRegistration) {
       return NextResponse.json({ error: 'Already registered for this opportunity' }, { status: 400 })

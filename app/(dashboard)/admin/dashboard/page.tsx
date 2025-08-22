@@ -202,9 +202,9 @@ export default function AdminDashboard() {
         </motion.div>
 
         {/* Stats Cards */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
           className="grid md:grid-cols-4 gap-6 mb-12"
         >
@@ -263,13 +263,13 @@ export default function AdminDashboard() {
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+          </motion.div>
 
         {/* Management Cards */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
           className="grid md:grid-cols-3 gap-8 mb-12"
         >
           <Card className="glass-effect border-0 shadow-xl">
@@ -325,13 +325,13 @@ export default function AdminDashboard() {
               </Link>
             </CardContent>
           </Card>
-        </motion.div>
+          </motion.div>
 
         {/* Recent Activity */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.6 }}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
           className="grid md:grid-cols-2 gap-8"
         >
           {/* Recent Hours */}
@@ -364,7 +364,7 @@ export default function AdminDashboard() {
                 ) : (
                   <p className="text-gray-500 text-center py-4">No recent hours</p>
                 )}
-              </div>
+        </div>
             </CardContent>
           </Card>
 
@@ -389,12 +389,12 @@ export default function AdminDashboard() {
                       <p className="text-sm text-gray-500">
                         {new Date(opportunity.date).toLocaleDateString()}
                       </p>
-                    </div>
+        </div>
                   ))
                 ) : (
                   <p className="text-gray-500 text-center py-4">No upcoming opportunities</p>
                 )}
-              </div>
+      </div>
             </CardContent>
           </Card>
         </motion.div>

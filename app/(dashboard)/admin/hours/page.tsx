@@ -28,7 +28,8 @@ import {
   ChevronRight,
   Activity,
   MapPin,
-  Mail
+  Mail,
+  X
 } from 'lucide-react'
 
 interface HourEntry {
@@ -477,8 +478,14 @@ export default function AdminHours() {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-lg shadow-xl max-w-md w-full"
+            className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
           >
+            <button
+              onClick={() => setShowReviewModal(false)}
+              className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors z-10"
+            >
+              <X className="h-5 w-5 text-gray-500" />
+            </button>
             <CardHeader>
               <CardTitle>Review Hours</CardTitle>
               <CardDescription>Review and approve/deny volunteer hours</CardDescription>

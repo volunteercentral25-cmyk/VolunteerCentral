@@ -11,6 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { 
   Users,
   Search,
@@ -26,7 +28,14 @@ import {
   Filter,
   ChevronLeft,
   ChevronRight,
-  Activity
+  Activity,
+  Phone,
+  MapPin,
+  Save,
+  X,
+  Clock as ClockIcon,
+  CheckCircle,
+  AlertCircle
 } from 'lucide-react'
 
 interface Student {
@@ -34,6 +43,8 @@ interface Student {
   full_name: string
   email: string
   student_id: string
+  phone?: string
+  bio?: string
   role: string
   status: string
   created_at: string
@@ -42,6 +53,18 @@ interface Student {
   pendingHours: number
   totalRegistrations: number
   activeRegistrations: number
+}
+
+interface VolunteerHistory {
+  id: string
+  hours: number
+  description: string
+  status: string
+  created_at: string
+  verification_email?: string
+  verified_by?: string
+  verification_date?: string
+  verification_notes?: string
 }
 
 interface StudentsData {
@@ -62,6 +85,19 @@ export default function AdminStudents() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+  const [viewModalOpen, setViewModalOpen] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [volunteerHistory, setVolunteerHistory] = useState<VolunteerHistory[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  const [editForm, setEditForm] = useState({
+    full_name: '',
+    email: '',
+    student_id: '',
+    phone: '',
+    bio: ''
+  })
+  const [saving, setSaving] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -86,6 +122,7 @@ export default function AdminStudents() {
 
   const loadStudents = async () => {
     try {
+      setLoading(true)
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '20'
@@ -94,7 +131,10 @@ export default function AdminStudents() {
       if (search) params.append('search', search)
       if (statusFilter) params.append('status', statusFilter)
 
+      console.log('Loading students with params:', params.toString())
       const response = await fetch(`/api/admin/students?${params}`)
+      console.log('Response status:', response.status)
+      
       if (!response.ok) {
         if (response.status === 403) {
           router.push('/student/dashboard')
@@ -103,10 +143,14 @@ export default function AdminStudents() {
         throw new Error('Failed to load students')
       }
       const data = await response.json()
+      console.log('Students data received:', data)
       setStudentsData(data)
+      setError(null)
     } catch (error) {
       console.error('Error loading students:', error)
       setError('Failed to load students')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -125,7 +169,80 @@ export default function AdminStudents() {
     setCurrentPage(1)
   }
 
-  if (loading) {
+  const handleViewStudent = (student: Student) => {
+    setSelectedStudent(student)
+    setViewModalOpen(true)
+    fetchVolunteerHistory(student.id)
+  }
+
+  const fetchVolunteerHistory = async (studentId: string) => {
+    try {
+      setLoadingHistory(true)
+      console.log('Fetching volunteer history for student:', studentId)
+      const response = await fetch(`/api/admin/students/${studentId}/history`)
+      console.log('History response status:', response.status)
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Volunteer history data received:', data)
+        setVolunteerHistory(data.history || [])
+      } else {
+        console.error('Failed to fetch volunteer history')
+        setVolunteerHistory([])
+      }
+    } catch (error) {
+      console.error('Error fetching volunteer history:', error)
+      setVolunteerHistory([])
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+
+  const handleEditStudent = (student: Student) => {
+    setSelectedStudent(student)
+    setEditForm({
+      full_name: student.full_name,
+      email: student.email,
+      student_id: student.student_id,
+      phone: student.phone || '',
+      bio: student.bio || ''
+    })
+    setEditModalOpen(true)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!selectedStudent) return
+
+    try {
+      setSaving(true)
+      const response = await fetch('/api/admin/students', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          studentId: selectedStudent.id,
+          updates: editForm
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update student')
+      }
+
+      // Reload students to get updated data
+      await loadStudents()
+      setEditModalOpen(false)
+      setSelectedStudent(null)
+    } catch (error) {
+      console.error('Error updating student:', error)
+      setError('Failed to update student')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading && !studentsData) {
     return (
       <div className="min-h-screen gradient-bg flex items-center justify-center">
         <motion.div
@@ -137,7 +254,7 @@ export default function AdminStudents() {
     )
   }
 
-  if (error) {
+  if (error && !studentsData) {
     return (
       <div className="min-h-screen gradient-bg flex items-center justify-center">
         <Card className="glass-effect border-0 shadow-xl">
@@ -181,7 +298,7 @@ export default function AdminStudents() {
               </Link>
               <div className="h-6 w-px bg-gray-300" />
               <Link href="/" className="flex items-center gap-3">
-                <Image src="/images/cata-logo.png" alt="CATA Logo" width={32} height={32} className="rounded-lg shadow-glow" />
+                <Image src="/images/cata-logo.png" alt="volunteer Logo" width={32} height={32} className="rounded-lg shadow-glow" />
                 <div>
                   <p className="text-sm font-semibold text-gradient">volunteer</p>
                   <p className="text-xs text-gray-600">Student Management</p>
@@ -238,7 +355,7 @@ export default function AdminStudents() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
-                    placeholder="Search students..."
+                    placeholder="Search students by name, email, or ID..."
                     value={search}
                     onChange={(e) => handleSearch(e.target.value)}
                     className="pl-10"
@@ -250,7 +367,7 @@ export default function AdminStudents() {
                     onChange={(e) => handleStatusFilter(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
                   >
-                    <option value="">All Status</option>
+                    <option value="">All Students</option>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                   </select>
@@ -273,67 +390,98 @@ export default function AdminStudents() {
           <div className="grid gap-6">
             {studentsData?.students.length ? (
               studentsData.students.map((student) => (
-                <Card key={student.id} className="glass-effect border-0 shadow-xl">
+                <Card key={student.id} className="glass-effect border-0 shadow-xl hover:shadow-2xl transition-shadow">
                   <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-4 flex-1">
                         <div className="p-3 bg-blue-100 rounded-full">
                           <User className="h-6 w-6 text-blue-600" />
                         </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900">{student.full_name}</h3>
-                          <div className="flex items-center gap-4 text-sm text-gray-600">
-                            <span className="flex items-center gap-1">
-                              <Mail className="h-4 w-4" />
-                              {student.email}
-                            </span>
-                            {student.student_id && (
-                              <span className="flex items-center gap-1">
-                                <Award className="h-4 w-4" />
-                                ID: {student.student_id}
-                              </span>
-                            )}
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-4 w-4" />
-                              Joined {new Date(student.created_at).toLocaleDateString()}
-                            </span>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-lg font-semibold text-gray-900">{student.full_name}</h3>
+                            <Badge className={
+                              student.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            }>
+                              {student.status}
+                            </Badge>
+                          </div>
+                          
+                          <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-600 mb-4">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <Mail className="h-4 w-4" />
+                                <span>{student.email}</span>
+                              </div>
+                              {student.student_id && (
+                                <div className="flex items-center gap-2">
+                                  <Award className="h-4 w-4" />
+                                  <span>Student ID: {student.student_id}</span>
+                                </div>
+                              )}
+                              {student.phone && (
+                                <div className="flex items-center gap-2">
+                                  <Phone className="h-4 w-4" />
+                                  <span>{student.phone}</span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4" />
+                                <span>Joined {new Date(student.created_at).toLocaleDateString()}</span>
+                              </div>
+                              {student.bio && (
+                                <div className="flex items-start gap-2">
+                                  <MapPin className="h-4 w-4 mt-0.5" />
+                                  <span className="text-xs">{student.bio}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Stats Grid */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+                            <div className="text-center">
+                              <p className="text-lg font-bold text-purple-600">{student.approvedHours}</p>
+                              <p className="text-xs text-gray-500">Approved Hours</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-lg font-bold text-orange-600">{student.pendingHours}</p>
+                              <p className="text-xs text-gray-500">Pending Hours</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-lg font-bold text-green-600">{student.totalRegistrations}</p>
+                              <p className="text-xs text-gray-500">Total Registrations</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-lg font-bold text-blue-600">{student.activeRegistrations}</p>
+                              <p className="text-xs text-gray-500">Active Registrations</p>
+                            </div>
                           </div>
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-6">
-                        {/* Stats */}
-                        <div className="hidden md:flex items-center gap-4 text-sm">
-                          <div className="text-center">
-                            <p className="font-semibold text-purple-600">{student.approvedHours}</p>
-                            <p className="text-gray-500">Approved Hours</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="font-semibold text-orange-600">{student.pendingHours}</p>
-                            <p className="text-gray-500">Pending</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="font-semibold text-green-600">{student.totalRegistrations}</p>
-                            <p className="text-gray-500">Registrations</p>
-                          </div>
-                        </div>
-
-                        {/* Status Badge */}
-                        <Badge className={
-                          student.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }>
-                          {student.status}
-                        </Badge>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm" className="btn-secondary">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="outline" size="sm" className="btn-secondary">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </div>
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 ml-4">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="btn-secondary"
+                          onClick={() => handleViewStudent(student)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="btn-secondary"
+                          onClick={() => handleEditStudent(student)}
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -395,6 +543,265 @@ export default function AdminStudents() {
           </motion.div>
         )}
       </main>
+
+      {/* View Student Modal */}
+      <Dialog open={viewModalOpen} onOpenChange={setViewModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+          <button
+            onClick={() => setViewModalOpen(false)}
+            className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors z-10"
+          >
+            <X className="h-5 w-5 text-gray-500" />
+          </button>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Student Details
+            </DialogTitle>
+            <DialogDescription>
+              View detailed information about {selectedStudent?.full_name}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedStudent && (
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700">Full Name</Label>
+                    <p className="text-lg font-semibold">{selectedStudent.full_name}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700">Email</Label>
+                    <p className="text-gray-900">{selectedStudent.email}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700">Student ID</Label>
+                    <p className="text-gray-900">{selectedStudent.student_id}</p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700">Phone</Label>
+                    <p className="text-gray-900">{selectedStudent.phone || 'Not provided'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700">Join Date</Label>
+                    <p className="text-gray-900">{new Date(selectedStudent.created_at).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700">Status</Label>
+                    <Badge className={
+                      selectedStudent.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }>
+                      {selectedStudent.status}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bio */}
+              {selectedStudent.bio && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-700">Bio</Label>
+                  <p className="text-gray-900 mt-1">{selectedStudent.bio}</p>
+                </div>
+              )}
+
+              {/* Volunteer Statistics */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-lg font-semibold mb-4">Volunteer Statistics</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-2 mb-1">
+                      <CheckCircle className="h-5 w-5 text-purple-600" />
+                      <p className="text-xl font-bold text-purple-600">{selectedStudent.approvedHours}</p>
+                    </div>
+                    <p className="text-xs text-gray-500">Approved Hours</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-2 mb-1">
+                      <ClockIcon className="h-5 w-5 text-orange-600" />
+                      <p className="text-xl font-bold text-orange-600">{selectedStudent.pendingHours}</p>
+                    </div>
+                    <p className="text-xs text-gray-500">Pending Hours</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-2 mb-1">
+                      <Users className="h-5 w-5 text-green-600" />
+                      <p className="text-xl font-bold text-green-600">{selectedStudent.totalRegistrations}</p>
+                    </div>
+                    <p className="text-xs text-gray-500">Total Registrations</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-2 mb-1">
+                      <Activity className="h-5 w-5 text-blue-600" />
+                      <p className="text-xl font-bold text-blue-600">{selectedStudent.activeRegistrations}</p>
+                    </div>
+                    <p className="text-xs text-gray-500">Active Registrations</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Volunteer History */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-lg font-semibold mb-4">Volunteer History</h3>
+                {loadingHistory ? (
+                  <div className="flex items-center justify-center py-8">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      className="w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full"
+                    />
+                  </div>
+                ) : volunteerHistory.length > 0 ? (
+                  <div className="space-y-3">
+                    {volunteerHistory.map((entry) => (
+                      <div key={entry.id} className="bg-white p-3 rounded-lg border border-gray-200">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Badge className={
+                                entry.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                entry.status === 'pending' ? 'bg-orange-100 text-orange-800' :
+                                'bg-red-100 text-red-800'
+                              }>
+                                {entry.status}
+                              </Badge>
+                              <span className="text-sm font-medium text-gray-900">
+                                {entry.hours} hours
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-700 mb-2">{entry.description}</p>
+                            <div className="flex items-center gap-4 text-xs text-gray-500">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {new Date(entry.created_at).toLocaleDateString()}
+                              </span>
+                              {entry.verification_email && (
+                                <span className="flex items-center gap-1">
+                                  <Mail className="h-3 w-3" />
+                                  {entry.verification_email}
+                                </span>
+                              )}
+                            </div>
+                            {entry.verification_notes && (
+                              <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-600">
+                                <strong>Notes:</strong> {entry.verification_notes}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-500">No volunteer history found</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Student Modal */}
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+          <button
+            onClick={() => setEditModalOpen(false)}
+            className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors z-10"
+          >
+            <X className="h-5 w-5 text-gray-500" />
+          </button>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="h-5 w-5" />
+              Edit Student
+            </DialogTitle>
+            <DialogDescription>
+              Update information for {selectedStudent?.full_name}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedStudent && (
+            <div className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="full_name">Full Name</Label>
+                  <Input
+                    id="full_name"
+                    value={editForm.full_name}
+                    onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+                    placeholder="Enter full name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                    placeholder="Enter email"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="student_id">Student ID</Label>
+                  <Input
+                    id="student_id"
+                    value={editForm.student_id}
+                    onChange={(e) => setEditForm({ ...editForm, student_id: e.target.value })}
+                    placeholder="Enter student ID"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input
+                    id="phone"
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    placeholder="Enter phone number"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="bio">Bio</Label>
+                <Textarea
+                  id="bio"
+                  value={editForm.bio}
+                  onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
+                  placeholder="Enter bio or description"
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setEditModalOpen(false)}
+                  disabled={saving}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveEdit}
+                  disabled={saving}
+                  className="btn-primary"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

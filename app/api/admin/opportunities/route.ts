@@ -37,8 +37,8 @@ export async function GET(request: NextRequest) {
       .from('volunteer_opportunities')
       .select(`
         *,
-        opportunity_registrations(id, status, profiles!inner(full_name))
-      `)
+        opportunity_registrations(id, status, student_id)
+      `, { count: 'exact' })
 
     // Add search filter
     if (search) {
@@ -55,11 +55,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get total count for pagination
-    const { count } = await query
-
-    // Get paginated results
-    const { data: opportunities, error } = await query
+    // Get paginated results and count
+    const { data: opportunities, error, count } = await query
       .order('date', { ascending: true })
       .range(offset, offset + limit - 1)
 
@@ -70,13 +67,14 @@ export async function GET(request: NextRequest) {
     // Calculate additional stats for each opportunity
     const opportunitiesWithStats = opportunities?.map(opportunity => {
       const registrations = opportunity.opportunity_registrations || []
+      const activeRegistrations = registrations.filter((r: any) => r.status !== 'denied')
       
       return {
         ...opportunity,
-        totalRegistrations: registrations.length,
+        totalRegistrations: activeRegistrations.length,
         pendingRegistrations: registrations.filter((r: any) => r.status === 'pending').length,
         confirmedRegistrations: registrations.filter((r: any) => r.status === 'approved').length,
-        isFull: registrations.length >= (opportunity.max_volunteers || 10),
+        isFull: activeRegistrations.length >= (opportunity.max_volunteers || 10),
         isPast: new Date(opportunity.date) < new Date()
       }
     }) || []
@@ -118,7 +116,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { title, description, location, date, start_time, end_time, max_volunteers } = body
+    const { title, description, location, date, start_time, end_time, max_volunteers, requirements } = body
 
     if (!title || !description || !location || !date) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -135,6 +133,7 @@ export async function POST(request: NextRequest) {
         start_time,
         end_time,
         max_volunteers: max_volunteers || 10,
+        requirements: requirements || null,
         created_by: user.id
       })
       .select()
