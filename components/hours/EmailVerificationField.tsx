@@ -104,7 +104,7 @@ export function EmailVerificationField({
   const verifyEmail = async (email: string) => {
     setIsVerifying(true)
     try {
-      // First check if it's a popular personal email provider
+      // First check if it's a popular personal email provider (PRIORITY CHECK)
       const domain = email.split('@')[1]?.toLowerCase()
       const isPersonal = POPULAR_PERSONAL_EMAIL_PROVIDERS.includes(domain)
       
@@ -121,7 +121,22 @@ export function EmailVerificationField({
         return
       }
 
-      // First try the EmailListVerify API
+      // Then check if it's a disposable email (SECONDARY CHECK)
+      const isDisposableLocal = isDisposableEmailSync(email)
+      if (isDisposableLocal) {
+        setValidationResult({
+          isValid: false,
+          isDisposable: true,
+          isPersonal: false,
+          status: 401,
+          message: 'Disposable email detected (local check)',
+          source: 'local'
+        })
+        onValidationChange(false)
+        return
+      }
+
+      // Only if it passes both checks, try the EmailListVerify API
       const response = await fetch('/api/email-verification', {
         method: 'POST',
         headers: {
