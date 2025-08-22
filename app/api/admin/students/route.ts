@@ -47,9 +47,13 @@ export async function GET(request: NextRequest) {
       query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%,student_id.ilike.%${search}%`)
     }
 
-    // Add status filter
+    // Add status filter (we'll use is_admin field as status for now)
     if (status) {
-      query = query.eq('status', status)
+      if (status === 'active') {
+        query = query.eq('is_admin', false)
+      } else if (status === 'inactive') {
+        query = query.eq('is_admin', true)
+      }
     }
 
     // Get total count for pagination
@@ -71,11 +75,12 @@ export async function GET(request: NextRequest) {
       
       return {
         ...student,
-        totalHours: hours.reduce((sum: number, h: any) => sum + (h.hours || 0), 0),
-        approvedHours: hours.filter((h: any) => h.status === 'approved').reduce((sum: number, h: any) => sum + (h.hours || 0), 0),
+        totalHours: hours.reduce((sum: any, h: any) => sum + (h.hours || 0), 0),
+        approvedHours: hours.filter((h: any) => h.status === 'approved').reduce((sum: any, h: any) => sum + (h.hours || 0), 0),
         pendingHours: hours.filter((h: any) => h.status === 'pending').length,
         totalRegistrations: registrations.length,
-        activeRegistrations: registrations.filter((r: any) => r.status === 'pending').length
+        activeRegistrations: registrations.filter((r: any) => r.status === 'pending').length,
+        status: student.is_admin ? 'inactive' : 'active' // Map is_admin to status
       }
     }) || []
 

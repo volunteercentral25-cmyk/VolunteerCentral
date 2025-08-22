@@ -134,7 +134,8 @@ export async function POST(request: NextRequest) {
         date,
         start_time,
         end_time,
-        max_volunteers: max_volunteers || 10
+        max_volunteers: max_volunteers || 10,
+        created_by: user.id
       })
       .select()
       .single()

@@ -62,8 +62,15 @@ export async function GET(request: NextRequest) {
       throw error
     }
 
+    // Transform the data to match the expected interface
+    const transformedHours = hours?.map(hour => ({
+      ...hour,
+      activity: hour.description || 'No description provided', // Map description to activity for frontend compatibility
+      location: hour.location || 'N/A' // Add location field if it doesn't exist
+    })) || []
+
     return NextResponse.json({
-      hours: hours || [],
+      hours: transformedHours,
       pagination: {
         page,
         limit,
