@@ -193,12 +193,12 @@ export default function RegisterPage() {
             transition={{ duration: 0.5 }}
             className="flex justify-center mb-6"
           >
-            <Image
-              src="/images/cata-logo.png"
-              alt="CATA Logo"
-              width={80}
-              height={80}
-              className="rounded-lg"
+            <Image 
+              src="/logo.png"
+              alt="CATA Logo" 
+              width={64} 
+              height={64} 
+              className="mx-auto mb-6 rounded-lg shadow-glow" 
             />
           </motion.div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h1>

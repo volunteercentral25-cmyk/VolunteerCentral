@@ -162,3 +162,112 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
+
+export async function PUT(request: NextRequest) {
+  try {
+    const supabase = createClient()
+    
+    // Get the current user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Parse request body
+    const { full_name, student_id, email } = await request.json()
+
+    // Validate required fields
+    if (!full_name || !student_id || !email) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    // Validate student ID format
+    if (!/^\d{10}$/.test(student_id)) {
+      return NextResponse.json({ error: 'Student ID must be exactly 10 digits' }, { status: 400 })
+    }
+
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ error: 'Invalid email format' }, { status: 400 })
+    }
+
+    // Check if email is already taken by another user
+    const { data: existingUser, error: checkError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', email)
+      .neq('id', user.id)
+      .single()
+
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('Email check error:', checkError)
+      return NextResponse.json({ error: 'Failed to check email availability' }, { status: 500 })
+    }
+
+    if (existingUser) {
+      return NextResponse.json({ error: 'Email address is already in use' }, { status: 400 })
+    }
+
+    // Check if student ID is already taken by another user
+    const { data: existingStudent, error: studentCheckError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('student_id', student_id)
+      .neq('id', user.id)
+      .single()
+
+    if (studentCheckError && studentCheckError.code !== 'PGRST116') {
+      console.error('Student ID check error:', studentCheckError)
+      return NextResponse.json({ error: 'Failed to check student ID availability' }, { status: 500 })
+    }
+
+    if (existingStudent) {
+      return NextResponse.json({ error: 'Student ID is already registered' }, { status: 400 })
+    }
+
+    // Update profile
+    const { data: updatedProfile, error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        full_name: full_name.trim(),
+        student_id: student_id.trim(),
+        email: email.trim(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', user.id)
+      .select()
+      .single()
+
+    if (updateError) {
+      console.error('Profile update error:', updateError)
+      return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 })
+    }
+
+    // Update auth email if it changed
+    if (email !== user.email) {
+      const { error: emailUpdateError } = await supabase.auth.updateUser({
+        email: email.trim()
+      })
+
+      if (emailUpdateError) {
+        console.error('Email update error:', emailUpdateError)
+        // Don't fail the request, just log the error
+        // The profile was updated successfully
+      }
+    }
+
+    return NextResponse.json({
+      id: updatedProfile.id,
+      email: updatedProfile.email,
+      student_id: updatedProfile.student_id,
+      full_name: updatedProfile.full_name,
+      role: updatedProfile.role,
+      created_at: updatedProfile.created_at
+    })
+
+  } catch (error) {
+    console.error('Profile update API error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}

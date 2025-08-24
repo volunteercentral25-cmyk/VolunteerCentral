@@ -52,12 +52,12 @@ function VerifyEmailInner() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <Image
-              src="/images/cata-logo.png"
-              alt="volunteer"
-              width={80}
-              height={80}
-              className="rounded-lg"
+            <Image 
+              src="/logo.png"
+              alt="CATA Logo" 
+              width={64} 
+              height={64} 
+              className="mx-auto mb-6 rounded-lg shadow-glow" 
             />
           </div>
           <CardTitle className="text-2xl font-bold text-gray-900">

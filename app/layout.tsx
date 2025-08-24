@@ -10,14 +10,12 @@ export const metadata: Metadata = {
   description: 'volunteer',
   icons: {
     icon: [
-      { url: '/cata-logo.png' },
-      { url: '/images/cata-logo.png' },
+      { url: '/logo.png' },
     ],
     apple: [
-      { url: '/cata-logo.png' },
-      { url: '/images/cata-logo.png' },
+      { url: '/logo.png' },
     ],
-    shortcut: ['/cata-logo.png'],
+    shortcut: ['/logo.png'],
   },
 }
 

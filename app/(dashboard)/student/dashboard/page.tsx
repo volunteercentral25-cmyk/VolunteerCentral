@@ -12,6 +12,8 @@ import {
   LoadingSpinner,
   ErrorDisplay
 } from '@/components/dashboard'
+import Link from 'next/link'
+import Image from 'next/image'
 
 export default function StudentDashboard() {
   const { data, loading, error, refetch } = useDashboard()

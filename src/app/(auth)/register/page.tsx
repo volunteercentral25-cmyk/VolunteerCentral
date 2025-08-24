@@ -127,7 +127,7 @@ export default function RegisterPage() {
             className="flex justify-center mb-6"
           >
             <Image
-              src="/images/cata-logo.png"
+              src="/logo.png"
               alt="CATA Logo"
               width={80}
               height={80}

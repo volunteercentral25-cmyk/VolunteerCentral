@@ -54,7 +54,7 @@ export default function StudentDashboard() {
             className="flex justify-center mb-6"
           >
             <Image
-              src="/images/cata-logo.png"
+              src="/logo.png"
               alt="CATA Logo"
               width={100}
               height={100}

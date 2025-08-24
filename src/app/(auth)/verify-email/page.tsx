@@ -53,7 +53,7 @@ function VerifyEmailInner() {
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <Image
-              src="/images/cata-logo.png"
+              src="/logo.png"
               alt="CATA Volunteer"
               width={80}
               height={80}

@@ -33,7 +33,7 @@ export function DashboardHeader({ profile }: DashboardHeaderProps) {
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
             <Image 
-              src="/images/cata-logo.png" 
+              src="/logo.png" 
               alt="CATA Logo" 
               width={48} 
               height={48} 

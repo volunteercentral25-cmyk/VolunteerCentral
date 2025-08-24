@@ -256,7 +256,7 @@ export default function StudentOpportunities() {
               </Link>
               <div className="h-6 w-px bg-gray-300" />
               <Link href="/" className="flex items-center gap-3">
-                <Image src="/images/cata-logo.png" alt="CATA Logo" width={32} height={32} className="rounded-lg shadow-glow" />
+                <Image src="/logo.png" alt="CATA Logo" width={32} height={32} className="rounded-lg shadow-glow" />
                 <div>
                   <p className="text-sm font-semibold text-gradient">volunteer</p>
                   <p className="text-xs text-gray-600">Opportunities</p>

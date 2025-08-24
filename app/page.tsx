@@ -156,7 +156,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl px-4 py-4">
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center gap-3">
-              <Image src="/images/cata-logo.png" alt="CATA Logo" width={48} height={48} className="rounded-lg shadow-glow" />
+              <Image src="/logo.png" alt="CATA Logo" width={48} height={48} className="rounded-lg shadow-glow" />
               <div>
                 <p className="text-lg font-semibold text-gradient">volunteer</p>
                 <p className="text-xs text-gray-600">Community Action Through Volunteering</p>
@@ -424,7 +424,7 @@ export default function HomePage() {
       <footer className="mt-8 border-t border-white/40 bg-white/60 py-8 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 text-center text-sm text-gray-600 md:flex-row">
           <div className="flex items-center gap-2">
-            <Image src="/images/cata-logo.png" alt="CATA Logo" width={24} height={24} className="rounded" />
+            <Image src="/logo.png" alt="CATA Logo" width={24} height={24} className="rounded" />
             <span>volunteer</span>
           </div>
           <p>© {new Date().getFullYear()} Central High School. All rights reserved.</p>

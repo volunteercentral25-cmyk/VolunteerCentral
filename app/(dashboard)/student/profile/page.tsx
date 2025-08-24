@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { EditProfileModal } from '@/components/profile'
 import { 
   User,
   LogOut,
@@ -58,6 +59,7 @@ export default function StudentProfile() {
   const [profileData, setProfileData] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -95,6 +97,18 @@ export default function StudentProfile() {
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     router.push('/')
+  }
+
+  const handleProfileUpdate = (updatedProfile: any) => {
+    if (profileData) {
+      setProfileData({
+        ...profileData,
+        profile: {
+          ...profileData.profile,
+          ...updatedProfile
+        }
+      })
+    }
   }
 
   if (loading) {
@@ -171,7 +185,7 @@ export default function StudentProfile() {
               </Link>
               <div className="h-6 w-px bg-gray-300" />
               <Link href="/" className="flex items-center gap-3">
-                <Image src="/images/cata-logo.png" alt="CATA Logo" width={32} height={32} className="rounded-lg shadow-glow" />
+                <Image src="/logo.png" alt="CATA Logo" width={32} height={32} className="rounded-lg shadow-glow" />
                 <div>
                   <p className="text-sm font-semibold text-gradient">volunteer</p>
                   <p className="text-xs text-gray-600">Profile</p>
@@ -269,7 +283,10 @@ export default function StudentProfile() {
                   </div>
                 </div>
 
-                <Button className="btn-primary w-full mt-6">
+                <Button 
+                  className="btn-primary w-full mt-6"
+                  onClick={() => setIsEditModalOpen(true)}
+                >
                   <Edit className="h-4 w-4 mr-2" />
                   Edit Profile
                 </Button>
@@ -420,6 +437,14 @@ export default function StudentProfile() {
           </motion.div>
         </div>
       </main>
+
+      {/* Edit Profile Modal */}
+      <EditProfileModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        profile={profile}
+        onProfileUpdate={handleProfileUpdate}
+      />
     </div>
   )
 }

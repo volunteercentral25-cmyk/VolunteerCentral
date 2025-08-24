@@ -59,7 +59,7 @@ export function Navigation({
             href={userRole === "admin" ? "/admin/dashboard" : "/student/dashboard"}
             className="flex items-center space-x-3"
           >
-            <Image src="/cata-logo.png" alt="CATA Logo" width={40} height={40} className="animate-pulse-cata" />
+            <Image src="/logo.png" alt="CATA Logo" width={40} height={40} className="animate-pulse-cata" />
             <div>
               <h1 className="text-xl font-serif font-bold text-primary">CATA Volunteer</h1>
               <p className="text-sm text-muted-foreground font-sans">

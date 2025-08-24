@@ -6,18 +6,16 @@ import type { Metadata } from 'next'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'CATA Volunteer',
-  description: 'Community Action Through Volunteering',
+  title: 'volunteer',
+  description: 'volunteer',
   icons: {
     icon: [
-      { url: '/cata-logo.png' },
-      { url: '/images/cata-logo.png' },
+      { url: '/logo.png' },
     ],
     apple: [
-      { url: '/cata-logo.png' },
-      { url: '/images/cata-logo.png' },
+      { url: '/logo.png' },
     ],
-    shortcut: ['/cata-logo.png'],
+    shortcut: ['/logo.png'],
   },
 }
 
