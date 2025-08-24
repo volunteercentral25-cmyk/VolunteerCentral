@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
+import Link from 'next/link'
 
 function VerifyEmailInner() {
   const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying')
@@ -51,15 +52,13 @@ function VerifyEmailInner() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <Image 
-              src="/logo.png"
-              alt="CATA Logo" 
-              width={64} 
-              height={64} 
-              className="mx-auto mb-6 rounded-lg shadow-glow" 
-            />
-          </div>
+          <Link href="/" className="flex items-center gap-3">
+            <Image src="/logo.png" alt="Volunteer Central Logo" width={32} height={32} className="rounded-lg shadow-glow" />
+            <div>
+              <p className="text-sm font-semibold text-gradient">Volunteer Central</p>
+              <p className="text-xs text-gray-600">Email Verification</p>
+            </div>
+          </Link>
           <CardTitle className="text-2xl font-bold text-gray-900">
             Email Verification
           </CardTitle>

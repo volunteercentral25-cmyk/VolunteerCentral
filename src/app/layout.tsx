@@ -6,16 +6,12 @@ import type { Metadata } from 'next'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'volunteer',
-  description: 'volunteer',
+  title: 'Volunteer Central',
+  description: 'Connect, serve, and make a difference in your community through volunteer opportunities.',
   icons: {
-    icon: [
-      { url: '/logo.png' },
-    ],
-    apple: [
-      { url: '/logo.png' },
-    ],
-    shortcut: ['/logo.png'],
+    icon: '/logo.png',
+    apple: '/logo.png',
+    shortcut: '/logo.png',
   },
 }
 

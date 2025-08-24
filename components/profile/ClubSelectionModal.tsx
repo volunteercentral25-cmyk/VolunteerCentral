@@ -104,7 +104,7 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete }: ClubSelectio
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 to-pink-600">
                   <Users className="h-8 w-8 text-white" />
                 </div>
-                <CardTitle className="text-gradient text-xl">Welcome to CATA Volunteer Central!</CardTitle>
+                <CardTitle className="text-gradient text-xl">Welcome to Volunteer Central!</CardTitle>
                 <CardDescription>Tell us about your club memberships to help us personalize your experience</CardDescription>
               </CardHeader>
 

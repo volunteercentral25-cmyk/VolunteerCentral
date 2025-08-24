@@ -87,13 +87,13 @@ export default function LoginPage() {
             transition={{ duration: 0.5 }}
             className="flex justify-center mb-6"
           >
-            <Image 
-              src="/logo.png"
-              alt="CATA Logo" 
-              width={64} 
-              height={64} 
-              className="mx-auto mb-6 rounded-lg shadow-glow" 
-            />
+            <Link href="/" className="flex items-center gap-3">
+              <Image src="/logo.png" alt="Volunteer Central Logo" width={32} height={32} className="rounded-lg shadow-glow" />
+              <div>
+                <p className="text-sm font-semibold text-gradient">Volunteer Central</p>
+                <p className="text-xs text-gray-600">Sign In</p>
+              </div>
+            </Link>
           </motion.div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
           <p className="text-gray-600">Sign in to your volunteer account</p>

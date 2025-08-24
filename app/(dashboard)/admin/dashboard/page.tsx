@@ -157,9 +157,9 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href="/" className="flex items-center gap-3">
-                <Image src="/logo.png" alt="CATA Logo" width={32} height={32} className="rounded-lg shadow-glow" />
+                <Image src="/logo.png" alt="Volunteer Central Logo" width={32} height={32} className="rounded-lg shadow-glow" />
                 <div>
-                  <p className="text-sm font-semibold text-gradient">volunteer</p>
+                  <p className="text-sm font-semibold text-gradient">Volunteer Central</p>
                   <p className="text-xs text-gray-600">Admin Dashboard</p>
                 </div>
               </Link>
