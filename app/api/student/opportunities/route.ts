@@ -139,7 +139,13 @@ export async function GET(request: NextRequest) {
       return true
     })
 
-    return NextResponse.json({ opportunities: filteredOpportunities })
+    return NextResponse.json({ 
+      opportunities: filteredOpportunities,
+      userClubs: {
+        beta_club: profile.beta_club || false,
+        nths: profile.nths || false
+      }
+    })
   } catch (error) {
     console.error('Opportunities API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -174,6 +180,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Opportunity ID is required' }, { status: 400 })
     }
 
+    // Get the opportunity details to check club restrictions
+    const { data: opportunity, error: opportunityError } = await supabase
+      .from('volunteer_opportunities')
+      .select('*')
+      .eq('id', opportunityId)
+      .single()
+
+    if (opportunityError || !opportunity) {
+      return NextResponse.json({ error: 'Opportunity not found' }, { status: 404 })
+    }
+
+    // Check if student meets the club restriction requirements
+    const { club_restriction } = opportunity
+    
+    if (club_restriction !== 'anyone') {
+      let hasAccess = false
+      
+      if (club_restriction === 'beta_club') {
+        hasAccess = profile.beta_club === true
+      } else if (club_restriction === 'nths') {
+        hasAccess = profile.nths === true
+      } else if (club_restriction === 'both') {
+        hasAccess = profile.beta_club === true && profile.nths === true
+      }
+      
+      if (!hasAccess) {
+        return NextResponse.json({ 
+          error: `This opportunity is restricted to ${club_restriction === 'beta_club' ? 'Beta Club' : club_restriction === 'nths' ? 'NTHS' : 'both Beta Club and NTHS'} members only. You do not have the required club membership.` 
+        }, { status: 403 })
+      }
+    }
+
     // Check if already registered (excluding declined registrations)
     const { data: existingRegistration, error: checkError } = await supabase
       .from('opportunity_registrations')
@@ -204,13 +242,6 @@ export async function POST(request: NextRequest) {
 
     // Send confirmation email (best-effort)
     try {
-      // Fetch opportunity details
-      const { data: opportunity } = await supabase
-        .from('volunteer_opportunities')
-        .select('*')
-        .eq('id', opportunityId)
-        .single()
-
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || ''
       const emailEndpoint = baseUrl ? `${baseUrl}/api/email/opportunity-confirmation` : '/api/email/opportunity-confirmation'
       await fetch(emailEndpoint, {

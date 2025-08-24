@@ -53,6 +53,7 @@ export default function StudentOpportunities() {
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [selectedClub, setSelectedClub] = useState('all')
   const [opportunities, setOpportunities] = useState<Opportunity[]>([])
+  const [userClubs, setUserClubs] = useState({ beta_club: false, nths: false })
   const [error, setError] = useState<string | null>(null)
   const [registering, setRegistering] = useState<string | null>(null)
   const [leaving, setLeaving] = useState<string | null>(null)
@@ -93,6 +94,7 @@ export default function StudentOpportunities() {
       }
       const data = await response.json()
       setOpportunities(data.opportunities)
+      setUserClubs(data.userClubs || { beta_club: false, nths: false })
     } catch (error) {
       console.error('Error fetching opportunities:', error)
       setError('Failed to load opportunities')
@@ -137,6 +139,33 @@ export default function StudentOpportunities() {
       setError(error instanceof Error ? error.message : 'Failed to register')
     } finally {
       setRegistering(null)
+    }
+  }
+
+  const canRegisterForOpportunity = (opportunity: Opportunity) => {
+    // Check if student meets club requirements
+    if (opportunity.club_restriction && opportunity.club_restriction !== 'anyone') {
+      if (opportunity.club_restriction === 'beta_club') {
+        return userClubs.beta_club
+      } else if (opportunity.club_restriction === 'nths') {
+        return userClubs.nths
+      } else if (opportunity.club_restriction === 'both') {
+        return userClubs.beta_club && userClubs.nths
+      }
+    }
+    return true
+  }
+
+  const getRestrictionMessage = (restriction: string) => {
+    switch (restriction) {
+      case 'beta_club':
+        return 'Beta Club members only'
+      case 'nths':
+        return 'NTHS members only'
+      case 'both':
+        return 'Both Beta Club and NTHS members only'
+      default:
+        return 'Open to all students'
     }
   }
 
@@ -473,10 +502,23 @@ export default function StudentOpportunities() {
                         <Badge className={getDifficultyColor(opportunity.difficulty)}>
                           {opportunity.difficulty}
                         </Badge>
+                        
+                        {/* Show restriction message if applicable */}
+                        {opportunity.club_restriction && opportunity.club_restriction !== 'anyone' && (
+                          <div className="text-xs text-gray-500 text-center mb-2">
+                            {getRestrictionMessage(opportunity.club_restriction)}
+                          </div>
+                        )}
+                        
                         <Button 
                           onClick={() => opportunity.isRegistered ? handleLeave(opportunity.id) : handleRegister(opportunity.id)}
                           className={opportunity.isRegistered ? "btn-secondary" : "btn-primary"}
-                          disabled={opportunity.isFull && !opportunity.isRegistered || registering === opportunity.id || leaving === opportunity.id}
+                          disabled={
+                            opportunity.isFull && !opportunity.isRegistered || 
+                            registering === opportunity.id || 
+                            leaving === opportunity.id ||
+                            !canRegisterForOpportunity(opportunity)
+                          }
                         >
                           {registering === opportunity.id || leaving === opportunity.id ? (
                             <>
@@ -494,6 +536,8 @@ export default function StudentOpportunities() {
                             </>
                           ) : opportunity.isFull ? (
                             'Full'
+                          ) : !canRegisterForOpportunity(opportunity) ? (
+                            'Not Eligible'
                           ) : (
                             <>
                               <Heart className="h-4 w-4 mr-2" />
