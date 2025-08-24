@@ -142,7 +142,10 @@ export async function GET(request: NextRequest) {
         student_id: profile.student_id,
         full_name: profile.full_name,
         role: profile.role,
-        created_at: profile.created_at
+        created_at: profile.created_at,
+        beta_club: profile.beta_club || false,
+        nths: profile.nths || false,
+        clubs_completed: profile.clubs_completed || false
       },
       stats: {
         totalHours: totalHours,

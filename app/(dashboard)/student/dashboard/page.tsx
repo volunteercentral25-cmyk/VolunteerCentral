@@ -1,8 +1,10 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
 import { useDashboard } from '@/lib/hooks/useDashboard'
+import { ClubSelectionModal } from '@/components/profile'
 import {
   DashboardHeader,
   StatsCards,
@@ -17,6 +19,39 @@ import Image from 'next/image'
 
 export default function StudentDashboard() {
   const { data, loading, error, refetch } = useDashboard()
+  const [showClubModal, setShowClubModal] = useState(false)
+  const [clubModalChecked, setClubModalChecked] = useState(false)
+
+  // Check if user needs to complete club selection
+  useEffect(() => {
+    const checkClubStatus = async () => {
+      if (data?.profile && !clubModalChecked) {
+        try {
+          const response = await fetch('/api/student/clubs')
+          if (response.ok) {
+            const clubData = await response.json()
+            // Show modal if clubs_completed is false or null
+            if (!clubData.clubs_completed) {
+              setShowClubModal(true)
+            }
+          }
+        } catch (error) {
+          console.error('Error checking club status:', error)
+        }
+        setClubModalChecked(true)
+      }
+    }
+
+    if (!loading && data) {
+      checkClubStatus()
+    }
+  }, [data, loading, clubModalChecked])
+
+  const handleClubModalComplete = () => {
+    setShowClubModal(false)
+    // Refresh dashboard data to get updated club information
+    refetch()
+  }
 
   // Loading state
   if (loading) {
@@ -88,6 +123,13 @@ export default function StudentDashboard() {
         {/* Progress Section */}
         <ProgressSection stats={data.stats} achievements={data.achievements} />
       </main>
+
+      {/* Club Selection Modal */}
+      <ClubSelectionModal
+        isOpen={showClubModal}
+        onClose={() => setShowClubModal(false)}
+        onComplete={handleClubModalComplete}
+      />
     </div>
   )
 }

@@ -23,7 +23,8 @@ import {
   Edit,
   Shield,
   Loader2,
-  XCircle
+  XCircle,
+  Users
 } from 'lucide-react'
 
 interface ProfileData {
@@ -34,6 +35,8 @@ interface ProfileData {
     full_name: string
     role: string
     created_at: string
+    beta_club?: boolean
+    nths?: boolean
   }
   stats: {
     totalHours: number
@@ -281,6 +284,22 @@ export default function StudentProfile() {
                       </p>
                     </div>
                   </div>
+                  {(profile.beta_club || profile.nths) && (
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-white/50">
+                      <Users className="h-5 w-5 text-purple-600" />
+                      <div>
+                        <p className="font-medium text-gray-900">Club Memberships</p>
+                        <div className="flex gap-2 mt-1">
+                          {profile.beta_club && (
+                            <Badge className="bg-blue-100 text-blue-800 text-xs">Beta Club</Badge>
+                          )}
+                          {profile.nths && (
+                            <Badge className="bg-green-100 text-green-800 text-xs">NTHS</Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <Button 
