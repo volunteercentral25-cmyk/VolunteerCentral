@@ -28,7 +28,7 @@ export function ProgressSection({ stats, achievements }: ProgressSectionProps) {
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Current Progress</span>
-                  <span className="font-medium">{stats.totalHours}/100 hours</span>
+                  <span className="font-medium">{stats.totalHours}/20 hours</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3">
                   <motion.div
@@ -39,7 +39,7 @@ export function ProgressSection({ stats, achievements }: ProgressSectionProps) {
                   />
                 </div>
                 <p className="text-sm text-gray-600">
-                  {100 - stats.totalHours} hours remaining to reach your goal
+                  {Math.max(0, 20 - stats.totalHours)} hours remaining to reach your goal
                 </p>
               </div>
             </div>

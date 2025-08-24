@@ -93,16 +93,16 @@ export async function GET(request: NextRequest) {
         status: hour.status
       }))
 
-    // Calculate goal progress (assuming 100 hours goal)
-    const goalProgress = Math.min(Math.round((totalHours / 100) * 100), 100)
+    // Calculate goal progress (20 hours goal)
+    const goalProgress = Math.min(Math.round((totalHours / 20) * 100), 100)
 
     // Generate achievements based on hours
     const achievements = []
-    if (totalHours >= 10) achievements.push({ name: 'First Steps', description: 'Complete your first 10 hours', earned: true })
-    if (totalHours >= 25) achievements.push({ name: 'Dedicated Helper', description: 'Complete 25 hours of service', earned: true })
-    if (totalHours >= 50) achievements.push({ name: 'Community Champion', description: 'Complete 50 hours of service', earned: true })
-    if (totalHours < 10) achievements.push({ name: 'First Steps', description: 'Complete your first 10 hours', earned: false, remaining: 10 - totalHours })
-    if (totalHours < 25 && totalHours >= 10) achievements.push({ name: 'Dedicated Helper', description: 'Complete 25 hours of service', earned: false, remaining: 25 - totalHours })
+    if (totalHours >= 5) achievements.push({ name: 'First Steps', description: 'Complete your first 5 hours', earned: true })
+    if (totalHours >= 10) achievements.push({ name: 'Dedicated Helper', description: 'Complete 10 hours of service', earned: true })
+    if (totalHours >= 20) achievements.push({ name: 'Community Champion', description: 'Complete 20 hours of service', earned: true })
+    if (totalHours < 5) achievements.push({ name: 'First Steps', description: 'Complete your first 5 hours', earned: false, remaining: 5 - totalHours })
+    if (totalHours < 10 && totalHours >= 5) achievements.push({ name: 'Dedicated Helper', description: 'Complete 10 hours of service', earned: false, remaining: 10 - totalHours })
 
     const dashboardData = {
       profile,

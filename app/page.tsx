@@ -187,15 +187,15 @@ export default function HomePage() {
             </div>
             <div className="mt-6 grid grid-cols-2 gap-6 sm:grid-cols-3">
               <div className="rounded-xl bg-white/70 p-4 text-center shadow-sm">
-                <p className="text-3xl font-bold text-gradient">500+</p>
+                <p className="text-3xl font-bold text-gradient">200+</p>
                 <p className="text-xs text-gray-600">Active students</p>
               </div>
               <div className="rounded-xl bg-white/70 p-4 text-center shadow-sm">
-                <p className="text-3xl font-bold text-gradient">10K+</p>
+                <p className="text-3xl font-bold text-gradient">4K+</p>
                 <p className="text-xs text-gray-600">Hours logged</p>
               </div>
               <div className="rounded-xl bg-white/70 p-4 text-center shadow-sm sm:block hidden">
-                <p className="text-3xl font-bold text-gradient">50+</p>
+                <p className="text-3xl font-bold text-gradient">25+</p>
                 <p className="text-xs text-gray-600">Opportunities</p>
               </div>
             </div>

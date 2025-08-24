@@ -67,42 +67,53 @@ export async function GET(request: NextRequest) {
 
     // Calculate achievements based on hours
     const achievements = []
-    if (totalHours >= 10) {
+    if (totalHours >= 5) {
       achievements.push({
         id: 'first_steps',
         title: 'First Steps',
-        description: 'Complete your first 10 hours of community service',
-        earned: true,
-        earnedAt: new Date().toISOString()
-      })
-    }
-    
-    if (totalHours >= 20) {
-      achievements.push({
-        id: 'goal_reached',
-        title: 'Goal Achiever',
-        description: 'Reach your 20-hour community service goal',
+        description: 'Complete your first 5 hours of community service',
         earned: true,
         earnedAt: new Date().toISOString()
       })
     }
 
-    if (totalHours >= 50) {
+    if (totalHours >= 10) {
+      achievements.push({
+        id: 'dedicated_helper',
+        title: 'Dedicated Helper',
+        description: 'Complete 10 hours of community service',
+        earned: true,
+        earnedAt: new Date().toISOString()
+      })
+    }
+
+    if (totalHours >= 20) {
       achievements.push({
         id: 'community_champion',
         title: 'Community Champion',
-        description: 'Complete 50 hours of community service',
+        description: 'Complete 20 hours of community service',
         earned: true,
         earnedAt: new Date().toISOString()
       })
     }
 
     // Add in-progress achievements
-    if (totalHours < 10) {
+    if (totalHours < 5) {
       achievements.push({
         id: 'first_steps',
         title: 'First Steps',
-        description: 'Complete your first 10 hours of community service',
+        description: 'Complete your first 5 hours of community service',
+        earned: false,
+        progress: totalHours,
+        target: 5
+      })
+    }
+
+    if (totalHours < 10) {
+      achievements.push({
+        id: 'dedicated_helper',
+        title: 'Dedicated Helper',
+        description: 'Complete 10 hours of community service',
         earned: false,
         progress: totalHours,
         target: 10
@@ -111,23 +122,12 @@ export async function GET(request: NextRequest) {
 
     if (totalHours < 20) {
       achievements.push({
-        id: 'goal_reached',
-        title: 'Goal Achiever',
-        description: 'Reach your 20-hour community service goal',
+        id: 'community_champion',
+        title: 'Community Champion',
+        description: 'Complete 20 hours of community service',
         earned: false,
         progress: totalHours,
         target: 20
-      })
-    }
-
-    if (totalHours < 50) {
-      achievements.push({
-        id: 'community_champion',
-        title: 'Community Champion',
-        description: 'Complete 50 hours of community service',
-        earned: false,
-        progress: totalHours,
-        target: 50
       })
     }
 
