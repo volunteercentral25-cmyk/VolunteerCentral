@@ -48,6 +48,7 @@ interface Opportunity {
   confirmedRegistrations: number
   isFull: boolean
   isPast: boolean
+  club_restriction?: string
 }
 
 interface Registration {
@@ -78,6 +79,7 @@ export default function AdminOpportunities() {
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [clubFilter, setClubFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -89,7 +91,8 @@ export default function AdminOpportunities() {
     start_time: '',
     end_time: '',
     max_volunteers: 10,
-    requirements: ''
+    requirements: '',
+    club_restriction: 'anyone'
   })
   const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null)
   const [showRegistrations, setShowRegistrations] = useState(false)
@@ -117,9 +120,7 @@ export default function AdminOpportunities() {
 
   useEffect(() => {
     loadOpportunities()
-  }, [currentPage, search, statusFilter])
-
-
+  }, [currentPage, search, statusFilter, clubFilter])
 
   const loadOpportunities = async () => {
     try {
@@ -130,6 +131,7 @@ export default function AdminOpportunities() {
       
       if (search) params.append('search', search)
       if (statusFilter) params.append('status', statusFilter)
+      if (clubFilter) params.append('club', clubFilter)
 
       const response = await fetch(`/api/admin/opportunities?${params}`)
       if (!response.ok) {
@@ -162,6 +164,37 @@ export default function AdminOpportunities() {
     setCurrentPage(1)
   }
 
+  const handleClubFilter = (value: string) => {
+    setClubFilter(value)
+    setCurrentPage(1)
+  }
+
+  const getClubRestrictionText = (restriction: string) => {
+    switch (restriction) {
+      case 'beta_club':
+        return 'Beta Club Only'
+      case 'nths':
+        return 'NTHS Only'
+      case 'both':
+        return 'Both Clubs Only'
+      default:
+        return 'Open to All'
+    }
+  }
+
+  const getClubRestrictionColor = (restriction: string) => {
+    switch (restriction) {
+      case 'beta_club':
+        return 'bg-blue-100 text-blue-800'
+      case 'nths':
+        return 'bg-green-100 text-green-800'
+      case 'both':
+        return 'bg-purple-100 text-purple-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+
   const handleCreateOpportunity = async (e: React.FormEvent) => {
     e.preventDefault()
     setCreating(true)
@@ -188,7 +221,8 @@ export default function AdminOpportunities() {
         start_time: '',
         end_time: '',
         max_volunteers: 10,
-        requirements: ''
+        requirements: '',
+        club_restriction: 'anyone'
       })
       setShowCreateForm(false)
       await loadOpportunities()
@@ -420,7 +454,7 @@ export default function AdminOpportunities() {
         >
           <Card className="glass-effect border-0 shadow-xl">
             <CardContent className="p-6">
-              <div className="grid md:grid-cols-4 gap-4">
+              <div className="grid md:grid-cols-5 gap-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
@@ -439,6 +473,18 @@ export default function AdminOpportunities() {
                     <option value="">All Opportunities</option>
                     <option value="future">Future</option>
                     <option value="past">Past</option>
+                  </select>
+                </div>
+                <div>
+                  <select
+                    value={clubFilter}
+                    onChange={(e) => handleClubFilter(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">All Clubs</option>
+                    <option value="beta_club">Beta Club</option>
+                    <option value="nths">NTHS</option>
+                    <option value="both">Both Clubs</option>
                   </select>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -562,6 +608,21 @@ export default function AdminOpportunities() {
                     />
                   </div>
 
+                  <div className="space-y-2">
+                    <Label htmlFor="club_restriction">Club Restriction</Label>
+                    <select
+                      id="club_restriction"
+                      value={formData.club_restriction}
+                      onChange={(e) => setFormData({...formData, club_restriction: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="anyone">Anyone can participate</option>
+                      <option value="beta_club">Beta Club members only</option>
+                      <option value="nths">NTHS members only</option>
+                      <option value="both">Both Beta Club and NTHS members</option>
+                    </select>
+                  </div>
+
                   <div className="flex gap-3">
                     <Button 
                       type="submit" 
@@ -620,6 +681,9 @@ export default function AdminOpportunities() {
                                 <Users className="h-4 w-4" />
                                 {opportunity.start_time} - {opportunity.end_time}
                               </span>
+                              <Badge className={getClubRestrictionColor(opportunity.club_restriction || 'anyone')}>
+                                {getClubRestrictionText(opportunity.club_restriction || 'anyone')}
+                              </Badge>
                             </div>
 
                             <div className="flex items-center gap-4 text-sm">

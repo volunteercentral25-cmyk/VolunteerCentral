@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { ClubSelectionModal } from '@/components/profile'
 import { 
   Users,
   Calendar,
@@ -65,6 +66,8 @@ export default function AdminDashboard() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showClubModal, setShowClubModal] = useState(false)
+  const [clubModalChecked, setClubModalChecked] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -95,10 +98,33 @@ export default function AdminDashboard() {
       }
       const data = await response.json()
       setDashboardData(data)
+      
+      // Check if admin needs to complete club selection
+      if (!clubModalChecked) {
+        try {
+          const clubResponse = await fetch('/api/student/clubs')
+          if (clubResponse.ok) {
+            const clubData = await clubResponse.json()
+            // Show modal if clubs_completed is false or null
+            if (!clubData.clubs_completed) {
+              setShowClubModal(true)
+            }
+          }
+        } catch (error) {
+          console.error('Error checking club status:', error)
+        }
+        setClubModalChecked(true)
+      }
     } catch (error) {
       console.error('Error loading dashboard data:', error)
       setError('Failed to load dashboard data')
     }
+  }
+
+  const handleClubModalComplete = () => {
+    setShowClubModal(false)
+    // Refresh dashboard data to get updated club information
+    loadDashboardData()
   }
 
   const handleSignOut = async () => {
@@ -399,6 +425,14 @@ export default function AdminDashboard() {
           </Card>
         </motion.div>
       </main>
+
+      {/* Club Selection Modal */}
+      <ClubSelectionModal
+        isOpen={showClubModal}
+        onClose={() => setShowClubModal(false)}
+        onComplete={handleClubModalComplete}
+        userRole="admin"
+      />
     </div>
   )
 }

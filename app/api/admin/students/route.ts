@@ -35,8 +35,9 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20')
     const search = searchParams.get('search') || ''
     const status = searchParams.get('status') || ''
+    const club = searchParams.get('club') || ''
 
-    console.log('Parameters:', { page, limit, search, status })
+    console.log('Parameters:', { page, limit, search, status, club })
 
     // Use RPC functions to bypass RLS
     const [studentsResult, countResult] = await Promise.all([
@@ -44,12 +45,14 @@ export async function GET(request: NextRequest) {
       supabase.rpc('get_admin_students_with_stats', {
         search_term: search,
         status_filter: status,
+        club_filter: club,
         page_num: page,
         page_size: limit
       }),
       // Get total count
       supabase.rpc('get_admin_students_count', {
-        search_term: search
+        search_term: search,
+        club_filter: club
       })
     ])
 

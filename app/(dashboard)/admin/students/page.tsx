@@ -84,6 +84,7 @@ export default function AdminStudents() {
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [clubFilter, setClubFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const [viewModalOpen, setViewModalOpen] = useState(false)
@@ -118,7 +119,7 @@ export default function AdminStudents() {
 
   useEffect(() => {
     loadStudents()
-  }, [currentPage, search, statusFilter])
+  }, [currentPage, search, statusFilter, clubFilter])
 
   const loadStudents = async () => {
     try {
@@ -130,6 +131,7 @@ export default function AdminStudents() {
       
       if (search) params.append('search', search)
       if (statusFilter) params.append('status', statusFilter)
+      if (clubFilter) params.append('club', clubFilter)
 
       console.log('Loading students with params:', params.toString())
       const response = await fetch(`/api/admin/students?${params}`)
@@ -166,6 +168,11 @@ export default function AdminStudents() {
 
   const handleStatusFilter = (value: string) => {
     setStatusFilter(value)
+    setCurrentPage(1)
+  }
+
+  const handleClubFilter = (value: string) => {
+    setClubFilter(value)
     setCurrentPage(1)
   }
 
@@ -351,7 +358,7 @@ export default function AdminStudents() {
         >
           <Card className="glass-effect border-0 shadow-xl">
             <CardContent className="p-6">
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid md:grid-cols-4 gap-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
@@ -370,6 +377,18 @@ export default function AdminStudents() {
                     <option value="">All Students</option>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+                <div>
+                  <select
+                    value={clubFilter}
+                    onChange={(e) => handleClubFilter(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">All Clubs</option>
+                    <option value="beta_club">Beta Club</option>
+                    <option value="nths">NTHS</option>
+                    <option value="both">Both Clubs</option>
                   </select>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-gray-600">

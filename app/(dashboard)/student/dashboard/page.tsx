@@ -129,6 +129,7 @@ export default function StudentDashboard() {
         isOpen={showClubModal}
         onClose={() => setShowClubModal(false)}
         onComplete={handleClubModalComplete}
+        userRole="student"
       />
     </div>
   )

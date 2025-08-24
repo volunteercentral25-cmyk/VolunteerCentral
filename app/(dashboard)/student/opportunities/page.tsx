@@ -43,6 +43,7 @@ interface Opportunity {
   isRegistered: boolean
   isFull: boolean
   requirements?: string
+  club_restriction?: string
 }
 
 export default function StudentOpportunities() {
@@ -50,6 +51,7 @@ export default function StudentOpportunities() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
+  const [selectedClub, setSelectedClub] = useState('all')
   const [opportunities, setOpportunities] = useState<Opportunity[]>([])
   const [error, setError] = useState<string | null>(null)
   const [registering, setRegistering] = useState<string | null>(null)
@@ -72,9 +74,20 @@ export default function StudentOpportunities() {
     getUser()
   }, [router, supabase])
 
+  useEffect(() => {
+    if (user) {
+      fetchOpportunities()
+    }
+  }, [selectedClub])
+
   const fetchOpportunities = async () => {
     try {
-      const response = await fetch('/api/student/opportunities')
+      const params = new URLSearchParams()
+      if (selectedClub !== 'all') {
+        params.append('club', selectedClub)
+      }
+      
+      const response = await fetch(`/api/student/opportunities?${params}`)
       if (!response.ok) {
         throw new Error('Failed to fetch opportunities')
       }
@@ -200,6 +213,32 @@ export default function StudentOpportunities() {
     return colors[difficulty as keyof typeof colors] || 'bg-gray-100 text-gray-800'
   }
 
+  const getClubRestrictionText = (restriction: string) => {
+    switch (restriction) {
+      case 'beta_club':
+        return 'Beta Club Only'
+      case 'nths':
+        return 'NTHS Only'
+      case 'both':
+        return 'Both Clubs Only'
+      default:
+        return 'Open to All'
+    }
+  }
+
+  const getClubRestrictionColor = (restriction: string) => {
+    switch (restriction) {
+      case 'beta_club':
+        return 'bg-blue-100 text-blue-800'
+      case 'nths':
+        return 'bg-green-100 text-green-800'
+      case 'both':
+        return 'bg-purple-100 text-purple-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen gradient-bg flex items-center justify-center">
@@ -309,7 +348,7 @@ export default function StudentOpportunities() {
         >
           <Card className="glass-effect border-0 shadow-xl">
             <CardContent className="p-6">
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid md:grid-cols-3 gap-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
@@ -331,6 +370,19 @@ export default function StudentOpportunities() {
                         {category.label}
                       </option>
                     ))}
+                  </select>
+                </div>
+                <div className="relative">
+                  <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <select
+                    value={selectedClub}
+                    onChange={(e) => setSelectedClub(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                  >
+                    <option value="all">All Clubs</option>
+                    <option value="beta_club">Beta Club</option>
+                    <option value="nths">NTHS</option>
+                    <option value="both">Both Clubs</option>
                   </select>
                 </div>
               </div>
@@ -369,6 +421,9 @@ export default function StudentOpportunities() {
                             )}
                             <Badge className={getCategoryColor(opportunity.category)}>
                               {opportunity.category}
+                            </Badge>
+                            <Badge className={getClubRestrictionColor(opportunity.club_restriction || 'anyone')}>
+                              {getClubRestrictionText(opportunity.club_restriction || 'anyone')}
                             </Badge>
                           </div>
                           <CardTitle className="text-lg">{opportunity.title}</CardTitle>

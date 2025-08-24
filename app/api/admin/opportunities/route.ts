@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20')
     const search = searchParams.get('search') || ''
     const status = searchParams.get('status') || ''
+    const club = searchParams.get('club') || ''
 
     // Calculate offset
     const offset = (page - 1) * limit
@@ -37,7 +38,11 @@ export async function GET(request: NextRequest) {
       .from('volunteer_opportunities')
       .select(`
         *,
-        opportunity_registrations(id, status, student_id)
+        opportunity_registrations(
+          id, 
+          status, 
+          student_id
+        )
       `, { count: 'exact' })
 
     // Add search filter
@@ -52,6 +57,17 @@ export async function GET(request: NextRequest) {
         query = query.gte('date', today)
       } else if (status === 'past') {
         query = query.lt('date', today)
+      }
+    }
+
+    // Add club filter - simplified approach
+    if (club) {
+      if (club === 'beta_club') {
+        query = query.eq('club_restriction', 'beta_club')
+      } else if (club === 'nths') {
+        query = query.eq('club_restriction', 'nths')
+      } else if (club === 'both') {
+        query = query.eq('club_restriction', 'both')
       }
     }
 
@@ -75,7 +91,8 @@ export async function GET(request: NextRequest) {
         pendingRegistrations: registrations.filter((r: any) => r.status === 'pending').length,
         confirmedRegistrations: registrations.filter((r: any) => r.status === 'approved').length,
         isFull: activeRegistrations.length >= (opportunity.max_volunteers || 10),
-        isPast: new Date(opportunity.date) < new Date()
+        isPast: new Date(opportunity.date) < new Date(),
+        club_restriction: opportunity.club_restriction || 'anyone'
       }
     }) || []
 
@@ -116,7 +133,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { title, description, location, date, start_time, end_time, max_volunteers, requirements } = body
+    const { title, description, location, date, start_time, end_time, max_volunteers, requirements, club_restriction } = body
 
     if (!title || !description || !location || !date) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -134,6 +151,7 @@ export async function POST(request: NextRequest) {
         end_time,
         max_volunteers: max_volunteers || 10,
         requirements: requirements || null,
+        club_restriction: club_restriction || 'anyone',
         created_by: user.id
       })
       .select()

@@ -7,23 +7,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { 
+import {
   Users,
   Award,
   GraduationCap,
   Save,
   Loader2,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  UserCheck
 } from 'lucide-react'
 
 interface ClubSelectionModalProps {
   isOpen: boolean
   onClose: () => void
   onComplete: () => void
+  userRole?: 'student' | 'admin'
 }
 
-export function ClubSelectionModal({ isOpen, onClose, onComplete }: ClubSelectionModalProps) {
+export function ClubSelectionModal({ isOpen, onClose, onComplete, userRole = 'student' }: ClubSelectionModalProps) {
   const [selectedClubs, setSelectedClubs] = useState({
     beta_club: false,
     nths: false
@@ -31,18 +33,23 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete }: ClubSelectio
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
+  const isAdmin = userRole === 'admin'
+  const title = isAdmin ? 'Welcome to Volunteer Central!' : 'Welcome to Volunteer Central!'
+  const description = isAdmin 
+    ? 'Tell us which clubs you are an advisor for to help manage student memberships and opportunities'
+    : 'Tell us about your club memberships to help us personalize your experience'
+
   const handleClubToggle = (club: 'beta_club' | 'nths') => {
     setSelectedClubs(prev => ({
       ...prev,
       [club]: !prev[club]
     }))
-    // Clear message when user makes changes
     if (message) setMessage(null)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     setIsLoading(true)
     setMessage(null)
 
@@ -60,8 +67,6 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete }: ClubSelectio
 
       if (response.ok) {
         setMessage({ type: 'success', text: 'Club information saved successfully!' })
-        
-        // Close modal and call onComplete after a short delay
         setTimeout(() => {
           onComplete()
           setMessage(null)
@@ -79,7 +84,6 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete }: ClubSelectio
   }
 
   const handleSkip = () => {
-    // Allow users to skip club selection
     onComplete()
   }
 
@@ -102,21 +106,20 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete }: ClubSelectio
             <Card className="glass-effect border-0 shadow-2xl">
               <CardHeader className="text-center">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 to-pink-600">
-                  <Users className="h-8 w-8 text-white" />
+                  {isAdmin ? <UserCheck className="h-8 w-8 text-white" /> : <Users className="h-8 w-8 text-white" />}
                 </div>
-                <CardTitle className="text-gradient text-xl">Welcome to Volunteer Central!</CardTitle>
-                <CardDescription>Tell us about your club memberships to help us personalize your experience</CardDescription>
+                <CardTitle className="text-gradient text-xl">{title}</CardTitle>
+                <CardDescription>{description}</CardDescription>
               </CardHeader>
 
               <CardContent className="space-y-6">
-                {/* Message Display */}
                 {message && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className={`flex items-center gap-2 rounded-lg p-3 text-sm ${
-                      message.type === 'success' 
-                        ? 'bg-green-50 border border-green-200 text-green-800' 
+                      message.type === 'success'
+                        ? 'bg-green-50 border border-green-200 text-green-800'
                         : 'bg-red-50 border border-red-200 text-red-800'
                     }`}
                   >
@@ -130,11 +133,11 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete }: ClubSelectio
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Club Selection */}
                   <div className="space-y-4">
-                    <Label className="text-base font-medium text-gray-900">Select your club memberships:</Label>
-                    
-                    {/* Beta Club */}
+                    <Label className="text-base font-medium text-gray-900">
+                      {isAdmin ? 'Select clubs you are an advisor for:' : 'Select your club memberships:'}
+                    </Label>
+
                     <div className="flex items-center space-x-3 p-4 rounded-lg border border-gray-200 hover:border-purple-300 transition-colors">
                       <Checkbox
                         id="beta_club"
@@ -150,15 +153,18 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete }: ClubSelectio
                           <Label htmlFor="beta_club" className="text-sm font-medium text-gray-900 cursor-pointer">
                             Beta Club
                           </Label>
-                          <p className="text-xs text-gray-600">National Beta Club member</p>
+                          <p className="text-xs text-gray-600">
+                            {isAdmin ? 'Beta Club advisor' : 'National Beta Club member'}
+                          </p>
                         </div>
                         {selectedClubs.beta_club && (
-                          <Badge className="bg-blue-100 text-blue-800">Selected</Badge>
+                          <Badge className="bg-blue-100 text-blue-800">
+                            {isAdmin ? 'Advisor' : 'Selected'}
+                          </Badge>
                         )}
                       </div>
                     </div>
 
-                    {/* NTHS */}
                     <div className="flex items-center space-x-3 p-4 rounded-lg border border-gray-200 hover:border-purple-300 transition-colors">
                       <Checkbox
                         id="nths"
@@ -174,23 +180,28 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete }: ClubSelectio
                           <Label htmlFor="nths" className="text-sm font-medium text-gray-900 cursor-pointer">
                             NTHS
                           </Label>
-                          <p className="text-xs text-gray-600">National Technical Honor Society member</p>
+                          <p className="text-xs text-gray-600">
+                            {isAdmin ? 'NTHS advisor' : 'National Technical Honor Society member'}
+                          </p>
                         </div>
                         {selectedClubs.nths && (
-                          <Badge className="bg-green-100 text-green-800">Selected</Badge>
+                          <Badge className="bg-green-100 text-green-800">
+                            {isAdmin ? 'Advisor' : 'Selected'}
+                          </Badge>
                         )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Info Text */}
                   <div className="text-center">
                     <p className="text-xs text-gray-600">
-                      You can be a member of both clubs. This information helps us provide you with relevant opportunities and track your achievements.
+                      {isAdmin 
+                        ? 'You can be an advisor for both clubs. This information helps you manage student memberships and create club-specific opportunities.'
+                        : 'You can be a member of both clubs. This information helps us provide you with relevant opportunities and track your achievements.'
+                      }
                     </p>
                   </div>
 
-                  {/* Action Buttons */}
                   <div className="flex gap-3 pt-4">
                     <Button
                       type="button"

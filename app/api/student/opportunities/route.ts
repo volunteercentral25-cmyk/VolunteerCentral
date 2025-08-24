@@ -5,6 +5,10 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createClient()
     
+    // Get URL parameters
+    const { searchParams } = new URL(request.url)
+    const club = searchParams.get('club') || ''
+    
     // Get the current user
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError || !user) {
@@ -22,8 +26,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
     }
 
-    // Get ALL volunteer opportunities with registration counts
-    const { data: opportunitiesData, error: opportunitiesError } = await supabase
+    // Build query for opportunities
+    let query = supabase
       .from('volunteer_opportunities')
       .select(`
         *,
@@ -35,11 +39,24 @@ export async function GET(request: NextRequest) {
       `)
       .order('date', { ascending: true })
 
+    // Add club filter - simplified approach
+    if (club) {
+      if (club === 'beta_club') {
+        query = query.eq('club_restriction', 'beta_club')
+      } else if (club === 'nths') {
+        query = query.eq('club_restriction', 'nths')
+      } else if (club === 'both') {
+        query = query.eq('club_restriction', 'both')
+      }
+    }
+
+    const { data: opportunitiesData, error: opportunitiesError } = await query
+
     if (opportunitiesError) {
       return NextResponse.json({ error: 'Failed to fetch opportunities' }, { status: 500 })
     }
 
-    // Process opportunities data
+    // Process opportunities data and filter based on club restrictions
     const opportunities = opportunitiesData?.map(opportunity => {
       const registrations = opportunity.opportunity_registrations || []
       const activeRegistrations = registrations.filter((reg: any) => reg.status !== 'denied')
@@ -92,11 +109,37 @@ export async function GET(request: NextRequest) {
         featured,
         isRegistered,
         isFull: volunteersRegistered >= (opportunity.max_volunteers || 10),
-        requirements: opportunity.requirements
+        requirements: opportunity.requirements,
+        club_restriction: opportunity.club_restriction || 'anyone'
       }
     }) || []
 
-    return NextResponse.json({ opportunities })
+    // Filter opportunities based on club restrictions
+    const filteredOpportunities = opportunities.filter(opportunity => {
+      const { club_restriction } = opportunity
+      
+      // If no club restriction, show to everyone
+      if (club_restriction === 'anyone') {
+        return true
+      }
+      
+      // Check if student meets the club restriction
+      if (club_restriction === 'beta_club') {
+        return profile.beta_club === true
+      }
+      
+      if (club_restriction === 'nths') {
+        return profile.nths === true
+      }
+      
+      if (club_restriction === 'both') {
+        return profile.beta_club === true && profile.nths === true
+      }
+      
+      return true
+    })
+
+    return NextResponse.json({ opportunities: filteredOpportunities })
   } catch (error) {
     console.error('Opportunities API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
