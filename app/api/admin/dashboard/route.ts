@@ -29,6 +29,10 @@ export async function GET(request: NextRequest) {
       console.error('Error getting student count:', studentCountError)
     }
 
+    console.log('Student count result:', studentCount)
+    console.log('Student count data type:', typeof studentCount)
+    console.log('Student count is array:', Array.isArray(studentCount))
+
     // Fetch other statistics
     const [
       opportunitiesResult,
@@ -81,6 +85,12 @@ export async function GET(request: NextRequest) {
     const totalStudents = studentCount?.[0]?.total_students || 0
     const totalOpportunities = opportunitiesResult.data?.length || 0
     const pendingHours = pendingHoursResult.data?.length || 0
+    
+    console.log('Calculated stats:', {
+      totalStudents,
+      totalOpportunities,
+      pendingHours
+    })
     
     // Calculate total hours
     const totalHours = totalHoursResult.data?.reduce((sum, hour) => sum + (hour.hours || 0), 0) || 0

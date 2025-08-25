@@ -136,29 +136,36 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { hourId, status, notes } = body
+    console.log('Update request body:', body)
+    
+    const { hoursId, status, notes } = body
 
-    if (!hourId || !status) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    if (!hoursId || !status) {
+      console.error('Missing required fields:', { hoursId, status })
+      return NextResponse.json({ error: 'Missing required fields: hoursId and status' }, { status: 400 })
     }
+
+    console.log('Updating hours with:', { hoursId, status, notes })
 
     // Update hour status
     const { data, error } = await supabase
       .from('volunteer_hours')
       .update({
         status: status,
-        verified_by: user.id,
+        verified_by: profile.email, // Use admin's email instead of user ID
         verification_date: new Date().toISOString(),
         verification_notes: notes || null
       })
-      .eq('id', hourId)
+      .eq('id', hoursId)
       .select()
       .single()
 
     if (error) {
+      console.error('Database update error:', error)
       throw error
     }
 
+    console.log('Successfully updated hours:', data)
     return NextResponse.json({ success: true, hour: data })
   } catch (error) {
     console.error('Admin update hour API error:', error)

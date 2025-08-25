@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
     console.log('Parameters:', { page, limit, search, status, club })
 
     // Use RPC functions to bypass RLS
+    console.log('Calling RPC functions...')
     const [studentsResult, countResult] = await Promise.all([
       // Get students with stats
       supabase.rpc('get_admin_students_with_stats', {
@@ -55,6 +56,8 @@ export async function GET(request: NextRequest) {
         club_filter: club
       })
     ])
+    
+    console.log('RPC calls completed')
 
     console.log('Students result:', studentsResult)
     console.log('Count result:', countResult)
@@ -74,6 +77,8 @@ export async function GET(request: NextRequest) {
 
     console.log('Raw students data:', students)
     console.log('Total count:', totalCount)
+    console.log('Total count type:', typeof totalCount)
+    console.log('Students array length:', students.length)
 
     // Transform the data to match the expected interface
     const studentsWithStats = students.map((student: any) => ({

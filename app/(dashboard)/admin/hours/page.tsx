@@ -67,6 +67,7 @@ export default function AdminHours() {
   const [hoursData, setHoursData] = useState<HoursData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
@@ -154,6 +155,9 @@ export default function AdminHours() {
     
     setReviewing(true)
     try {
+      console.log('Submitting review for hour:', selectedHour.id)
+      console.log('Review data:', reviewData)
+      
       const response = await fetch('/api/admin/hours', {
         method: 'PUT',
         headers: {
@@ -166,16 +170,28 @@ export default function AdminHours() {
         }),
       })
 
+      console.log('Response status:', response.status)
+      
       if (!response.ok) {
-        throw new Error('Failed to update hours')
+        const errorData = await response.json()
+        console.error('Error response:', errorData)
+        throw new Error(errorData.error || 'Failed to update hours')
       }
+
+      const result = await response.json()
+      console.log('Success response:', result)
 
       setShowReviewModal(false)
       setSelectedHour(null)
+      setError(null) // Clear any previous errors
+      setSuccessMessage(`Successfully ${reviewData.status === 'approved' ? 'approved' : 'denied'} hours for ${selectedHour.profiles.full_name}`)
       await loadHours()
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccessMessage(null), 3000)
     } catch (error) {
       console.error('Error updating hours:', error)
-      setError('Failed to update hours')
+      setError(error instanceof Error ? error.message : 'Failed to update hours')
     } finally {
       setReviewing(false)
     }
@@ -280,6 +296,47 @@ export default function AdminHours() {
             Review and approve volunteer hours submitted by students. Ensure accuracy and maintain the integrity of the volunteer tracking system.
           </p>
         </motion.div>
+
+        {/* Success/Error Messages */}
+        {(successMessage || error) && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="mb-6"
+          >
+            {successMessage && (
+              <Card className="glass-effect border-0 shadow-xl bg-green-50 border-green-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 text-green-800">
+                    <CheckCircle className="h-5 w-5" />
+                    <span className="font-medium">{successMessage}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            {error && (
+              <Card className="glass-effect border-0 shadow-xl bg-red-50 border-red-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-red-800">
+                      <XCircle className="h-5 w-5" />
+                      <span className="font-medium">{error}</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setError(null)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </motion.div>
+        )}
 
         {/* Search and Filters */}
         <motion.div
