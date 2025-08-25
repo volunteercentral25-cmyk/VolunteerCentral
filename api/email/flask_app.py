@@ -679,6 +679,130 @@ def opportunity_cancellation():
         logger.error(f"Opportunity cancellation error: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
+@app.route('/api/email/hours-update-notification', methods=['POST'])
+def hours_update_notification():
+    """Send notification email when hours are updated by admin"""
+    try:
+        logger.info("Received hours update notification request")
+        data = request.get_json()
+        logger.info(f"Request data: {data}")
+        
+        # Validate required fields
+        required_fields = ['hours_id', 'verifier_email', 'status']
+        for field in required_fields:
+            if field not in data:
+                logger.error(f"Missing required field: {field}")
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        hours_id = data['hours_id']
+        verifier_email = data['verifier_email']
+        status = data['status']
+        notes = data.get('notes', '')
+        admin_email = data.get('admin_email', 'Admin')
+        
+        logger.info(f"Processing hours update notification for hours_id: {hours_id}, status: {status}")
+        
+        # Get hours details from database
+        hours_data = supabase_service.get_hours_by_id(hours_id)
+        if not hours_data:
+            return jsonify({'error': 'Hours record not found'}), 404
+        
+        # Get student profile
+        student_profile = supabase_service.get_student_profile(hours_data['student_id'])
+        if not student_profile:
+            return jsonify({'error': 'Student profile not found'}), 404
+        
+        # Prepare email content based on status
+        if status == 'approved':
+            subject = f"Volunteer Hours Approved - {student_profile.get('full_name', 'Student')}"
+            template_name = 'approval.html'
+            preheader = f"The volunteer hours for {student_profile.get('full_name', 'Student')} have been approved"
+        else:
+            subject = f"Volunteer Hours Denied - {student_profile.get('full_name', 'Student')}"
+            template_name = 'denial.html'
+            preheader = f"The volunteer hours for {student_profile.get('full_name', 'Student')} have been denied"
+        
+        template_data = {
+            'student_name': student_profile.get('full_name', 'Unknown'),
+            'student_email': student_profile.get('email', 'Unknown'),
+            'student_id': student_profile.get('student_id', 'Unknown'),
+            'activity': hours_data.get('description', 'Volunteer Activity'),
+            'hours': hours_data.get('hours', 0),
+            'date': hours_data.get('date', 'Unknown'),
+            'description': hours_data.get('description', 'No description provided'),
+            'status': status,
+            'notes': notes,
+            'admin_email': admin_email,
+            'verifier_email': verifier_email,
+            'approval_date' if status == 'approved' else 'denial_date': datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
+        }
+        
+        # Render email template
+        html_content = render_email(
+            template_name,
+            subject=subject,
+            preheader=preheader,
+            **template_data
+        )
+        
+        # Send email to verifier
+        logger.info(f"Preparing to send notification email to: {verifier_email}")
+        
+        msg = Message(
+            subject,
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[verifier_email]
+        )
+        msg.html = html_content
+        
+        logger.info("Sending notification email...")
+        mail.send(msg)
+        logger.info("Notification email sent successfully!")
+        
+        # Also notify the student about the update
+        try:
+            student_email = student_profile.get('email')
+            if student_email:
+                student_subject = f"Your Volunteer Hours Were {status.title()}"
+                student_html = render_email(
+                    'student_notification.html',
+                    subject=student_subject,
+                    preheader=f"Your volunteer hours have been {status}",
+                    student_name=student_profile.get('full_name', 'Student'),
+                    activity=hours_data.get('description', ''),
+                    hours=hours_data.get('hours', 0),
+                    date=hours_data.get('date', ''),
+                    status=status,
+                    verifier_email=verifier_email,
+                    notes=notes
+                )
+                student_msg = Message(student_subject, sender=app.config['MAIL_USERNAME'], recipients=[student_email])
+                student_msg.html = student_html
+                mail.send(student_msg)
+                logger.info(f"Student notification sent to: {student_email}")
+        except Exception as e:
+            logger.warning(f"Failed to notify student: {str(e)}")
+        
+        # Log email sent
+        supabase_service.log_email_sent(
+            recipient=verifier_email,
+            template=template_name,
+            subject=subject,
+            data=template_data
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Hours update notification sent successfully',
+            'hours_id': hours_id,
+            'verifier_email': verifier_email,
+            'status': status
+        })
+        
+    except Exception as e:
+        logger.error(f"Error sending hours update notification: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
 @app.route('/health', methods=['GET'])
 def health_check():
     return jsonify({

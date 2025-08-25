@@ -24,7 +24,10 @@ import {
   Shield,
   Loader2,
   XCircle,
-  Users
+  Users,
+  Share2,
+  Copy,
+  CheckCircle
 } from 'lucide-react'
 
 interface ProfileData {
@@ -63,6 +66,7 @@ export default function StudentProfile() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -111,6 +115,37 @@ export default function StudentProfile() {
           ...updatedProfile
         }
       })
+    }
+  }
+
+  const handleShareProfile = async () => {
+    if (!profileData?.profile?.id) return
+    
+    const profileUrl = `${window.location.origin}/profile/${profileData.profile.id}`
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${profileData.profile.full_name} - Volunteer Profile`,
+          text: `Check out ${profileData.profile.full_name}'s volunteer profile on Volunteer Central`,
+          url: profileUrl
+        })
+      } catch (error) {
+        console.error('Error sharing:', error)
+        copyToClipboard(profileUrl)
+      }
+    } else {
+      copyToClipboard(profileUrl)
+    }
+  }
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (error) {
+      console.error('Failed to copy:', error)
     }
   }
 
@@ -302,13 +337,32 @@ export default function StudentProfile() {
                   )}
                 </div>
 
-                <Button 
-                  className="btn-primary w-full mt-6"
-                  onClick={() => setIsEditModalOpen(true)}
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit Profile
-                </Button>
+                <div className="space-y-3 mt-6">
+                  <Button 
+                    className="btn-primary w-full"
+                    onClick={() => setIsEditModalOpen(true)}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Profile
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    className="btn-secondary w-full"
+                    onClick={handleShareProfile}
+                  >
+                    {copied ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+                        Link Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Share2 className="h-4 w-4 mr-2" />
+                        Share Profile
+                      </>
+                    )}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </motion.div>

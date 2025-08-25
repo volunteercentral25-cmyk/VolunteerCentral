@@ -76,12 +76,46 @@
 }
 
 @layer components {
+  /* Mobile-first button styles */
   .btn-primary {
-    @apply bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl;
+    @apply bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium py-3 px-6 md:py-2 md:px-4 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl;
+    /* Larger tap targets on mobile, smaller on desktop */
+    min-height: 44px; /* iOS recommended minimum */
   }
   
   .btn-secondary {
-    @apply bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg;
+    @apply bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-800 font-medium py-3 px-6 md:py-2 md:px-4 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg;
+    min-height: 44px;
+  }
+
+  /* Mobile-first responsive utilities */
+  .touch-friendly {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .mobile-padding {
+    @apply px-4 md:px-6 lg:px-8;
+  }
+
+  .mobile-margin {
+    @apply mx-4 md:mx-6 lg:mx-8;
+  }
+
+  .mobile-text {
+    @apply text-sm md:text-base;
+  }
+
+  .mobile-heading {
+    @apply text-2xl md:text-3xl lg:text-4xl;
+  }
+
+  .mobile-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3;
+  }
+
+  .mobile-flex {
+    @apply flex flex-col md:flex-row;
   }
   
   .card-hover {
@@ -233,5 +267,113 @@
 ::selection {
   background: linear-gradient(45deg, #8b5cf6, #ec4899);
   color: white;
+}
+
+/* Mobile-first responsive design utilities */
+@media (max-width: 768px) {
+  /* Improve mobile touch interactions */
+  button, .btn-primary, .btn-secondary {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Better mobile scrolling */
+  body {
+    -webkit-overflow-scrolling: touch;
+    overflow-x: hidden;
+  }
+
+  /* Mobile text scaling */
+  .mobile-title {
+    font-size: clamp(1.5rem, 5vw, 2.5rem);
+  }
+
+  .mobile-subtitle {
+    font-size: clamp(1rem, 3vw, 1.25rem);
+  }
+
+  /* Mobile spacing */
+  .mobile-section {
+    padding: 1rem 1rem 2rem;
+  }
+
+  /* Mobile cards */
+  .mobile-card {
+    margin: 0.5rem;
+    border-radius: 1rem;
+  }
+
+  /* Mobile forms */
+  input, textarea, select {
+    font-size: 16px; /* Prevents zoom on iOS */
+    min-height: 44px;
+  }
+
+  /* Mobile navigation */
+  .mobile-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+  }
+
+  /* Mobile modal */
+  .mobile-modal {
+    margin: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .tablet-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .tablet-padding {
+    padding: 1.5rem;
+  }
+}
+
+/* Desktop optimizations */
+@media (min-width: 1024px) {
+  /* Re-enable hover effects on desktop */
+  .desktop-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Desktop-specific animations */
+  .desktop-animation {
+    transition: all 0.3s ease-in-out;
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  /* Crisp images and icons */
+  img, svg {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Dark mode support for mobile */
+@media (prefers-color-scheme: dark) {
+  .mobile-card {
+    background: rgba(17, 24, 39, 0.8);
+    color: white;
+  }
 }
 

@@ -22,7 +22,8 @@ import {
   ArrowRight,
   CheckCircle,
   AlertCircle,
-  Star
+  Star,
+  Shield
 } from 'lucide-react'
 
 interface DashboardData {
@@ -296,7 +297,7 @@ export default function AdminDashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
-          className="grid md:grid-cols-3 gap-8 mb-12"
+          className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12"
         >
           <Card className="glass-effect border-0 shadow-xl">
             <CardHeader>
@@ -346,6 +347,24 @@ export default function AdminDashboard() {
               <Link href="/admin/hours">
                 <Button className="w-full btn-primary">
                   Review Hours
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-effect border-0 shadow-xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-indigo-600" />
+                Email Domains
+              </CardTitle>
+              <CardDescription>Manage trusted and untrusted email domains for verification.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link href="/admin/domains">
+                <Button className="w-full btn-primary">
+                  Manage Domains
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               </Link>

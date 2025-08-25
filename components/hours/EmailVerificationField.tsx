@@ -278,7 +278,33 @@ export function EmailVerificationField({
         return
       }
 
-      // Only if it passes both checks, try the EmailListVerify API
+      // Use the new domain validation API that checks our trusted domains database
+      const domainValidationResponse = await fetch('/api/validate-email-domain', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      })
+
+      if (domainValidationResponse.ok) {
+        const domainResult = await domainValidationResponse.json()
+        
+        if (!domainResult.error) {
+          setValidationResult({
+            isValid: domainResult.isValid,
+            isDisposable: domainResult.status === 'disposable',
+            isPersonal: false,
+            status: domainResult.isValid ? 200 : 400,
+            message: domainResult.reason,
+            source: 'api'
+          })
+          onValidationChange(domainResult.isValid)
+          return
+        }
+      }
+
+      // Fallback: try the EmailListVerify API if domain validation fails
       const response = await fetch('/api/email-verification', {
         method: 'POST',
         headers: {
@@ -294,7 +320,7 @@ export function EmailVerificationField({
           setValidationResult({
             ...result,
             isPersonal: false,
-            source: 'api'
+            source: 'fallback'
           })
           onValidationChange(result.isValid && !result.isDisposable)
           return

@@ -166,6 +166,38 @@ export async function PUT(request: NextRequest) {
     }
 
     console.log('Successfully updated hours:', data)
+
+    // Send verification email if there's a verification email address
+    if (data.verification_email && (status === 'approved' || status === 'denied')) {
+      try {
+        console.log('Sending verification email to:', data.verification_email)
+        
+        // Call the email service to send verification notification
+        const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/email-service/hours-update-notification`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            hours_id: hoursId,
+            verifier_email: data.verification_email,
+            status: status,
+            notes: notes,
+            admin_email: profile.email
+          }),
+        })
+
+        if (!emailResponse.ok) {
+          console.error('Failed to send verification email:', await emailResponse.text())
+        } else {
+          console.log('Verification email sent successfully')
+        }
+      } catch (emailError) {
+        console.error('Error sending verification email:', emailError)
+        // Don't fail the update if email fails
+      }
+    }
+
     return NextResponse.json({ success: true, hour: data })
   } catch (error) {
     console.error('Admin update hour API error:', error)

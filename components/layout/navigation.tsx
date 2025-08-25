@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { Home, Calendar, Clock, Users, Settings, LogOut, Menu, User, Award, Bell, ChevronDown } from "lucide-react"
+import { Home, Calendar, Clock, Users, Settings, LogOut, Menu, User, Award, Bell, ChevronDown, Shield } from "lucide-react"
 
 interface NavigationProps {
   userRole?: "student" | "admin"
@@ -43,6 +43,7 @@ export function Navigation({
     { href: "/admin/students", label: "Students", icon: Users },
     { href: "/admin/opportunities", label: "Opportunities", icon: Calendar },
     { href: "/admin/hours", label: "Hour Reviews", icon: Clock },
+    { href: "/admin/domains", label: "Email Domains", icon: Shield },
     { href: "/admin/settings", label: "Settings", icon: Settings },
   ]
 
