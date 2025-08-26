@@ -91,7 +91,39 @@ export default function PublicProfile() {
       }
       
       const data = await response.json()
-      setProfile(data)
+      
+      // Transform the API response to match the expected interface
+      if (data.success && data.profile) {
+        const transformedProfile: PublicProfile = {
+          id: data.profile.id,
+          fullName: data.profile.full_name,
+          studentId: data.profile.student_id,
+          bio: data.profile.bio || '',
+          clubs: {
+            betaClub: data.profile.beta_club || false,
+            nths: data.profile.nths || false
+          },
+          memberSince: data.profile.created_at,
+          volunteerStats: {
+            totalHours: data.volunteer_hours?.reduce((total: number, hour: any) => total + (hour.hours || 0), 0) || 0,
+            totalActivities: data.volunteer_hours?.length || 0,
+            recentActivities: data.volunteer_hours?.slice(0, 5).map((hour: any) => ({
+              description: hour.description || 'Volunteer Activity',
+              hours: hour.hours || 0,
+              date: hour.date
+            })) || []
+          },
+          upcomingOpportunities: data.registrations?.map((reg: any) => ({
+            title: reg.opportunity_title || 'Volunteer Opportunity',
+            organization: reg.organization_name || 'Organization',
+            date: reg.event_date || reg.created_at,
+            location: reg.location || 'Location TBD'
+          })) || []
+        }
+        setProfile(transformedProfile)
+      } else {
+        throw new Error('Invalid profile data received')
+      }
     } catch (error) {
       console.error('Error loading profile:', error)
       setError(error instanceof Error ? error.message : 'Failed to load profile')
