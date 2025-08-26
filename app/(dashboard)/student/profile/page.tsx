@@ -121,20 +121,46 @@ export default function StudentProfile() {
   const handleShareProfile = async () => {
     if (!profileData?.profile?.id) return
     
-    const profileUrl = `${window.location.origin}/profile/${profileData.profile.id}`
-    
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `${profileData.profile.full_name} - Volunteer Profile`,
-          text: `Check out ${profileData.profile.full_name}'s volunteer profile on Volunteer Central`,
-          url: profileUrl
+    try {
+      // Create a new share token
+      const response = await fetch('/api/student/share-profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          expiresInDays: 30 // Share link expires in 30 days
         })
-      } catch (error) {
-        console.error('Error sharing:', error)
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const shareUrl = data.shareUrl
+        
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: `${profileData.profile.full_name} - Volunteer Profile`,
+              text: `Check out ${profileData.profile.full_name}'s volunteer profile on Volunteer Central`,
+              url: shareUrl
+            })
+          } catch (error) {
+            console.error('Error sharing:', error)
+            copyToClipboard(shareUrl)
+          }
+        } else {
+          copyToClipboard(shareUrl)
+        }
+      } else {
+        console.error('Failed to create share link')
+        // Fallback to old method
+        const profileUrl = `${window.location.origin}/profile/${profileData.profile.id}`
         copyToClipboard(profileUrl)
       }
-    } else {
+    } catch (error) {
+      console.error('Error creating share link:', error)
+      // Fallback to old method
+      const profileUrl = `${window.location.origin}/profile/${profileData.profile.id}`
       copyToClipboard(profileUrl)
     }
   }

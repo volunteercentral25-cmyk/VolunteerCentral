@@ -597,6 +597,36 @@ CREATE POLICY "Anyone can view active shareable profiles by token" ON shareable_
     is_active = true AND (expires_at IS NULL OR expires_at > now())
 );
 
+-- Public profile sharing policies
+CREATE POLICY "Public can view profiles with active share tokens" ON profiles FOR SELECT USING (
+    EXISTS (
+        SELECT 1 FROM shareable_profiles 
+        WHERE shareable_profiles.profile_id = profiles.id 
+        AND shareable_profiles.is_active = true 
+        AND (shareable_profiles.expires_at IS NULL OR shareable_profiles.expires_at > now())
+    )
+);
+
+-- Public volunteer hours sharing policies
+CREATE POLICY "Public can view volunteer hours for shared profiles" ON volunteer_hours FOR SELECT USING (
+    EXISTS (
+        SELECT 1 FROM shareable_profiles 
+        WHERE shareable_profiles.profile_id = volunteer_hours.student_id 
+        AND shareable_profiles.is_active = true 
+        AND (shareable_profiles.expires_at IS NULL OR shareable_profiles.expires_at > now())
+    )
+);
+
+-- Public opportunity registrations sharing policies
+CREATE POLICY "Public can view registrations for shared profiles" ON opportunity_registrations FOR SELECT USING (
+    EXISTS (
+        SELECT 1 FROM shareable_profiles 
+        WHERE shareable_profiles.profile_id = opportunity_registrations.student_id 
+        AND shareable_profiles.is_active = true 
+        AND (shareable_profiles.expires_at IS NULL OR shareable_profiles.expires_at > now())
+    )
+);
+
 -- Email verifications policies
 CREATE POLICY "Users can view own verifications" ON email_verifications FOR SELECT USING (
     email = (SELECT profiles.email FROM profiles WHERE profiles.id = auth.uid())

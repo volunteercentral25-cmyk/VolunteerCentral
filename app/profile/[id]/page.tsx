@@ -70,11 +70,22 @@ export default function PublicProfile() {
   const loadProfile = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/public/profile/${profileId}`)
+      // Get the share token from URL parameters
+      const urlParams = new URLSearchParams(window.location.search)
+      const shareToken = urlParams.get('token')
+      
+      if (!shareToken) {
+        throw new Error('Share token is required')
+      }
+      
+      const response = await fetch(`/api/public/profile/${profileId}?token=${shareToken}`)
       
       if (!response.ok) {
         if (response.status === 404) {
           throw new Error('Profile not found')
+        }
+        if (response.status === 410) {
+          throw new Error('This share link has expired or been deactivated')
         }
         throw new Error('Failed to load profile')
       }
