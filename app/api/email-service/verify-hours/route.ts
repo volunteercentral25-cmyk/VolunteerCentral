@@ -106,6 +106,41 @@ export async function GET(request: NextRequest) {
 
     console.log('Hours verification successful:', { hoursId, status, verifierEmail })
 
+    // Send email notification to student
+    try {
+      const emailServiceUrl = process.env.NODE_ENV === 'production' 
+        ? `${process.env.NEXT_PUBLIC_APP_URL}/api/email-service/send-notification`
+        : 'http://localhost:3002/api/email-service/send-notification'
+
+      console.log('Sending email notification to:', emailServiceUrl)
+
+      const emailResponse = await fetch(emailServiceUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          hours_id: hoursId,
+          student_email: studentProfile.email,
+          status: status,
+          verifier_email: verifierEmail,
+          notes: notes
+        }),
+      })
+
+      if (emailResponse.ok) {
+        const emailResult = await emailResponse.json()
+        console.log('Email notification sent successfully:', emailResult)
+      } else {
+        const errorText = await emailResponse.text()
+        console.error('Email notification failed:', errorText)
+        // Don't fail the whole request if email fails
+      }
+    } catch (emailError) {
+      console.error('Error sending email notification:', emailError)
+      // Don't fail the whole request if email fails
+    }
+
     return NextResponse.json({
       success: true,
       message: `Hours ${action} successfully`,
