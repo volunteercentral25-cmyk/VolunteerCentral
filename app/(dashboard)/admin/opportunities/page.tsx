@@ -56,10 +56,9 @@ interface Registration {
   student_id: string
   status: string
   registered_at: string
-  profile_id: string
-  profile_full_name: string
-  profile_email: string
-  profile_student_id: string
+  student_name: string
+  student_email: string
+  opportunity_title: string
 }
 
 interface OpportunitiesData {
@@ -401,7 +400,7 @@ export default function AdminOpportunities() {
               </Link>
               <div className="h-6 w-px bg-gray-300" />
               <Link href="/" className="flex items-center gap-3">
-                <Image src="/logo.png" alt="Volunteer Central Logo" width={32} height={32} className="rounded-lg shadow-glow" />
+                <Image src="/logo.png" alt="Volunteer Central Logo" width={32} height={32} className="rounded-lg shadow-glow" priority />
                 <div>
                   <p className="text-sm font-semibold text-gradient">Volunteer Central</p>
                   <p className="text-xs text-gray-600">Opportunity Management</p>
@@ -842,7 +841,7 @@ export default function AdminOpportunities() {
                           <div className="flex-1">
                                                          <div className="flex items-center gap-3 mb-2">
                                <h3 className="font-semibold text-gray-900">
-                                 {registration.profile_full_name || 'Unknown Student'}
+                                 {registration.student_name || 'Unknown Student'}
                                </h3>
                                <Badge className={
                                  registration.status === 'approved' ? 'bg-green-100 text-green-800' :
@@ -853,8 +852,8 @@ export default function AdminOpportunities() {
                                </Badge>
                              </div>
                              <div className="text-sm text-gray-600 space-y-1">
-                               <p>Email: {registration.profile_email || 'No email available'}</p>
-                               <p>Student ID: {registration.profile_student_id || 'No student ID'}</p>
+                               <p>Email: {registration.student_email || 'No email available'}</p>
+                               <p>Student ID: {registration.student_id || 'No student ID'}</p>
                                <p>Registered: {new Date(registration.registered_at).toLocaleDateString()}</p>
                              </div>
                           </div>
