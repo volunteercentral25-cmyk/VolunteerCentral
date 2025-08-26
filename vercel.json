@@ -7,7 +7,10 @@
     },
     {
       "src": "api/email/flask_app.py",
-      "use": "@vercel/python"
+      "use": "@vercel/python",
+      "config": {
+        "maxDuration": 30
+      }
     }
   ],
   "routes": [
@@ -81,11 +84,7 @@
       ]
     }
   ],
-  "functions": {
-    "api/email/flask_app.py": {
-      "maxDuration": 30
-    }
-  },
+
   "env": {
     "PYTHON_VERSION": "3.9"
   }
