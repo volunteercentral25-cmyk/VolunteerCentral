@@ -116,7 +116,7 @@ export default function PublicProfile() {
           upcomingOpportunities: data.registrations?.map((reg: any) => ({
             title: reg.opportunity_title || 'Volunteer Opportunity',
             organization: reg.organization_name || 'Organization',
-            date: reg.event_date || reg.created_at,
+            date: reg.event_date || reg.registered_at,
             location: reg.location || 'Location TBD'
           })) || []
         }

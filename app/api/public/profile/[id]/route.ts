@@ -64,11 +64,12 @@ export async function GET(
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
     }
 
-    // Fetch volunteer hours for this profile
+    // Fetch only approved volunteer hours for this profile
     const { data: volunteerHours, error: hoursError } = await supabase
       .from('volunteer_hours')
       .select('*')
       .eq('student_id', profileId)
+      .eq('status', 'approved')
       .order('date', { ascending: false })
 
     if (hoursError) {
@@ -80,7 +81,7 @@ export async function GET(
       .from('opportunity_registrations')
       .select('*')
       .eq('student_id', profileId)
-      .order('created_at', { ascending: false })
+      .order('registered_at', { ascending: false })
 
     if (regError) {
       console.error('Error getting registrations:', regError)
