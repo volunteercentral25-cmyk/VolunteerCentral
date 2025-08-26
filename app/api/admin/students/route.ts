@@ -39,22 +39,13 @@ export async function GET(request: NextRequest) {
 
     console.log('Parameters:', { page, limit, search, status, club })
 
-    // Use RPC functions to bypass RLS
+    // Use RPC functions to bypass RLS (these functions don't accept parameters)
     console.log('Calling RPC functions...')
     const [studentsResult, countResult] = await Promise.all([
       // Get students with stats
-      supabase.rpc('get_admin_students_with_stats', {
-        search_term: search,
-        status_filter: status,
-        club_filter: club,
-        page_num: page,
-        page_size: limit
-      }),
+      supabase.rpc('get_admin_students_with_stats'),
       // Get total count
-      supabase.rpc('get_admin_students_count', {
-        search_term: search,
-        club_filter: club
-      })
+      supabase.rpc('get_admin_students_count')
     ])
     
     console.log('RPC calls completed')
@@ -72,16 +63,38 @@ export async function GET(request: NextRequest) {
       throw countResult.error
     }
 
-    const students = studentsResult.data || []
-    const totalCount = countResult.data || 0
+    let students = studentsResult.data || []
+    let totalCount = countResult.data || 0
 
-    console.log('Raw students data:', students)
-    console.log('Total count:', totalCount)
-    console.log('Total count type:', typeof totalCount)
-    console.log('Students array length:', students.length)
+    // Apply client-side filtering
+    if (search) {
+      const searchLower = search.toLowerCase()
+      students = students.filter((student: any) => 
+        student.full_name?.toLowerCase().includes(searchLower) ||
+        student.email?.toLowerCase().includes(searchLower) ||
+        student.student_id?.toLowerCase().includes(searchLower)
+      )
+    }
+
+    if (club) {
+      const clubLower = club.toLowerCase()
+      students = students.filter((student: any) => 
+        student.beta_club?.toLowerCase().includes(clubLower) ||
+        student.nths?.toLowerCase().includes(clubLower)
+      )
+    }
+
+    // Apply pagination
+    const startIndex = (page - 1) * limit
+    const endIndex = startIndex + limit
+    const paginatedStudents = students.slice(startIndex, endIndex)
+    const filteredTotalCount = students.length
+
+    console.log('Filtered students data:', paginatedStudents)
+    console.log('Filtered total count:', filteredTotalCount)
 
     // Transform the data to match the expected interface
-    const studentsWithStats = students.map((student: any) => ({
+    const studentsWithStats = paginatedStudents.map((student: any) => ({
       id: student.id,
       full_name: student.full_name,
       email: student.email,
@@ -92,10 +105,10 @@ export async function GET(request: NextRequest) {
       created_at: student.created_at,
       updated_at: student.updated_at,
       totalHours: student.total_hours || 0,
-      approvedHours: student.approved_hours || 0,
-      pendingHours: student.pending_hours_count || 0,
-      totalRegistrations: student.total_registrations || 0,
-      activeRegistrations: student.active_registrations || 0,
+      approvedHours: student.total_hours || 0, // All hours in the RPC are approved
+      pendingHours: 0, // We'll need to calculate this separately if needed
+      totalRegistrations: student.total_opportunities || 0,
+      activeRegistrations: student.total_opportunities || 0,
       status: student.status || 'active'
     }))
 
@@ -106,8 +119,8 @@ export async function GET(request: NextRequest) {
       pagination: {
         page,
         limit,
-        total: totalCount,
-        totalPages: Math.ceil(totalCount / limit)
+        total: filteredTotalCount,
+        totalPages: Math.ceil(filteredTotalCount / limit)
       }
     }
 

@@ -38,20 +38,12 @@ export async function GET(request: NextRequest) {
 
     console.log('Parameters:', { page, limit, search, status })
 
-    // Use RPC functions to bypass RLS
+    // Use RPC functions to bypass RLS (these functions don't accept parameters)
     const [hoursResult, countResult] = await Promise.all([
       // Get hours with details
-      supabase.rpc('get_admin_hours_with_details', {
-        search_term: search,
-        status_filter: status,
-        page_num: page,
-        page_size: limit
-      }),
+      supabase.rpc('get_admin_hours_with_details'),
       // Get total count
-      supabase.rpc('get_admin_hours_count', {
-        search_term: search,
-        status_filter: status
-      })
+      supabase.rpc('get_admin_hours_count')
     ])
 
     console.log('Hours result:', hoursResult)
@@ -67,14 +59,35 @@ export async function GET(request: NextRequest) {
       throw countResult.error
     }
 
-    const hours = hoursResult.data || []
-    const totalCount = countResult.data || 0
+    let hours = hoursResult.data || []
+    let totalCount = countResult.data || 0
 
-    console.log('Raw hours data:', hours)
-    console.log('Total count:', totalCount)
+    // Apply client-side filtering
+    if (search) {
+      const searchLower = search.toLowerCase()
+      hours = hours.filter((hour: any) => 
+        hour.student_name?.toLowerCase().includes(searchLower) ||
+        hour.student_email?.toLowerCase().includes(searchLower) ||
+        hour.description?.toLowerCase().includes(searchLower) ||
+        hour.opportunity_title?.toLowerCase().includes(searchLower)
+      )
+    }
+
+    if (status) {
+      hours = hours.filter((hour: any) => hour.status === status)
+    }
+
+    // Apply pagination
+    const startIndex = (page - 1) * limit
+    const endIndex = startIndex + limit
+    const paginatedHours = hours.slice(startIndex, endIndex)
+    const filteredTotalCount = hours.length
+
+    console.log('Filtered hours data:', paginatedHours)
+    console.log('Filtered total count:', filteredTotalCount)
 
     // Transform the data to match the expected interface
-    const transformedHours = hours.map((hour: any) => ({
+    const transformedHours = paginatedHours.map((hour: any) => ({
       id: hour.id,
       hours: hour.hours,
       activity: hour.description || 'No description provided',
@@ -101,8 +114,8 @@ export async function GET(request: NextRequest) {
       pagination: {
         page,
         limit,
-        total: totalCount,
-        totalPages: Math.ceil(totalCount / limit)
+        total: filteredTotalCount,
+        totalPages: Math.ceil(filteredTotalCount / limit)
       }
     }
 
