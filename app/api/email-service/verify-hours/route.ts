@@ -6,13 +6,33 @@ const SECRET_KEY = process.env.SECRET_KEY || 'c057f320112909a9eedff367f37a554c65
 
 function verifyToken(token: string, hoursId: string, action: string, email: string): boolean {
   try {
-    const expectedData = `${hoursId}:${action}:${email}`
-    const expectedToken = crypto
+    // Parse the token format: timestamp:signature
+    const [timestampStr, signature] = token.split(':', 2)
+    if (!timestampStr || !signature) {
+      console.error('Invalid token format')
+      return false
+    }
+
+    const timestamp = parseInt(timestampStr)
+    const now = Math.floor(Date.now() / 1000)
+    
+    // Check if token is expired (7 days = 604800 seconds)
+    if (now - timestamp > 604800) {
+      console.error('Token expired')
+      return false
+    }
+    
+    // Verify signature
+    const message = `${hoursId}:${action}:${email}:${timestampStr}`
+    const expectedSignature = crypto
       .createHmac('sha256', SECRET_KEY)
-      .update(expectedData)
+      .update(message)
       .digest('hex')
     
-    return token === expectedToken
+    return crypto.timingSafeEqual(
+      Buffer.from(signature, 'hex'),
+      Buffer.from(expectedSignature, 'hex')
+    )
   } catch (error) {
     console.error('Token verification error:', error)
     return false
