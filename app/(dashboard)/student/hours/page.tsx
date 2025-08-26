@@ -26,7 +26,9 @@ import {
   Activity,
   Target,
   Shield,
-  Info
+  Info,
+  RefreshCw,
+  Trash2
 } from 'lucide-react'
 
 interface HourEntry {
@@ -66,6 +68,8 @@ export default function StudentHours() {
     verification_email: ''
   })
   const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'info', message: string } | null>(null)
+  const [resendingEmail, setResendingEmail] = useState<string | null>(null)
+  const [deletingHours, setDeletingHours] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -142,6 +146,94 @@ export default function StudentHours() {
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     router.push('/')
+  }
+
+  const handleResendVerification = async (hoursId: string, verificationEmail: string) => {
+    try {
+      setResendingEmail(hoursId)
+      setError(null)
+
+      const response = await fetch('/api/student/resend-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          hoursId,
+          verificationEmail
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setNotification({
+          type: 'success',
+          message: 'Verification email sent successfully!'
+        })
+        // Refresh hours data
+        await fetchHoursData()
+      } else {
+        if (response.status === 429) {
+          setNotification({
+            type: 'error',
+            message: data.error
+          })
+        } else {
+          setNotification({
+            type: 'error',
+            message: data.error || 'Failed to send verification email'
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error resending verification:', error)
+      setNotification({
+        type: 'error',
+        message: 'Failed to send verification email'
+      })
+    } finally {
+      setResendingEmail(null)
+    }
+  }
+
+  const handleDeleteHours = async (hoursId: string) => {
+    if (!confirm('Are you sure you want to delete these volunteer hours? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      setDeletingHours(hoursId)
+      setError(null)
+
+      const response = await fetch(`/api/student/delete-hours?hoursId=${hoursId}`, {
+        method: 'DELETE',
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setNotification({
+          type: 'success',
+          message: 'Volunteer hours deleted successfully!'
+        })
+        // Refresh hours data
+        await fetchHoursData()
+      } else {
+        setNotification({
+          type: 'error',
+          message: data.error || 'Failed to delete volunteer hours'
+        })
+      }
+    } catch (error) {
+      console.error('Error deleting hours:', error)
+      setNotification({
+        type: 'error',
+        message: 'Failed to delete volunteer hours'
+      })
+    } finally {
+      setDeletingHours(null)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -553,15 +645,62 @@ export default function StudentHours() {
                               )}
                             </div>
                           </div>
-                          <Badge className={
-                            hour.status === 'approved' 
-                              ? 'bg-green-100 text-green-800' 
-                              : hour.status === 'pending'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-red-100 text-red-800'
-                          }>
-                            {hour.status}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge className={
+                              hour.status === 'approved' 
+                                ? 'bg-green-100 text-green-800' 
+                                : hour.status === 'pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-red-100 text-red-800'
+                            }>
+                              {hour.status}
+                            </Badge>
+                            
+                            {/* Action Buttons */}
+                            <div className="flex items-center gap-1">
+                              {/* Resend Verification Button - only for pending hours */}
+                              {hour.status === 'pending' && hour.verification_email && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleResendVerification(hour.id, hour.verification_email!)}
+                                  disabled={resendingEmail === hour.id}
+                                  className="h-8 px-2 text-xs"
+                                >
+                                  {resendingEmail === hour.id ? (
+                                    <motion.div
+                                      animate={{ rotate: 360 }}
+                                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                      className="w-3 h-3 border-2 border-current border-t-transparent rounded-full"
+                                    />
+                                  ) : (
+                                    <RefreshCw className="h-3 w-3" />
+                                  )}
+                                </Button>
+                              )}
+                              
+                              {/* Delete Button - only for pending hours */}
+                              {hour.status === 'pending' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleDeleteHours(hour.id)}
+                                  disabled={deletingHours === hour.id}
+                                  className="h-8 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  {deletingHours === hour.id ? (
+                                    <motion.div
+                                      animate={{ rotate: 360 }}
+                                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                      className="w-3 h-3 border-2 border-current border-t-transparent rounded-full"
+                                    />
+                                  ) : (
+                                    <Trash2 className="h-3 w-3" />
+                                  )}
+                                </Button>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
