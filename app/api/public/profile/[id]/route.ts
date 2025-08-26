@@ -52,11 +52,46 @@ export async function GET(
 
     console.log('Found valid shareable profile for ID:', profileId)
 
+    // Now fetch the actual profile data
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', profileId)
+      .single()
+
+    if (profileError || !profile) {
+      console.error('Error getting profile:', profileError)
+      return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
+    }
+
+    // Fetch volunteer hours for this profile
+    const { data: volunteerHours, error: hoursError } = await supabase
+      .from('volunteer_hours')
+      .select('*')
+      .eq('student_id', profileId)
+      .order('date', { ascending: false })
+
+    if (hoursError) {
+      console.error('Error getting volunteer hours:', hoursError)
+    }
+
+    // Fetch opportunity registrations for this profile
+    const { data: registrations, error: regError } = await supabase
+      .from('opportunity_registrations')
+      .select('*')
+      .eq('student_id', profileId)
+      .order('created_at', { ascending: false })
+
+    if (regError) {
+      console.error('Error getting registrations:', regError)
+    }
+
     return NextResponse.json({ 
-      message: 'Shareable profile validation successful',
-      profileId: profileId,
-      shareToken: shareToken,
-      shareableProfile: shareableProfile,
+      success: true,
+      profile: profile,
+      volunteer_hours: volunteerHours || [],
+      registrations: registrations || [],
+      shareable_profile: shareableProfile,
       timestamp: new Date().toISOString()
     })
   } catch (error) {
