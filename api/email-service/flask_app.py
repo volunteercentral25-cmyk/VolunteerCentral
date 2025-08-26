@@ -29,7 +29,7 @@ SMTP_PORT = int(os.getenv('SMTP_PORT', '587'))
 SMTP_USERNAME = os.getenv('SMTP_USERNAME')
 SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
-SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')
+SECRET_KEY = os.getenv('SECRET_KEY', 'c057f320112909a9eedff367f37a554c65ab7363cccb2f6366d5c1606446938d')
 
 class EmailService:
     def __init__(self):

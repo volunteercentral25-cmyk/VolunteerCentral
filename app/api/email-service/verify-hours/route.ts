@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 
-const SECRET_KEY = process.env.SECRET_KEY || 'your-secret-key-here'
+const SECRET_KEY = process.env.SECRET_KEY || 'c057f320112909a9eedff367f37a554c65ab7363cccb2f6366d5c1606446938d'
 
 function verifyToken(token: string, hoursId: string, action: string, email: string): boolean {
   try {
