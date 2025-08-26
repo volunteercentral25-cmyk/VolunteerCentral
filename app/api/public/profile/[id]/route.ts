@@ -1,12 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    console.log('Public profile API called for ID:', params.id)
+    const resolvedParams = await params
+    console.log('Public profile API called for ID:', resolvedParams.id)
     const supabase = createClient()
     
-    const profileId = params.id
+    const profileId = resolvedParams.id
 
     if (!profileId) {
       return NextResponse.json({ error: 'Profile ID is required' }, { status: 400 })
@@ -82,7 +86,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     const upcomingOpportunities = (registrations || [])
       .map(reg => reg.volunteer_opportunities)
-      .filter(opp => opp && new Date(opp.date) >= new Date())
+      .filter(opp => {
+        if (!opp || typeof opp !== 'object') return false
+        const opportunity = opp as any
+        return opportunity.date && new Date(opportunity.date) >= new Date()
+      })
       .slice(0, 3) // Show only next 3 upcoming
 
     const publicProfile = {

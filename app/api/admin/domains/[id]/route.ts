@@ -1,7 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const supabase = createClient()
     
@@ -26,7 +29,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     console.log('Update domain request body:', body)
     
     const { is_trusted, reason } = body
-    const domainId = params.id
+    const resolvedParams = await params
+    const domainId = resolvedParams.id
 
     if (typeof is_trusted !== 'boolean') {
       console.error('Missing required fields:', { is_trusted })
@@ -64,7 +68,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const supabase = createClient()
     
@@ -85,7 +92,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
-    const domainId = params.id
+    const resolvedParams = await params
+    const domainId = resolvedParams.id
     console.log('Deleting domain:', domainId)
 
     // Delete domain
