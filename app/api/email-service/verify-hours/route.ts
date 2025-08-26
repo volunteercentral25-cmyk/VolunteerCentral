@@ -94,13 +94,14 @@ export async function GET(request: NextRequest) {
         status: status,
         verified_by: verifierEmail,
         verification_notes: notes,
-        verified_at: new Date().toISOString()
+        verification_date: new Date().toISOString()
       })
       .eq('id', hoursId)
 
     if (updateError) {
       console.error('Error updating hours:', updateError)
-      return NextResponse.json({ error: 'Failed to update hours status' }, { status: 500 })
+      console.error('Update data:', { status, verified_by: verifierEmail, verification_notes: notes, verification_date: new Date().toISOString() })
+      return NextResponse.json({ error: 'Failed to update hours status', details: updateError.message }, { status: 500 })
     }
 
     console.log('Hours verification successful:', { hoursId, status, verifierEmail })
