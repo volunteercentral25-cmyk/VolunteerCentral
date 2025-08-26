@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     console.log('Successfully created shareable profile:', shareableProfile.id)
 
     // Return the share URL
-    const shareUrl = `${request.nextUrl.origin}/profile/${shareToken}`
+    const shareUrl = `${request.nextUrl.origin}/profile/${profile.id}?token=${shareToken}`
 
     return NextResponse.json({ 
       success: true, 
@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
     // Add share URLs to each profile
     const profilesWithUrls = shareableProfiles.map(sp => ({
       ...sp,
-      shareUrl: `${request.nextUrl.origin}/profile/${sp.share_token}`
+      shareUrl: `${request.nextUrl.origin}/profile/${profile.id}?token=${sp.share_token}`
     }))
 
     return NextResponse.json({ 
