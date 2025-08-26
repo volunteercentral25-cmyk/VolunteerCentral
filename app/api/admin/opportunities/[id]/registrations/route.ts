@@ -28,13 +28,16 @@ export async function GET(
 
     // Get registrations for this opportunity with student details using RPC function
     const { data: registrations, error } = await supabase
-      .rpc('get_admin_registrations_with_profiles', { opportunity_uuid: id })
+      .rpc('get_admin_registrations_with_profiles')
 
     if (error) {
       throw error
     }
 
-    return NextResponse.json({ registrations: registrations || [] })
+    // Filter registrations by opportunity ID
+    const filteredRegistrations = registrations?.filter((reg: any) => reg.opportunity_id === id) || []
+
+    return NextResponse.json({ registrations: filteredRegistrations })
   } catch (error) {
     console.error('Admin opportunity registrations API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

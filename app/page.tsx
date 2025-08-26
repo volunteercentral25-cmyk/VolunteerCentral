@@ -155,13 +155,13 @@ export default function HomePage() {
       >
         <div className="mx-auto max-w-7xl px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-3">
-              <Image src="/logo.png" alt="Volunteer Central Logo" width={32} height={32} className="rounded-lg shadow-glow" />
-              <div>
-                <p className="text-sm font-semibold text-gradient">Volunteer Central</p>
-                <p className="text-xs text-gray-600">Community Service</p>
-              </div>
-            </Link>
+                          <Link href="/" className="flex items-center gap-3">
+                <Image src="/logo.png" alt="Volunteer Central Logo" width={32} height={32} className="rounded-lg shadow-glow" priority />
+                <div>
+                  <p className="text-sm font-semibold text-gradient">Volunteer Central</p>
+                  <p className="text-xs text-gray-600">Community Service</p>
+                </div>
+              </Link>
             <div className="hidden md:flex items-center gap-3">
               <Link href="#auth" className="btn-secondary btn-hover-effect rounded-md px-4 py-2">Sign In</Link>
               <Link href="#auth" className="btn-primary btn-hover-effect rounded-md px-4 py-2">Get Started</Link>
