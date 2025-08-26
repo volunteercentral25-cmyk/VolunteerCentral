@@ -3,8 +3,8 @@ import { cookies } from 'next/headers'
 
 export function createClient() {
 	return createServerClient(
-		process.env.NEXT_PUBLIC_SUPABASE_URL!,
-		process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+		'https://wvqfwszflytpkditlmsa.supabase.co',
+		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2cWZ3c3pmbHl0cGtkaXRsbXNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxNjM5NjIsImV4cCI6MjA3MTczOTk2Mn0.ht9B8x1arXXR8fhjjRS5uY2E69UBwKUNCNPYv_mV7oE',
 		{
 			cookies: {
 				async getAll() {
