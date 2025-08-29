@@ -98,6 +98,36 @@
     @apply px-4 md:px-6 lg:px-8;
   }
 
+  /* Mobile admin specific utilities */
+  .mobile-card {
+    @apply border-0 shadow-md rounded-lg;
+  }
+
+  .mobile-button {
+    @apply min-h-[44px] px-4 py-2 text-sm font-medium;
+  }
+
+  .mobile-input {
+    @apply min-h-[44px] px-3 py-2 text-base;
+  }
+
+  .mobile-modal {
+    @apply max-w-md max-h-[90vh] overflow-y-auto;
+  }
+
+  /* Mobile navigation improvements */
+  .mobile-nav-item {
+    @apply flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors;
+  }
+
+  .mobile-nav-active {
+    @apply bg-purple-100 text-purple-700 border border-purple-200;
+  }
+
+  .mobile-nav-inactive {
+    @apply text-gray-700 hover:bg-gray-100;
+  }
+
   .mobile-margin {
     @apply mx-4 md:mx-6 lg:mx-8;
   }

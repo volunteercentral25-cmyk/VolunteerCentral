@@ -5,7 +5,7 @@
 
 # Supabase credentials
 mcp_servers.json
-
+mcpbackup.json
 # Node modules
 node_modules/
 

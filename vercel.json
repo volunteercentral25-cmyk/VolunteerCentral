@@ -21,6 +21,10 @@
     {
       "source": "/profile/([^/]+)",
       "destination": "/profile/$1"
+    },
+    {
+      "source": "/admin/([^/]+)/mobile",
+      "destination": "/admin/$1/mobile"
     }
   ],
   "redirects": [
