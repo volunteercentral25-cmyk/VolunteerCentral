@@ -1,11 +1,7 @@
 from flask import Flask, request, jsonify, render_template, render_template_string
+from flask_mail import Mail, Message
 from flask_cors import CORS
 import os
-from dotenv import load_dotenv
-import smtplib
-import ssl
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 import uuid
 import requests
 import hashlib
@@ -16,9 +12,6 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 from premailer import transform
 
-# Load environment variables
-load_dotenv()
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,56 +19,22 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)
 
-# Configuration
+# Configuration - Using exact Vercel environment variable names
+app.config['MAIL_SERVER'] = os.getenv('FLASK_MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT'] = int(os.getenv('FLASK_MAIL_PORT', 587))
+app.config['MAIL_USE_TLS'] = os.getenv('FLASK_MAIL_USE_TLS', 'true').lower() == 'true'
+app.config['MAIL_USERNAME'] = os.getenv('FLASK_MAIL_USERNAME', 'CLTVolunteerCentral@gmail.com')
+app.config['MAIL_PASSWORD'] = os.getenv('FLASK_MAIL_PASSWORD', 'jnkb gfpz qxjz nflx')
+app.config['MAIL_DEFAULT_SENDER'] = (os.getenv('FLASK_MAIL_USERNAME', 'CLTVolunteerCentral@gmail.com'), os.getenv('FLASK_MAIL_DISPLAY_NAME', 'volunteer'))
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
+
+# Supabase Configuration
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
-SMTP_SERVER = os.getenv('SMTP_SERVER')
-SMTP_PORT = int(os.getenv('SMTP_PORT', '587')) if os.getenv('SMTP_PORT') else 587
-SMTP_USERNAME = os.getenv('SMTP_USERNAME')
-SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
-FRONTEND_URL = os.getenv('FRONTEND_URL')
-SECRET_KEY = os.getenv('SECRET_KEY')
+FRONTEND_URL = os.getenv('NEXT_PUBLIC_APP_URL', 'https://volunteercentral25-cmyk.vercel.app')
+SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')
 
-class EmailService:
-    def __init__(self):
-        if not SMTP_SERVER or not SMTP_USERNAME or not SMTP_PASSWORD:
-            logger.error("SMTP configuration incomplete. Missing required environment variables.")
-            raise ValueError("SMTP configuration incomplete. Please set SMTP_SERVER, SMTP_USERNAME, and SMTP_PASSWORD environment variables.")
-        
-        self.smtp_server = SMTP_SERVER
-        self.smtp_port = SMTP_PORT
-        self.username = SMTP_USERNAME
-        self.password = SMTP_PASSWORD
-        
-    def send_email(self, to_email: str, subject: str, html_content: str, text_content: str = None) -> bool:
-        """Send email using SMTP"""
-        try:
-            # Create message
-            msg = MIMEMultipart('alternative')
-            msg['Subject'] = subject
-            msg['From'] = self.username
-            msg['To'] = to_email
-            
-            # Add text and HTML parts
-            if text_content:
-                text_part = MIMEText(text_content, 'plain')
-                msg.attach(text_part)
-            
-            html_part = MIMEText(html_content, 'html')
-            msg.attach(html_part)
-            
-            # Send email
-            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
-                server.starttls(context=ssl.create_default_context())
-                server.login(self.username, self.password)
-                server.send_message(msg)
-            
-            logger.info(f"Email sent successfully to {to_email}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Failed to send email to {to_email}: {str(e)}")
-            return False
+mail = Mail(app)
 
 # Template rendering with CSS inlining
 def render_email(template_name: str, **context) -> str:
@@ -92,19 +51,13 @@ def render_email(template_name: str, **context) -> str:
 
 class SupabaseService:
     def __init__(self):
-        if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-            logger.warning("Supabase configuration incomplete. Some features may not work.")
-            self.url = None
-            self.service_key = None
-            self.headers = None
-        else:
-            self.url = SUPABASE_URL
-            self.service_key = SUPABASE_SERVICE_KEY
-            self.headers = {
-                'apikey': self.service_key,
-                'Authorization': f'Bearer {self.service_key}',
-                'Content-Type': 'application/json'
-            }
+        self.url = SUPABASE_URL
+        self.service_key = SUPABASE_SERVICE_KEY
+        self.headers = {
+            'apikey': self.service_key,
+            'Authorization': f'Bearer {self.service_key}',
+            'Content-Type': 'application/json'
+        }
     
     def get_hours_by_id(self, hours_id: str) -> Optional[Dict[str, Any]]:
         """Get volunteer hours by ID"""
@@ -220,19 +173,7 @@ class SupabaseService:
             return False
 
 # Initialize services
-try:
-    email_service = EmailService()
-    logger.info("Email service initialized successfully")
-except Exception as e:
-    logger.error(f"Failed to initialize email service: {str(e)}")
-    email_service = None
-
-try:
-    supabase_service = SupabaseService()
-    logger.info("Supabase service initialized successfully")
-except Exception as e:
-    logger.error(f"Failed to initialize Supabase service: {str(e)}")
-    supabase_service = None
+supabase_service = SupabaseService()
 
 def generate_verification_token(hours_id: str, action: str, verifier_email: str) -> str:
     """Generate HMAC verification token"""
@@ -264,75 +205,6 @@ def verify_token(token: str, hours_id: str, action: str, verifier_email: str) ->
         return hmac.compare_digest(signature, expected_signature)
     except:
         return False
-
-# Email templates
-HOURS_VERIFICATION_TEMPLATE = """
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Volunteer Hours Verification Request</title>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-        .hours-details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea; }
-        .button { display: inline-block; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; margin: 10px 5px; }
-        .button.approve { background: #28a745; }
-        .button.deny { background: #dc3545; }
-        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-        .student-info { background: #e3f2fd; padding: 15px; border-radius: 6px; margin: 15px 0; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Volunteer Hours Verification</h1>
-            <p>volunteer</p>
-        </div>
-        
-        <div class="content">
-            <h2>Hello!</h2>
-            <p>A student has submitted volunteer hours for your verification. Please review the details below and approve or deny the submission.</p>
-            
-            <div class="student-info">
-                <h3>Student Information</h3>
-                <p><strong>Name:</strong> {{ student_name }}</p>
-                <p><strong>Email:</strong> {{ student_email }}</p>
-                <p><strong>Student ID:</strong> {{ student_id }}</p>
-            </div>
-            
-            <div class="hours-details">
-                <h3>Volunteer Hours Details</h3>
-                <p><strong>Activity:</strong> {{ activity }}</p>
-                <p><strong>Hours:</strong> {{ hours }}</p>
-                <p><strong>Date:</strong> {{ date }}</p>
-                <p><strong>Description:</strong> {{ description }}</p>
-                <p><strong>Submitted:</strong> {{ submitted_date }}</p>
-            </div>
-            
-            <p>Please click one of the buttons below to approve or deny these volunteer hours:</p>
-            
-            <div style="text-align: center;">
-                <a href="{{ approve_url }}" class="button approve">✓ Approve Hours</a>
-                <a href="{{ deny_url }}" class="button deny">✗ Deny Hours</a>
-            </div>
-            
-            <p style="margin-top: 30px; font-size: 14px; color: #666;">
-                <strong>Note:</strong> This verification link will expire in 7 days. If you have any questions, please contact the volunteer team.
-            </p>
-        </div>
-        
-        <div class="footer">
-            <p>volunteer - Building Community Through Service</p>
-            <p>This is an automated message. Please do not reply to this email.</p>
-        </div>
-    </div>
-</body>
-</html>
-"""
 
 @app.route('/api/email/send-verification-email', methods=['POST'])
 def send_verification_email():
@@ -392,37 +264,34 @@ def send_verification_email():
             **template_data
         )
         
-        # Send email using SMTP
+        # Send email using Flask-Mail
         logger.info(f"Preparing to send email to: {verifier_email}")
-        logger.info(f"SMTP configuration - Server: {SMTP_SERVER}, Port: {SMTP_PORT}, Username: {SMTP_USERNAME}")
         
         subject = f"Volunteer Hours Verification Request - {template_data['student_name']}"
         
-        success = email_service.send_email(
-            to_email=verifier_email,
+        msg = Message(
             subject=subject,
-            html_content=html_content
+            recipients=[verifier_email],
+            html=html_content
         )
         
-        if success:
-            logger.info("Email sent successfully!")
-            
-            # Log email sent
-            supabase_service.log_email_sent(
-                recipient=verifier_email,
-                template='verification_request',
-                subject=subject,
-                data=template_data
-            )
-            
-            return jsonify({
-                'success': True,
-                'message': 'Verification email sent successfully',
-                'hours_id': hours_id,
-                'verifier_email': verifier_email
-            })
-        else:
-            return jsonify({'error': 'Failed to send email'}), 500
+        mail.send(msg)
+        logger.info("Email sent successfully!")
+        
+        # Log email sent
+        supabase_service.log_email_sent(
+            recipient=verifier_email,
+            template='verification_request',
+            subject=subject,
+            data=template_data
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Verification email sent successfully',
+            'hours_id': hours_id,
+            'verifier_email': verifier_email
+        })
         
     except Exception as e:
         logger.error(f"Error sending verification email: {str(e)}")
@@ -486,11 +355,12 @@ def verify_hours():
                     notes=notes
                 )
 
-            email_service.send_email(
-                to_email=verifier_email,
+            msg = Message(
                 subject=subject,
-                html_content=html_conf
+                recipients=[verifier_email],
+                html=html_conf
             )
+            mail.send(msg)
         except Exception as e:
             logger.warning(f"Failed to send confirmation email: {str(e)}")
 
@@ -509,11 +379,12 @@ def verify_hours():
                     verifier_email=verifier_email,
                     notes=notes
                 )
-                email_service.send_email(
-                    to_email=student_email,
+                msg = Message(
                     subject=subject_s,
-                    html_content=html_s
+                    recipients=[student_email],
+                    html=html_s
                 )
+                mail.send(msg)
         except Exception as e:
             logger.warning(f"Failed to notify student: {str(e)}")
 
@@ -553,29 +424,31 @@ def test_email_service():
             supabase_status = "❌ not configured"
             supabase_connection = "❌ no credentials"
         
-        # Test SMTP configuration
-        smtp_config = {
-            'server': SMTP_SERVER,
-            'port': SMTP_PORT,
-            'username': SMTP_USERNAME,
-            'password_set': '✅ yes' if SMTP_PASSWORD and SMTP_PASSWORD != 'your_app_password' else '❌ no'
+        # Test Flask-Mail configuration
+        mail_config = {
+            'server': app.config['MAIL_SERVER'],
+            'port': app.config['MAIL_PORT'],
+            'username': app.config['MAIL_USERNAME'],
+            'password_set': '✅ yes' if app.config['MAIL_PASSWORD'] and app.config['MAIL_PASSWORD'] != 'your_app_password' else '❌ no'
         }
         
         # Environment variable check
         env_vars = {
-            'SMTP_SERVER': '✅ set' if os.getenv('SMTP_SERVER') else '❌ not set',
-            'SMTP_PORT': '✅ set' if os.getenv('SMTP_PORT') else '❌ not set',
-            'SMTP_USERNAME': '✅ set' if os.getenv('SMTP_USERNAME') else '❌ not set',
-            'SMTP_PASSWORD': '✅ set' if os.getenv('SMTP_PASSWORD') else '❌ not set',
+            'FLASK_MAIL_SERVER': '✅ set' if os.getenv('FLASK_MAIL_SERVER') else '❌ not set',
+            'FLASK_MAIL_PORT': '✅ set' if os.getenv('FLASK_MAIL_PORT') else '❌ not set',
+            'FLASK_MAIL_USERNAME': '✅ set' if os.getenv('FLASK_MAIL_USERNAME') else '❌ not set',
+            'FLASK_MAIL_PASSWORD': '✅ set' if os.getenv('FLASK_MAIL_PASSWORD') else '❌ not set',
+            'FLASK_MAIL_DISPLAY_NAME': '✅ set' if os.getenv('FLASK_MAIL_DISPLAY_NAME') else '❌ not set',
+            'NEXT_PUBLIC_APP_URL': '✅ set' if os.getenv('NEXT_PUBLIC_APP_URL') else '❌ not set',
             'SUPABASE_URL': '✅ set' if os.getenv('SUPABASE_URL') else '❌ not set',
             'SUPABASE_SERVICE_ROLE_KEY': '✅ set' if os.getenv('SUPABASE_SERVICE_ROLE_KEY') else '❌ not set',
             'SECRET_KEY': '✅ set' if os.getenv('SECRET_KEY') else '❌ not set'
         }
         
         return jsonify({
-            'status': 'SMTP Email Service Diagnostics',
-            'smtp': {
-                'configuration': smtp_config
+            'status': 'Flask-Mail Email Service Diagnostics',
+            'mail': {
+                'configuration': mail_config
             },
             'environment_variables': env_vars,
             'supabase': {
@@ -584,7 +457,7 @@ def test_email_service():
             },
             'frontend_url': FRONTEND_URL,
             'timestamp': datetime.utcnow().isoformat(),
-            'ready_to_send_emails': smtp_config['password_set'] == '✅ yes' and supabase_status == '✅ configured'
+            'ready_to_send_emails': mail_config['password_set'] == '✅ yes' and supabase_status == '✅ configured'
         }), 200
     except Exception as e:
         logger.error(f"Test endpoint error: {str(e)}")
@@ -600,10 +473,6 @@ def test_send_email():
         if not test_email:
             return jsonify({'error': 'Email address is required'}), 400
         
-        # Check if email service is available
-        if not email_service:
-            return jsonify({'error': 'Email service not configured properly. Check environment variables.'}), 500
-        
         # Create test email content
         html_content = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -613,14 +482,14 @@ def test_send_email():
             </div>
             <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
                 <h2>Success! 🎉</h2>
-                <p>This email confirms that the SMTP email service is working properly.</p>
+                <p>This email confirms that the Flask-Mail email service is working properly.</p>
                 
                 <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
                     <h3>Configuration Details:</h3>
                     <ul>
-                        <li><strong>Server:</strong> {SMTP_SERVER}</li>
-                        <li><strong>Port:</strong> {SMTP_PORT}</li>
-                        <li><strong>From:</strong> {SMTP_USERNAME}</li>
+                        <li><strong>Server:</strong> {app.config['MAIL_SERVER']}</li>
+                        <li><strong>Port:</strong> {app.config['MAIL_PORT']}</li>
+                        <li><strong>From:</strong> {app.config['MAIL_USERNAME']}</li>
                     </ul>
                 </div>
                 
@@ -633,27 +502,22 @@ def test_send_email():
         </div>
         """
         
-        # Send the email
-        success = email_service.send_email(
-            to_email=test_email,
+        # Send the email using Flask-Mail
+        msg = Message(
             subject='volunteer - Email Service Test',
-            html_content=html_content
+            recipients=[test_email],
+            html=html_content
         )
         
-        if success:
-            logger.info(f"Test email sent successfully to {test_email}")
-            
-            return jsonify({
-                'success': True,
-                'message': 'Test email sent successfully!',
-                'recipient': test_email,
-                'timestamp': datetime.utcnow().isoformat()
-            }), 200
-        else:
-            return jsonify({
-                'error': 'Failed to send test email',
-                'timestamp': datetime.utcnow().isoformat()
-            }), 500
+        mail.send(msg)
+        logger.info(f"Test email sent successfully to {test_email}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Test email sent successfully!',
+            'recipient': test_email,
+            'timestamp': datetime.utcnow().isoformat()
+        }), 200
         
     except Exception as e:
         logger.error(f"Failed to send test email: {str(e)}")
@@ -688,16 +552,14 @@ def opportunity_confirmation():
             duration=duration
         )
         
-        success = email_service.send_email(
-            to_email=student_email,
+        msg = Message(
             subject=f'You are registered: {title}',
-            html_content=html
+            recipients=[student_email],
+            html=html
         )
         
-        if success:
-            return jsonify({'success': True})
-        else:
-            return jsonify({'error': 'Failed to send email'}), 500
+        mail.send(msg)
+        return jsonify({'success': True})
             
     except Exception as e:
         logger.error(f"Opportunity confirmation error: {str(e)}")
@@ -729,16 +591,14 @@ def opportunity_reminder():
             duration=duration
         )
         
-        success = email_service.send_email(
-            to_email=student_email,
+        msg = Message(
             subject=f'Reminder: {title} is coming up',
-            html_content=html
+            recipients=[student_email],
+            html=html
         )
         
-        if success:
-            return jsonify({'success': True})
-        else:
-            return jsonify({'error': 'Failed to send email'}), 500
+        mail.send(msg)
+        return jsonify({'success': True})
             
     except Exception as e:
         logger.error(f"Opportunity reminder error: {str(e)}")
@@ -770,16 +630,14 @@ def opportunity_cancellation():
             duration=duration
         )
         
-        success = email_service.send_email(
-            to_email=student_email,
+        msg = Message(
             subject=f'Registration cancelled: {title}',
-            html_content=html
+            recipients=[student_email],
+            html=html
         )
         
-        if success:
-            return jsonify({'success': True})
-        else:
-            return jsonify({'error': 'Failed to send email'}), 500
+        mail.send(msg)
+        return jsonify({'success': True})
             
     except Exception as e:
         logger.error(f"Opportunity cancellation error: {str(e)}")
@@ -855,56 +713,55 @@ def hours_update_notification():
         # Send email to verifier
         logger.info(f"Preparing to send notification email to: {verifier_email}")
         
-        success = email_service.send_email(
-            to_email=verifier_email,
+        msg = Message(
             subject=subject,
-            html_content=html_content
+            recipients=[verifier_email],
+            html=html_content
         )
         
-        if success:
-            logger.info("Notification email sent successfully!")
-            
-            # Also notify the student about the update
-            try:
-                student_email = student_profile.get('email')
-                if student_email:
-                    student_subject = f"Your Volunteer Hours Were {status.title()}"
-                    student_html = render_email(
-                        'student_notification.html',
-                        student_name=student_profile.get('full_name', 'Student'),
-                        activity=hours_data.get('description', ''),
-                        hours=hours_data.get('hours', 0),
-                        date=hours_data.get('date', ''),
-                        status=status,
-                        verifier_email=verifier_email,
-                        notes=notes
-                    )
-                    email_service.send_email(
-                        to_email=student_email,
-                        subject=student_subject,
-                        html_content=student_html
-                    )
-                    logger.info(f"Student notification sent to: {student_email}")
-            except Exception as e:
-                logger.warning(f"Failed to notify student: {str(e)}")
-            
-            # Log email sent
-            supabase_service.log_email_sent(
-                recipient=verifier_email,
-                template=template_name,
-                subject=subject,
-                data=template_data
-            )
-            
-            return jsonify({
-                'success': True,
-                'message': 'Hours update notification sent successfully',
-                'hours_id': hours_id,
-                'verifier_email': verifier_email,
-                'status': status
-            })
-        else:
-            return jsonify({'error': 'Failed to send email'}), 500
+        mail.send(msg)
+        logger.info("Notification email sent successfully!")
+        
+        # Also notify the student about the update
+        try:
+            student_email = student_profile.get('email')
+            if student_email:
+                student_subject = f"Your Volunteer Hours Were {status.title()}"
+                student_html = render_email(
+                    'student_notification.html',
+                    student_name=student_profile.get('full_name', 'Student'),
+                    activity=hours_data.get('description', ''),
+                    hours=hours_data.get('hours', 0),
+                    date=hours_data.get('date', ''),
+                    status=status,
+                    verifier_email=verifier_email,
+                    notes=notes
+                )
+                msg = Message(
+                    subject=student_subject,
+                    recipients=[student_email],
+                    html=student_html
+                )
+                mail.send(msg)
+                logger.info(f"Student notification sent to: {student_email}")
+        except Exception as e:
+            logger.warning(f"Failed to notify student: {str(e)}")
+        
+        # Log email sent
+        supabase_service.log_email_sent(
+            recipient=verifier_email,
+            template=template_name,
+            subject=subject,
+            data=template_data
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Hours update notification sent successfully',
+            'hours_id': hours_id,
+            'verifier_email': verifier_email,
+            'status': status
+        })
         
     except Exception as e:
         logger.error(f"Error sending hours update notification: {str(e)}")
@@ -970,41 +827,40 @@ def send_hours_notification():
         html_content = render_email(template_name, **template_data)
         
         # Send email
-        success = email_service.send_email(
-            to_email=student_email,
+        msg = Message(
             subject=subject,
-            html_content=html_content
+            recipients=[student_email],
+            html=html_content
         )
         
-        if success:
-            # Log email sent
-            supabase_service.log_email_sent(
-                recipient=student_email,
-                template=f'hours_{status}',
-                subject=subject,
-                data=template_data
-            )
-            
-            # Log admin activity
-            supabase_service.log_admin_activity(
-                admin_id=admin_id,
-                action=f'hours_{status}',
-                details={
-                    'hours_id': hours_id,
-                    'student_id': hours_data['student_id'],
-                    'student_email': student_email,
-                    'notes': notes
-                }
-            )
-            
-            return jsonify({
-                'success': True,
-                'message': f'Hours {status} notification sent',
+        mail.send(msg)
+        
+        # Log email sent
+        supabase_service.log_email_sent(
+            recipient=student_email,
+            template=f'hours_{status}',
+            subject=subject,
+            data=template_data
+        )
+        
+        # Log admin activity
+        supabase_service.log_admin_activity(
+            admin_id=admin_id,
+            action=f'hours_{status}',
+            details={
+                'hours_id': hours_id,
+                'student_id': hours_data['student_id'],
                 'student_email': student_email,
-                'status': status
-            })
-        else:
-            return jsonify({'error': 'Failed to send email'}), 500
+                'notes': notes
+            }
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'Hours {status} notification sent',
+            'student_email': student_email,
+            'status': status
+        })
         
     except Exception as e:
         logger.error(f"Error sending hours notification: {str(e)}")
@@ -1013,30 +869,27 @@ def send_hours_notification():
 @app.route('/api/email/health', methods=['GET'])
 def health_check():
     return jsonify({
-        'status': 'healthy' if email_service else 'unhealthy', 
+        'status': 'healthy', 
         'service': 'volunteer Email Service',
         'timestamp': datetime.utcnow().isoformat(),
         'supabase_configured': bool(SUPABASE_URL and SUPABASE_SERVICE_KEY),
-        'smtp_configured': bool(SMTP_USERNAME and SMTP_PASSWORD),
-        'smtp_config': {
-            'server': SMTP_SERVER,
-            'port': SMTP_PORT,
-            'username': SMTP_USERNAME,
-            'password_set': bool(SMTP_PASSWORD),
+        'mail_configured': bool(app.config['MAIL_USERNAME'] and app.config['MAIL_PASSWORD']),
+        'mail_config': {
+            'server': app.config['MAIL_SERVER'],
+            'port': app.config['MAIL_PORT'],
+            'username': app.config['MAIL_USERNAME'],
+            'password_set': bool(app.config['MAIL_PASSWORD']),
         },
         'env_vars': {
-            'SMTP_SERVER': 'set' if os.getenv('SMTP_SERVER') else 'not set',
-            'SMTP_PORT': 'set' if os.getenv('SMTP_PORT') else 'not set',
-            'SMTP_USERNAME': 'set' if os.getenv('SMTP_USERNAME') else 'not set',
-            'SMTP_PASSWORD': 'set' if os.getenv('SMTP_PASSWORD') else 'not set',
+            'FLASK_MAIL_SERVER': 'set' if os.getenv('FLASK_MAIL_SERVER') else 'not set',
+            'FLASK_MAIL_PORT': 'set' if os.getenv('FLASK_MAIL_PORT') else 'not set',
+            'FLASK_MAIL_USERNAME': 'set' if os.getenv('FLASK_MAIL_USERNAME') else 'not set',
+            'FLASK_MAIL_PASSWORD': 'set' if os.getenv('FLASK_MAIL_PASSWORD') else 'not set',
+            'FLASK_MAIL_DISPLAY_NAME': 'set' if os.getenv('FLASK_MAIL_DISPLAY_NAME') else 'not set',
+            'NEXT_PUBLIC_APP_URL': 'set' if os.getenv('NEXT_PUBLIC_APP_URL') else 'not set',
             'SUPABASE_URL': 'set' if os.getenv('SUPABASE_URL') else 'not set',
             'SUPABASE_SERVICE_ROLE_KEY': 'set' if os.getenv('SUPABASE_SERVICE_ROLE_KEY') else 'not set',
-            'FRONTEND_URL': 'set' if os.getenv('FRONTEND_URL') else 'not set',
             'SECRET_KEY': 'set' if os.getenv('SECRET_KEY') else 'not set'
-        },
-        'services': {
-            'email_service': 'initialized' if email_service else 'failed',
-            'supabase_service': 'initialized' if supabase_service else 'failed'
         }
     }), 200
 
@@ -1044,7 +897,7 @@ def health_check():
 def root():
     """Root endpoint for debugging"""
     return jsonify({
-        'message': 'SMTP Email Service is running!',
+        'message': 'Flask-Mail Email Service is running!',
         'service': 'volunteer Email Service',
         'timestamp': datetime.utcnow().isoformat(),
         'available_endpoints': [
