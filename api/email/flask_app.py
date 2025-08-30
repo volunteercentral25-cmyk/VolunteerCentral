@@ -270,10 +270,11 @@ def send_verification_email():
         subject = f"Volunteer Hours Verification Request - {template_data['student_name']}"
         
         msg = Message(
-            subject=subject,
-            recipients=[verifier_email],
-            html=html_content
+            subject,
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[verifier_email]
         )
+        msg.html = html_content
         
         mail.send(msg)
         logger.info("Email sent successfully!")
@@ -356,10 +357,11 @@ def verify_hours():
                 )
 
             msg = Message(
-                subject=subject,
-                recipients=[verifier_email],
-                html=html_conf
+                subject,
+                sender=app.config['MAIL_USERNAME'],
+                recipients=[verifier_email]
             )
+            msg.html = html_conf
             mail.send(msg)
         except Exception as e:
             logger.warning(f"Failed to send confirmation email: {str(e)}")
@@ -380,10 +382,11 @@ def verify_hours():
                     notes=notes
                 )
                 msg = Message(
-                    subject=subject_s,
-                    recipients=[student_email],
-                    html=html_s
+                    subject_s,
+                    sender=app.config['MAIL_USERNAME'],
+                    recipients=[student_email]
                 )
+                msg.html = html_s
                 mail.send(msg)
         except Exception as e:
             logger.warning(f"Failed to notify student: {str(e)}")
@@ -504,10 +507,11 @@ def test_send_email():
         
         # Send the email using Flask-Mail
         msg = Message(
-            subject='volunteer - Email Service Test',
-            recipients=[test_email],
-            html=html_content
+            'volunteer - Email Service Test',
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[test_email]
         )
+        msg.html = html_content
         
         mail.send(msg)
         logger.info(f"Test email sent successfully to {test_email}")
@@ -553,10 +557,11 @@ def opportunity_confirmation():
         )
         
         msg = Message(
-            subject=f'You are registered: {title}',
-            recipients=[student_email],
-            html=html
+            f'You are registered: {title}',
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[student_email]
         )
+        msg.html = html
         
         mail.send(msg)
         return jsonify({'success': True})
@@ -592,10 +597,11 @@ def opportunity_reminder():
         )
         
         msg = Message(
-            subject=f'Reminder: {title} is coming up',
-            recipients=[student_email],
-            html=html
+            f'Reminder: {title} is coming up',
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[student_email]
         )
+        msg.html = html
         
         mail.send(msg)
         return jsonify({'success': True})
@@ -631,10 +637,11 @@ def opportunity_cancellation():
         )
         
         msg = Message(
-            subject=f'Registration cancelled: {title}',
-            recipients=[student_email],
-            html=html
+            f'Registration cancelled: {title}',
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[student_email]
         )
+        msg.html = html
         
         mail.send(msg)
         return jsonify({'success': True})
@@ -680,9 +687,11 @@ def hours_update_notification():
         if status == 'approved':
             subject = f"Volunteer Hours Approved - {student_profile.get('full_name', 'Student')}"
             template_name = 'approval.html'
+            preheader = f"The volunteer hours for {student_profile.get('full_name', 'Student')} have been approved"
         else:
             subject = f"Volunteer Hours Denied - {student_profile.get('full_name', 'Student')}"
             template_name = 'denial.html'
+            preheader = f"The volunteer hours for {student_profile.get('full_name', 'Student')} have been denied"
         
         template_data = {
             'student_name': student_profile.get('full_name', 'Unknown'),
@@ -695,18 +704,15 @@ def hours_update_notification():
             'status': status,
             'notes': notes,
             'admin_email': admin_email,
-            'verifier_email': verifier_email
+            'verifier_email': verifier_email,
+            'approval_date' if status == 'approved' else 'denial_date': datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
         }
-        
-        # Add the appropriate date field based on status
-        if status == 'approved':
-            template_data['approval_date'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
-        else:
-            template_data['denial_date'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
         
         # Render email template
         html_content = render_email(
             template_name,
+            subject=subject,
+            preheader=preheader,
             **template_data
         )
         
@@ -714,11 +720,13 @@ def hours_update_notification():
         logger.info(f"Preparing to send notification email to: {verifier_email}")
         
         msg = Message(
-            subject=subject,
-            recipients=[verifier_email],
-            html=html_content
+            subject,
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[verifier_email]
         )
+        msg.html = html_content
         
+        logger.info("Sending notification email...")
         mail.send(msg)
         logger.info("Notification email sent successfully!")
         
@@ -729,6 +737,8 @@ def hours_update_notification():
                 student_subject = f"Your Volunteer Hours Were {status.title()}"
                 student_html = render_email(
                     'student_notification.html',
+                    subject=student_subject,
+                    preheader=f"Your volunteer hours have been {status}",
                     student_name=student_profile.get('full_name', 'Student'),
                     activity=hours_data.get('description', ''),
                     hours=hours_data.get('hours', 0),
@@ -737,12 +747,13 @@ def hours_update_notification():
                     verifier_email=verifier_email,
                     notes=notes
                 )
-                msg = Message(
-                    subject=student_subject,
-                    recipients=[student_email],
-                    html=student_html
+                student_msg = Message(
+                    student_subject,
+                    sender=app.config['MAIL_USERNAME'],
+                    recipients=[student_email]
                 )
-                mail.send(msg)
+                student_msg.html = student_html
+                mail.send(student_msg)
                 logger.info(f"Student notification sent to: {student_email}")
         except Exception as e:
             logger.warning(f"Failed to notify student: {str(e)}")
@@ -828,10 +839,11 @@ def send_hours_notification():
         
         # Send email
         msg = Message(
-            subject=subject,
-            recipients=[student_email],
-            html=html_content
+            subject,
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[student_email]
         )
+        msg.html = html_content
         
         mail.send(msg)
         
@@ -875,21 +887,17 @@ def health_check():
         'supabase_configured': bool(SUPABASE_URL and SUPABASE_SERVICE_KEY),
         'mail_configured': bool(app.config['MAIL_USERNAME'] and app.config['MAIL_PASSWORD']),
         'mail_config': {
-            'server': app.config['MAIL_SERVER'],
-            'port': app.config['MAIL_PORT'],
-            'username': app.config['MAIL_USERNAME'],
-            'password_set': bool(app.config['MAIL_PASSWORD']),
+            'server': app.config.get('MAIL_SERVER'),
+            'port': app.config.get('MAIL_PORT'),
+            'username': app.config.get('MAIL_USERNAME'),
+            'password_set': bool(app.config.get('MAIL_PASSWORD')),
+            'use_tls': app.config.get('MAIL_USE_TLS')
         },
         'env_vars': {
-            'FLASK_MAIL_SERVER': 'set' if os.getenv('FLASK_MAIL_SERVER') else 'not set',
-            'FLASK_MAIL_PORT': 'set' if os.getenv('FLASK_MAIL_PORT') else 'not set',
-            'FLASK_MAIL_USERNAME': 'set' if os.getenv('FLASK_MAIL_USERNAME') else 'not set',
-            'FLASK_MAIL_PASSWORD': 'set' if os.getenv('FLASK_MAIL_PASSWORD') else 'not set',
-            'FLASK_MAIL_DISPLAY_NAME': 'set' if os.getenv('FLASK_MAIL_DISPLAY_NAME') else 'not set',
-            'NEXT_PUBLIC_APP_URL': 'set' if os.getenv('NEXT_PUBLIC_APP_URL') else 'not set',
-            'SUPABASE_URL': 'set' if os.getenv('SUPABASE_URL') else 'not set',
-            'SUPABASE_SERVICE_ROLE_KEY': 'set' if os.getenv('SUPABASE_SERVICE_ROLE_KEY') else 'not set',
-            'SECRET_KEY': 'set' if os.getenv('SECRET_KEY') else 'not set'
+            'FLASK_MAIL_SERVER': os.getenv('FLASK_MAIL_SERVER'),
+            'FLASK_MAIL_PORT': os.getenv('FLASK_MAIL_PORT'),
+            'FLASK_MAIL_USERNAME': os.getenv('FLASK_MAIL_USERNAME'),
+            'FLASK_MAIL_PASSWORD': '***set***' if os.getenv('FLASK_MAIL_PASSWORD') else 'not set'
         }
     }), 200
 
@@ -897,7 +905,7 @@ def health_check():
 def root():
     """Root endpoint for debugging"""
     return jsonify({
-        'message': 'Flask-Mail Email Service is running!',
+        'message': 'Flask Mail Service is running!',
         'service': 'volunteer Email Service',
         'timestamp': datetime.utcnow().isoformat(),
         'available_endpoints': [
