@@ -26,9 +26,20 @@ import {
 interface MobileAdminLayoutProps {
   children: React.ReactNode
   currentPage?: string
+  pageTitle?: string
+  pageDescription?: string
+  onSignOut?: () => Promise<void>
+  userName?: string
 }
 
-export default function MobileAdminLayout({ children, currentPage = 'dashboard' }: MobileAdminLayoutProps) {
+export default function MobileAdminLayout({ 
+  children, 
+  currentPage = 'dashboard',
+  pageTitle,
+  pageDescription,
+  onSignOut,
+  userName
+}: MobileAdminLayoutProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
@@ -55,8 +66,12 @@ export default function MobileAdminLayout({ children, currentPage = 'dashboard' 
   }, [router, supabase])
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
+    if (onSignOut) {
+      await onSignOut()
+    } else {
+      await supabase.auth.signOut()
+      router.push('/')
+    }
   }
 
   const menuItems = [
@@ -110,7 +125,7 @@ export default function MobileAdminLayout({ children, currentPage = 'dashboard' 
                   <User className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">{profile?.full_name || 'Admin'}</p>
+                  <p className="font-medium text-gray-900">{userName || profile?.full_name || 'Admin'}</p>
                   <p className="text-sm text-gray-600">{profile?.email}</p>
                 </div>
               </div>
@@ -155,6 +170,14 @@ export default function MobileAdminLayout({ children, currentPage = 'dashboard' 
 
       {/* Main Content */}
       <main className="px-4 py-6">
+        {pageTitle && (
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">{pageTitle}</h1>
+            {pageDescription && (
+              <p className="text-gray-600">{pageDescription}</p>
+            )}
+          </div>
+        )}
         {children}
       </main>
     </div>

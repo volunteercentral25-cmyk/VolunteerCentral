@@ -71,7 +71,9 @@ export async function GET(request: NextRequest) {
       'Beta Club': student.beta_club ? 'Yes' : 'No',
       'NTHS': student.nths ? 'Yes' : 'No',
       'Clubs Completed': student.clubs_completed ? 'Yes' : 'No',
-      'Clubs': student.student_clubs?.map(sc => sc.clubs.name).join(', ') || 'None',
+      'Clubs': Array.isArray(student.student_clubs) 
+        ? student.student_clubs.map((sc: any) => sc.clubs?.name).filter(Boolean).join(', ')
+        : 'None',
       'Registration Date': student.created_at ? new Date(student.created_at).toLocaleDateString() : 'N/A',
       'Last Updated': student.updated_at ? new Date(student.updated_at).toLocaleDateString() : 'N/A'
     })) || []
@@ -80,7 +82,7 @@ export async function GET(request: NextRequest) {
     const headers = Object.keys(excelData[0] || {})
     const csvContent = [
       headers.join(','),
-      ...excelData.map(row => 
+      ...excelData.map((row: any) => 
         headers.map(header => {
           const value = row[header] || ''
           // Escape commas and quotes in CSV

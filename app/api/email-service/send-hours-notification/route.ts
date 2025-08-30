@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Prepare email data based on action
-    const emailData = {
+    const emailData: any = {
       student_name: hours.profiles.full_name,
       opportunity_title: hours.volunteer_opportunities?.title || 'Volunteer Service',
       volunteer_date: volunteerDate,
