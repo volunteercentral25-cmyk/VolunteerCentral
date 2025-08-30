@@ -839,7 +839,7 @@ def hours_update_notification():
         logger.error(f"Error sending hours update notification: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
-@app.route('/send-hours-notification', methods=['POST'])
+@app.route('/api/email/send-hours-notification', methods=['POST'])
 def send_hours_notification():
     """Send notification email when admin approves/denies hours"""
     try:
@@ -939,7 +939,7 @@ def send_hours_notification():
         logger.error(f"Error sending hours notification: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
-@app.route('/health', methods=['GET'])
+@app.route('/api/email/health', methods=['GET'])
 def health_check():
     return jsonify({
         'status': 'healthy', 
@@ -960,6 +960,22 @@ def health_check():
             'FLASK_MAIL_USERNAME': os.getenv('FLASK_MAIL_USERNAME'),
             'FLASK_MAIL_PASSWORD': '***set***' if os.getenv('FLASK_MAIL_PASSWORD') else 'not set'
         }
+    }), 200
+
+@app.route('/', methods=['GET'])
+def root():
+    """Root endpoint for debugging"""
+    return jsonify({
+        'message': 'Flask Mail Service is running!',
+        'service': 'volunteer Email Service',
+        'timestamp': datetime.utcnow().isoformat(),
+        'available_endpoints': [
+            '/api/email/health',
+            '/api/email/send-hours-notification',
+            '/api/email/send-verification-email',
+            '/api/email/test',
+            '/api/email/test-send'
+        ]
     }), 200
 
 if __name__ == '__main__':
