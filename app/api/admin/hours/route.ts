@@ -183,7 +183,15 @@ export async function PUT(request: NextRequest) {
     // Send email notification when hours are approved or denied
     if (status === 'approved' || status === 'denied') {
       try {
-        console.log('Sending hours notification email for status:', status)
+        console.log('🔔 ADMIN API: Triggering email notification for status:', status)
+        console.log('📍 EMAIL URL:', `${process.env.NEXT_PUBLIC_APP_URL}/api/email-service/send-hours-notification`)
+        
+        const emailPayload = {
+          hoursId: hoursId,
+          action: status === 'approved' ? 'approve' : 'deny',
+          reason: notes
+        }
+        console.log('📦 Email payload:', emailPayload)
         
         // Call the email service to send hours notification
         const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/email-service/send-hours-notification`, {
@@ -191,20 +199,20 @@ export async function PUT(request: NextRequest) {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            hoursId: hoursId,
-            action: status === 'approved' ? 'approve' : 'deny',
-            reason: notes
-          }),
+          body: JSON.stringify(emailPayload),
         })
 
+        console.log('📬 Email service response status:', emailResponse.status)
+        
         if (!emailResponse.ok) {
-          console.error('Failed to send hours notification email:', await emailResponse.text())
+          const errorText = await emailResponse.text()
+          console.error('❌ Failed to send hours notification email:', errorText)
         } else {
-          console.log('Hours notification email sent successfully')
+          const result = await emailResponse.json()
+          console.log('✅ Hours notification email sent successfully:', result)
         }
       } catch (emailError) {
-        console.error('Error sending hours notification email:', emailError)
+        console.error('💥 Error sending hours notification email:', emailError)
         // Don't fail the update if email fails
       }
     }

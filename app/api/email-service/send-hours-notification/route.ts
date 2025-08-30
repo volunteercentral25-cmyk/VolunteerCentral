@@ -4,26 +4,39 @@ import nodemailer from 'nodemailer'
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🔔 Email notification service called!')
     const supabase = createClient()
     
-    // Get the current user (admin)
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const { hoursId, action, reason, bypassAuth } = await request.json()
+    console.log('📝 Request data:', { hoursId, action, reason, bypassAuth })
+
+    // If this is called from verify-hours endpoint, bypass auth check
+    if (!bypassAuth) {
+      // Get the current user (admin)
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError || !user) {
+        console.error('❌ Auth error:', userError)
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+
+      console.log('✅ User authenticated:', user.id)
+
+      // Check if user is admin
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+      if (profile?.role !== 'admin') {
+        console.error('❌ Not admin user, role:', profile?.role)
+        return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+      }
+
+      console.log('✅ Admin user confirmed')
+    } else {
+      console.log('🔓 Bypassing auth check for email verification system')
     }
-
-    // Check if user is admin
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.role !== 'admin') {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
-    }
-
-    const { hoursId, action, reason } = await request.json()
 
     if (!hoursId || !action) {
       return NextResponse.json({ error: 'Hours ID and action are required' }, { status: 400 })
@@ -47,15 +60,30 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (hoursError || !hours) {
+      console.error('❌ Hours record not found:', hoursError)
       return NextResponse.json({ error: 'Hours record not found' }, { status: 404 })
     }
 
-    // Get admin profile
-    const { data: adminProfile } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', user.id)
-      .single()
+    console.log('✅ Hours record found:', {
+      id: hours.id,
+      student: hours.profiles.full_name,
+      email: hours.profiles.email,
+      activity: hours.volunteer_opportunities?.title || hours.description
+    })
+
+    // Get admin profile (only if we have an authenticated user)
+    let adminProfile = null
+    if (!bypassAuth) {
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (!userError && user) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', user.id)
+          .single()
+        adminProfile = data
+      }
+    }
 
     // Calculate total hours for the student
     const { data: totalHoursData } = await supabase
@@ -114,6 +142,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
 
+    console.log('📧 Preparing to send email to:', hours.profiles.email)
+    console.log('📬 Email subject:', subject)
+
     // Send email directly using nodemailer
     const transporter = nodemailer.createTransport({
       host: process.env.FLASK_MAIL_SERVER || 'smtp.gmail.com',
@@ -123,6 +154,12 @@ export async function POST(request: NextRequest) {
         user: process.env.FLASK_MAIL_USERNAME || 'CLTVolunteerCentral@gmail.com',
         pass: process.env.FLASK_MAIL_PASSWORD || 'jnkb gfpz qxjz nflx'
       }
+    })
+
+    console.log('🔧 Email transporter configured with:', {
+      host: process.env.FLASK_MAIL_SERVER || 'smtp.gmail.com',
+      port: process.env.FLASK_MAIL_PORT || '587',
+      user: process.env.FLASK_MAIL_USERNAME || 'CLTVolunteerCentral@gmail.com'
     })
 
     // Create email HTML content
@@ -199,12 +236,19 @@ export async function POST(request: NextRequest) {
     `
 
     // Send email
-    await transporter.sendMail({
-      from: `"Volunteer Central" <${process.env.FLASK_MAIL_USERNAME || 'CLTVolunteerCentral@gmail.com'}>`,
-      to: hours.profiles.email,
-      subject: subject,
-      html: htmlContent
-    })
+    console.log('🚀 Sending email...')
+    try {
+      const mailResult = await transporter.sendMail({
+        from: `"Volunteer Central" <${process.env.FLASK_MAIL_USERNAME || 'CLTVolunteerCentral@gmail.com'}>`,
+        to: hours.profiles.email,
+        subject: subject,
+        html: htmlContent
+      })
+      console.log('✅ Email sent successfully!', mailResult.messageId)
+    } catch (emailError) {
+      console.error('❌ Email send failed:', emailError)
+      throw emailError
+    }
 
     // Log the email
     await supabase
@@ -217,41 +261,52 @@ export async function POST(request: NextRequest) {
         status: 'sent'
       })
 
-    // Update the hours record with admin override information
-    await supabase
-      .from('volunteer_hours')
-      .update({
-        status: action === 'approve' ? 'approved' : 'denied',
-        admin_override_by: user.id,
-        admin_override_reason: action === 'deny' ? reason : null,
-        admin_override_date: new Date().toISOString()
-      })
-      .eq('id', hoursId)
+    // Update the hours record with admin override information (only if called from admin interface)
+    if (!bypassAuth) {
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (!userError && user) {
+        await supabase
+          .from('volunteer_hours')
+          .update({
+            status: action === 'approve' ? 'approved' : 'denied',
+            admin_override_by: user.id,
+            admin_override_reason: action === 'deny' ? reason : null,
+            admin_override_date: new Date().toISOString()
+          })
+          .eq('id', hoursId)
 
-    // Log admin activity
-    await supabase
-      .from('admin_activity_logs')
-      .insert({
-        action_type: `hours_${action}`,
-        description: `${action === 'approve' ? 'Approved' : 'Denied'} volunteer hours for ${hours.profiles.full_name}`,
-        affected_user_id: hours.student_id,
-        affected_entity_type: 'volunteer_hours',
-        affected_entity_id: hoursId,
-        admin_user_id: user.id,
-        metadata: {
-          hours: hours.hours,
-          date: hours.date,
-          reason: action === 'deny' ? reason : null
-        }
-      })
+        // Log admin activity
+        await supabase
+          .from('admin_activity_logs')
+          .insert({
+            action_type: `hours_${action}`,
+            description: `${action === 'approve' ? 'Approved' : 'Denied'} volunteer hours for ${hours.profiles.full_name}`,
+            affected_user_id: hours.student_id,
+            affected_entity_type: 'volunteer_hours',
+            affected_entity_id: hoursId,
+            admin_user_id: user.id,
+            metadata: {
+              hours: hours.hours,
+              date: hours.date,
+              reason: action === 'deny' ? reason : null
+            }
+          })
+      }
+    }
 
+    console.log('🎉 All operations completed successfully!')
     return NextResponse.json({ 
       success: true, 
-      message: `Hours ${action} notification sent successfully` 
+      message: `Hours ${action} notification sent successfully`,
+      recipient: hours.profiles.email,
+      subject: subject
     })
 
   } catch (error) {
-    console.error('Error sending hours notification email:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('💥 FATAL ERROR in email notification service:', error)
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }

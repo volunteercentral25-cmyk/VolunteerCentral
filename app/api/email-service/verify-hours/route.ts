@@ -110,7 +110,10 @@ export async function GET(request: NextRequest) {
     try {
       const emailServiceUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
-      console.log('Sending email notification to:', `${emailServiceUrl}/api/email-service/send-hours-notification`)
+      console.log('🔔 VERIFY-HOURS: Sending email notification to student:', studentProfile.full_name)
+      console.log('📧 Email will be sent to:', studentProfile.email)
+      console.log('📍 Calling email service:', `${emailServiceUrl}/api/email-service/send-hours-notification`)
+      console.log('📦 Email payload:', { hoursId, action, notes, bypassAuth: true })
 
       const emailResponse = await fetch(`${emailServiceUrl}/api/email-service/send-hours-notification`, {
         method: 'POST',
@@ -120,20 +123,23 @@ export async function GET(request: NextRequest) {
         body: JSON.stringify({
           hoursId: hoursId,
           action: action,
-          reason: notes
+          reason: notes,
+          bypassAuth: true  // Bypass auth check for email verification system
         }),
       })
 
+      console.log('📬 Email service response status:', emailResponse.status)
+      
       if (emailResponse.ok) {
         const emailResult = await emailResponse.json()
-        console.log('Email notification sent successfully:', emailResult)
+        console.log('✅ VERIFY-HOURS: Email notification sent successfully!', emailResult)
       } else {
         const errorText = await emailResponse.text()
-        console.error('Email notification failed:', errorText)
+        console.error('❌ VERIFY-HOURS: Email notification failed:', errorText)
         // Don't fail the whole request if email fails
       }
     } catch (emailError) {
-      console.error('Error sending email notification:', emailError)
+      console.error('💥 VERIFY-HOURS: Error sending email notification:', emailError)
       // Don't fail the whole request if email fails
     }
 
