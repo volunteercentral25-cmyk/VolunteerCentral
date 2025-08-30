@@ -110,18 +110,17 @@ export async function POST(request: NextRequest) {
       logo_url: `${process.env.NEXT_PUBLIC_SITE_URL}/logo.png`
     }
 
-    // Send email using the email service
-    const emailResponse = await fetch(`${process.env.EMAIL_SERVICE_URL}/send-email`, {
+    // Send email using the Flask Mail service
+    const emailServiceUrl = process.env.EMAIL_SERVICE_URL || 'https://volunteercentral25-cmyk.vercel.app/api/email'
+    const emailResponse = await fetch(`${emailServiceUrl}/send-verification-email`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.EMAIL_SERVICE_API_KEY}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        to: verificationEmail,
-        template: 'verification',
-        subject: `Verify Volunteer Hours: ${hours.profiles.full_name}`,
-        data: emailData
+        hours_id: hoursId,
+        verifier_email: verificationEmail,
+        student_id: hours.student_id
       })
     })
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import nodemailer from 'nodemailer'
 
 export async function POST(request: NextRequest) {
   try {
@@ -113,25 +114,97 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
 
-    // Send email using the local Flask Mail service
-    const emailResponse = await fetch('/api/email/send-hours-notification', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        hours_id: hoursId,
-        student_email: hours.profiles.email,
-        status: action,
-        admin_id: user.id,
-        notes: action === 'deny' ? reason : undefined
-      })
+    // Send email directly using nodemailer
+    const transporter = nodemailer.createTransport({
+      host: process.env.FLASK_MAIL_SERVER || 'smtp.gmail.com',
+      port: parseInt(process.env.FLASK_MAIL_PORT || '587'),
+      secure: false,
+      auth: {
+        user: process.env.FLASK_MAIL_USERNAME || 'CLTVolunteerCentral@gmail.com',
+        pass: process.env.FLASK_MAIL_PASSWORD || 'jnkb gfpz qxjz nflx'
+      }
     })
 
-    if (!emailResponse.ok) {
-      console.error('Email service response:', await emailResponse.text())
-      throw new Error('Failed to send email')
-    }
+    // Create email HTML content
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${subject}</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .hours-details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea; }
+          .button { display: inline-block; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; margin: 10px 5px; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>${action === 'approve' ? 'Hours Approved!' : 'Hours Update'}</h1>
+            <p>Volunteer Central</p>
+          </div>
+          
+          <div class="content">
+            <h2>Hello ${emailData.student_name}!</h2>
+            
+            ${action === 'approve' ? `
+              <p>Great news! Your volunteer hours have been approved.</p>
+              
+              <div class="hours-details">
+                <h3>Approved Details:</h3>
+                <p><strong>Activity:</strong> ${emailData.opportunity_title}</p>
+                <p><strong>Hours:</strong> ${emailData.hours_logged}</p>
+                <p><strong>Date:</strong> ${emailData.volunteer_date}</p>
+                <p><strong>Description:</strong> ${emailData.description}</p>
+                <p><strong>Approved by:</strong> ${emailData.approved_by}</p>
+                <p><strong>Approved on:</strong> ${emailData.approved_date}</p>
+                <p><strong>Total Hours:</strong> ${emailData.total_hours}</p>
+              </div>
+              
+              <p>Thank you for your volunteer service!</p>
+            ` : `
+              <p>Your volunteer hours have been reviewed.</p>
+              
+              <div class="hours-details">
+                <h3>Details:</h3>
+                <p><strong>Activity:</strong> ${emailData.opportunity_title}</p>
+                <p><strong>Hours:</strong> ${emailData.hours_logged}</p>
+                <p><strong>Date:</strong> ${emailData.volunteer_date}</p>
+                <p><strong>Status:</strong> Denied</p>
+                <p><strong>Denied by:</strong> ${emailData.denied_by}</p>
+                <p><strong>Denied on:</strong> ${emailData.denied_date}</p>
+                ${emailData.denial_reason ? `<p><strong>Reason:</strong> ${emailData.denial_reason}</p>` : ''}
+              </div>
+              
+              <p>If you have any questions, please contact the organization directly.</p>
+            `}
+            
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="${emailData.dashboard_url}" class="button">View Dashboard</a>
+            </div>
+            
+            <div class="footer">
+              <p>This is an automated message from Volunteer Central.</p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+
+    // Send email
+    await transporter.sendMail({
+      from: `"Volunteer Central" <${process.env.FLASK_MAIL_USERNAME || 'CLTVolunteerCentral@gmail.com'}>`,
+      to: hours.profiles.email,
+      subject: subject,
+      html: htmlContent
+    })
 
     // Log the email
     await supabase

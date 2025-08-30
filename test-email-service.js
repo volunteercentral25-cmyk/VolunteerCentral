@@ -6,12 +6,15 @@ async function testEmailService() {
   
   try {
     // Test health endpoint
+    console.log('Testing health endpoint...')
     const healthResponse = await fetch(`${EMAIL_SERVICE_URL}/health`)
     if (healthResponse.ok) {
       const healthData = await healthResponse.json()
       console.log('✅ Health check passed:', healthData)
     } else {
       console.log('❌ Health check failed:', healthResponse.status)
+      const errorText = await healthResponse.text()
+      console.log('Error details:', errorText)
       return
     }
     
@@ -24,7 +27,9 @@ async function testEmailService() {
       notes: 'Test approval'
     }
     
-    console.log('Testing hours notification endpoint...')
+    console.log('\nTesting hours notification endpoint...')
+    console.log('Test data:', testData)
+    
     const notificationResponse = await fetch(`${EMAIL_SERVICE_URL}/send-hours-notification`, {
       method: 'POST',
       headers: {
@@ -33,16 +38,20 @@ async function testEmailService() {
       body: JSON.stringify(testData)
     })
     
+    console.log('Response status:', notificationResponse.status)
+    
     if (notificationResponse.ok) {
       const result = await notificationResponse.json()
       console.log('✅ Hours notification test passed:', result)
     } else {
       const errorText = await notificationResponse.text()
-      console.log('❌ Hours notification test failed:', notificationResponse.status, errorText)
+      console.log('❌ Hours notification test failed:', notificationResponse.status)
+      console.log('Error details:', errorText)
     }
     
   } catch (error) {
     console.log('❌ Error testing email service:', error.message)
+    console.log('Stack trace:', error.stack)
   }
 }
 

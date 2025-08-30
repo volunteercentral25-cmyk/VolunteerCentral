@@ -14,9 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Forward the request to the Flask email service
-    const emailServiceUrl = process.env.NODE_ENV === 'production' 
-      ? `${process.env.NEXT_PUBLIC_APP_URL}/api/email/send-notification`
-      : 'http://localhost:5000/send-notification'
+    const emailServiceUrl = process.env.EMAIL_SERVICE_URL || 'https://volunteercentral25-cmyk.vercel.app/api/email'
 
     console.log('Forwarding to email service:', emailServiceUrl)
 

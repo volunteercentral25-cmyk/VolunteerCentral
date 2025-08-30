@@ -74,8 +74,9 @@ export async function POST(request: NextRequest) {
       `
     }
 
-    // Send email using the local Flask Mail service
-    const emailResponse = await fetch('/api/email/send-hours-notification', {
+    // Send email using the Flask Mail service
+    const emailServiceUrl = process.env.EMAIL_SERVICE_URL || 'https://volunteercentral25-cmyk.vercel.app/api/email'
+    const emailResponse = await fetch(`${emailServiceUrl}/send-hours-notification`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
