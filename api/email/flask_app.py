@@ -34,6 +34,9 @@ SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
 FRONTEND_URL = os.getenv('NEXT_PUBLIC_APP_URL', 'http://localhost:3000')
 SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')
 
+# Logo URL for email templates
+LOGO_URL = os.getenv('LOGO_URL', 'https://volunteer-central-flax.vercel.app/cata-logo.png')
+
 # Log environment variable status for debugging
 logger.info(f"Environment variables status:")
 logger.info(f"  FLASK_MAIL_SERVER: {'set' if os.getenv('FLASK_MAIL_SERVER') else 'not set'}")
@@ -45,11 +48,16 @@ logger.info(f"  NEXT_PUBLIC_SUPABASE_URL: {'set' if os.getenv('NEXT_PUBLIC_SUPAB
 logger.info(f"  SUPABASE_URL: {'set' if SUPABASE_URL else 'not set'}")
 logger.info(f"  SUPABASE_SERVICE_ROLE_KEY: {'set' if SUPABASE_SERVICE_KEY else 'not set'}")
 logger.info(f"  NEXT_PUBLIC_APP_URL: {'set' if os.getenv('NEXT_PUBLIC_APP_URL') else 'not set'}")
+logger.info(f"  LOGO_URL: {'set' if os.getenv('LOGO_URL') else 'not set (using default)'}")
 
 mail = Mail(app)
 
 # Template rendering with CSS inlining
 def render_email(template_name: str, **context) -> str:
+    # Add logo URL to all templates
+    context['logo_url'] = LOGO_URL
+    context['dashboard_url'] = FRONTEND_URL
+    
     try:
         html = render_template(template_name, **context)
     except Exception:
@@ -1012,6 +1020,7 @@ def health_check():
             'SUPABASE_URL': 'set' if os.getenv('SUPABASE_URL') else 'not set',
             'SUPABASE_SERVICE_ROLE_KEY': 'set' if os.getenv('SUPABASE_SERVICE_ROLE_KEY') else 'not set',
             'NEXT_PUBLIC_APP_URL': 'set' if os.getenv('NEXT_PUBLIC_APP_URL') else 'not set',
+            'LOGO_URL': 'set' if os.getenv('LOGO_URL') else 'not set',
             'SECRET_KEY': 'set' if os.getenv('SECRET_KEY') else 'not set'
         }
     }), 200
