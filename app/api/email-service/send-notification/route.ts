@@ -74,20 +74,34 @@ export async function POST(request: NextRequest) {
       `
     }
 
-    // For now, just log the email content since we don't have a direct email service
-    console.log('Email would be sent to:', student_email)
-    console.log('Subject:', subject)
-    console.log('Content:', htmlContent)
+    // Send email using the local Flask Mail service
+    const emailResponse = await fetch('/api/email/send-hours-notification', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        hours_id: hours_id,
+        student_email: student_email,
+        status: status,
+        admin_id: verifier_email, // Using verifier_email as admin_id for now
+        notes: notes
+      })
+    })
 
-    // TODO: Integrate with actual email service (Resend, SendGrid, etc.)
-    // For now, we'll just return success and log the email content
+    if (!emailResponse.ok) {
+      console.error('Email service response:', await emailResponse.text())
+      throw new Error('Failed to send email')
+    }
+
+    const emailResult = await emailResponse.json()
 
     return NextResponse.json({
       success: true,
-      message: `Notification email prepared for ${student_email}`,
+      message: `Notification email sent to ${student_email}`,
       student_email: student_email,
       status: status,
-      subject: subject
+      email_result: emailResult
     })
 
   } catch (error) {

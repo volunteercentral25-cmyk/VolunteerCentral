@@ -135,6 +135,42 @@ class SupabaseService:
         except Exception as e:
             logger.error(f"Failed to log email: {str(e)}")
             return False
+    
+    def get_admin_profile(self, admin_id: str) -> Optional[Dict[str, Any]]:
+        """Get admin profile by ID"""
+        try:
+            response = requests.get(
+                f"{self.url}/rest/v1/profiles?id=eq.{admin_id}",
+                headers=self.headers
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data[0] if data else None
+        except Exception as e:
+            logger.error(f"Failed to get admin profile: {str(e)}")
+            return None
+    
+    def log_admin_activity(self, admin_id: str, action: str, details: Dict[str, Any]) -> bool:
+        """Log admin activity"""
+        try:
+            log_data = {
+                'admin_id': admin_id,
+                'action': action,
+                'details': json.dumps(details),
+                'timestamp': datetime.utcnow().isoformat()
+            }
+            
+            response = requests.post(
+                f"{self.url}/rest/v1/admin_activity_logs",
+                headers=self.headers,
+                json=log_data
+            )
+            response.raise_for_status()
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to log admin activity: {str(e)}")
+            return False
 
 # Initialize services
 supabase_service = SupabaseService()
@@ -801,6 +837,106 @@ def hours_update_notification():
         
     except Exception as e:
         logger.error(f"Error sending hours update notification: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/send-hours-notification', methods=['POST'])
+def send_hours_notification():
+    """Send notification email when admin approves/denies hours"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['hours_id', 'student_email', 'status', 'admin_id']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        hours_id = data['hours_id']
+        student_email = data['student_email']
+        status = data['status']
+        admin_id = data['admin_id']
+        notes = data.get('notes', '')
+        
+        # Get hours data
+        hours_data = supabase_service.get_hours_by_id(hours_id)
+        if not hours_data:
+            return jsonify({'error': 'Hours record not found'}), 404
+        
+        # Get student profile
+        student_profile = supabase_service.get_student_profile(hours_data['student_id'])
+        if not student_profile:
+            return jsonify({'error': 'Student profile not found'}), 404
+        
+        # Get admin profile
+        admin_profile = supabase_service.get_admin_profile(admin_id)
+        if not admin_profile:
+            return jsonify({'error': 'Admin profile not found'}), 404
+        
+        # Calculate total hours (this should be calculated from database)
+        total_hours = hours_data.get('hours', 0)  # This should be sum of all approved hours
+        
+        # Prepare email content
+        template_data = {
+            'student_name': student_profile.get('full_name', 'Unknown'),
+            'activity': hours_data.get('description', 'Volunteer Activity'),
+            'hours': hours_data.get('hours', 0),
+            'date': hours_data.get('date', 'Unknown'),
+            'description': hours_data.get('description', 'No description provided'),
+            'admin_name': admin_profile.get('full_name', 'Admin'),
+            'verification_date': datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'),
+            'notes': notes,
+            'total_hours': total_hours
+        }
+        
+        if status == 'approved':
+            template_name = 'hours_approved.html'
+            subject = f"Your Volunteer Hours Have Been Approved! - {template_data['student_name']}"
+        else:
+            template_name = 'hours_denied.html'
+            subject = f"Volunteer Hours Update - {template_data['student_name']}"
+        
+        # Render email template
+        html_content = render_email(template_name, **template_data)
+        
+        # Send email
+        msg = Message(
+            subject,
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[student_email]
+        )
+        msg.html = html_content
+        
+        mail.send(msg)
+        
+        # Log email sent
+        supabase_service.log_email_sent(
+            recipient=student_email,
+            template=f'hours_{status}',
+            subject=subject,
+            data=template_data
+        )
+        
+        # Log admin activity
+        supabase_service.log_admin_activity(
+            admin_id=admin_id,
+            action=f'hours_{status}',
+            details={
+                'hours_id': hours_id,
+                'student_id': hours_data['student_id'],
+                'student_email': student_email,
+                'notes': notes
+            }
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'Hours {status} notification sent',
+            'student_email': student_email,
+            'status': status
+        })
+        
+    except Exception as e:
+        logger.error(f"Error sending hours notification: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/health', methods=['GET'])

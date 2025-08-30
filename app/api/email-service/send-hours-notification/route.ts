@@ -113,22 +113,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
 
-    // Send email using the email service
-    const emailResponse = await fetch(`${process.env.EMAIL_SERVICE_URL}/send-email`, {
+    // Send email using the local Flask Mail service
+    const emailResponse = await fetch('/api/email/send-hours-notification', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.EMAIL_SERVICE_API_KEY}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        to: hours.profiles.email,
-        template: template,
-        subject: subject,
-        data: emailData
+        hours_id: hoursId,
+        student_email: hours.profiles.email,
+        status: action,
+        admin_id: user.id,
+        notes: action === 'deny' ? reason : undefined
       })
     })
 
     if (!emailResponse.ok) {
+      console.error('Email service response:', await emailResponse.text())
       throw new Error('Failed to send email')
     }
 
