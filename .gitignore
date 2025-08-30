@@ -40,3 +40,14 @@ Thumbs.db
 # Next.js build output
 .next/
 .vercel
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Development copies
+cataflaskcopy/
