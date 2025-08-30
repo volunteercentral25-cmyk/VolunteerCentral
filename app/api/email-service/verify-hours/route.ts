@@ -112,81 +112,37 @@ export async function GET(request: NextRequest) {
 
       console.log('🔔 VERIFY-HOURS: Sending email notification to student:', studentProfile.full_name)
       console.log('📧 Email will be sent to:', studentProfile.email)
-      console.log('📍 Calling Flask email service:', `${emailServiceUrl}/api/email/send-hours-notification`)
+      console.log('📍 EMAIL URL:', `${emailServiceUrl}/api/email-service/send-hours-notification`)
       
+      // Use the Next.js email service directly (it's working and has proper templates)
       const emailPayload = {
-        hours_id: hoursId,
-        student_email: studentProfile.email,
-        status: status,
-        admin_id: 'system', // System verification
-        notes: notes
+        hoursId: hoursId,
+        action: action,
+        reason: notes,
+        bypassAuth: true  // Bypass auth check for email verification system
       }
-      console.log('📦 Flask Email payload:', emailPayload)
+      console.log('📦 Email payload:', emailPayload)
 
-      // Try Flask email service first
-      let emailSent = false
-      try {
-        const flaskResponse = await fetch(`${emailServiceUrl}/api/email/send-hours-notification`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(emailPayload),
-        })
+      const emailResponse = await fetch(`${emailServiceUrl}/api/email-service/send-hours-notification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(emailPayload),
+      })
 
-        console.log('📬 Flask email service response status:', flaskResponse.status)
-        
-        if (flaskResponse.ok) {
-          const emailResult = await flaskResponse.json()
-          console.log('✅ VERIFY-HOURS: Flask email notification sent successfully!', emailResult)
-          emailSent = true
-        } else {
-          const errorText = await flaskResponse.text()
-          console.error('❌ VERIFY-HOURS: Flask email notification failed:', errorText)
-        }
-      } catch (flaskError) {
-        console.error('💥 VERIFY-HOURS: Flask email service error:', flaskError)
-      }
-
-      // Fallback to Next.js email service if Flask failed
-      if (!emailSent) {
-        console.log('🔄 VERIFY-HOURS: Falling back to Next.js email service...')
-        try {
-          const nextjsPayload = {
-            hoursId: hoursId,
-            action: action,
-            reason: notes,
-            bypassAuth: true  // Bypass auth check for email verification system
-          }
-          
-          const nextjsResponse = await fetch(`${emailServiceUrl}/api/email-service/send-hours-notification`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(nextjsPayload),
-          })
-
-          console.log('📬 VERIFY-HOURS: Next.js email service response status:', nextjsResponse.status)
-          
-          if (nextjsResponse.ok) {
-            const emailResult = await nextjsResponse.json()
-            console.log('✅ VERIFY-HOURS: Next.js email notification sent successfully!', emailResult)
-            emailSent = true
-          } else {
-            const errorText = await nextjsResponse.text()
-            console.error('❌ VERIFY-HOURS: Next.js email service also failed:', errorText)
-          }
-        } catch (nextjsError) {
-          console.error('💥 VERIFY-HOURS: Next.js email service error:', nextjsError)
-        }
-      }
-
-      if (!emailSent) {
-        console.error('💥 VERIFY-HOURS: All email services failed!')
+      console.log('📬 Email service response status:', emailResponse.status)
+      
+      if (emailResponse.ok) {
+        const result = await emailResponse.json()
+        console.log('✅ VERIFY-HOURS: Hours notification email sent successfully:', result)
+      } else {
+        const errorText = await emailResponse.text()
+        console.error('❌ VERIFY-HOURS: Email service failed:', errorText)
+        console.error('❌ Response headers:', Object.fromEntries(emailResponse.headers.entries()))
       }
     } catch (emailError) {
-      console.error('💥 VERIFY-HOURS: Error sending email notification:', emailError)
+      console.error('💥 VERIFY-HOURS: Error sending hours notification email:', emailError)
       // Don't fail the whole request if email fails
     }
 
