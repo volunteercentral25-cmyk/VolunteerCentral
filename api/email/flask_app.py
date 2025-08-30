@@ -29,7 +29,7 @@ app.config['MAIL_DEFAULT_SENDER'] = (os.getenv('FLASK_MAIL_USERNAME', 'CLTVolunt
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
 
 # Supabase Configuration - Properly access Vercel environment variables
-SUPABASE_URL = os.getenv('SUPABASE_URL')
+SUPABASE_URL = os.getenv('NEXT_PUBLIC_SUPABASE_URL') or os.getenv('SUPABASE_URL')
 SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
 FRONTEND_URL = os.getenv('NEXT_PUBLIC_APP_URL', 'http://localhost:3000')
 SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')
@@ -40,6 +40,8 @@ logger.info(f"  FLASK_MAIL_SERVER: {'set' if os.getenv('FLASK_MAIL_SERVER') else
 logger.info(f"  FLASK_MAIL_PORT: {'set' if os.getenv('FLASK_MAIL_PORT') else 'not set'}")
 logger.info(f"  FLASK_MAIL_USERNAME: {'set' if os.getenv('FLASK_MAIL_USERNAME') else 'not set'}")
 logger.info(f"  FLASK_MAIL_PASSWORD: {'set' if os.getenv('FLASK_MAIL_PASSWORD') else 'not set'}")
+logger.info(f"  NEXT_PUBLIC_SUPABASE_URL: {'set' if os.getenv('NEXT_PUBLIC_SUPABASE_URL') else 'not set'}")
+logger.info(f"  NEXT_PUBLIC_SUPABASE_URL: {'set' if os.getenv('NEXT_PUBLIC_SUPABASE_URL') else 'not set'}")
 logger.info(f"  SUPABASE_URL: {'set' if SUPABASE_URL else 'not set'}")
 logger.info(f"  SUPABASE_SERVICE_ROLE_KEY: {'set' if SUPABASE_SERVICE_KEY else 'not set'}")
 logger.info(f"  NEXT_PUBLIC_APP_URL: {'set' if os.getenv('NEXT_PUBLIC_APP_URL') else 'not set'}")
@@ -748,15 +750,31 @@ def hours_update_notification():
         
         logger.info(f"Processing hours update notification for hours_id: {hours_id}, status: {status}")
         
-        # Get hours details from database
-        hours_data = supabase_service.get_hours_by_id(hours_id)
-        if not hours_data:
-            return jsonify({'error': 'Hours record not found'}), 404
+        # Try to get data from Supabase, fallback to request data if not available
+        hours_data = None
+        student_profile = None
         
-        # Get student profile
-        student_profile = supabase_service.get_student_profile(hours_data['student_id'])
+        if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+            # Supabase is configured, try to fetch data
+            hours_data = supabase_service.get_hours_by_id(hours_id)
+            if hours_data:
+                student_profile = supabase_service.get_student_profile(hours_data['student_id'])
+        
+        # Use fallback data if Supabase data is not available
+        if not hours_data:
+            hours_data = {
+                'description': data.get('activity', 'Volunteer Activity'),
+                'hours': data.get('hours', 0),
+                'date': data.get('date', 'Unknown'),
+                'student_id': data.get('student_id', 'unknown')
+            }
+        
         if not student_profile:
-            return jsonify({'error': 'Student profile not found'}), 404
+            student_profile = {
+                'full_name': data.get('student_name', 'Student'),
+                'email': data.get('student_email', 'student@example.com'),
+                'student_id': data.get('student_id', 'unknown')
+            }
         
         # Prepare email content based on status
         if status == 'approved':
@@ -867,20 +885,39 @@ def send_hours_notification():
         admin_id = data['admin_id']
         notes = data.get('notes', '')
         
-        # Get hours data
-        hours_data = supabase_service.get_hours_by_id(hours_id)
+        # Try to get data from Supabase, fallback to request data if not available
+        hours_data = None
+        student_profile = None
+        admin_profile = None
+        
+        if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+            # Supabase is configured, try to fetch data
+            hours_data = supabase_service.get_hours_by_id(hours_id)
+            if hours_data:
+                student_profile = supabase_service.get_student_profile(hours_data['student_id'])
+                admin_profile = supabase_service.get_admin_profile(admin_id)
+        
+        # Use fallback data if Supabase data is not available
         if not hours_data:
-            return jsonify({'error': 'Hours record not found'}), 404
+            hours_data = {
+                'description': data.get('activity', 'Volunteer Activity'),
+                'hours': data.get('hours', 0),
+                'date': data.get('date', 'Unknown'),
+                'student_id': data.get('student_id', 'unknown')
+            }
         
-        # Get student profile
-        student_profile = supabase_service.get_student_profile(hours_data['student_id'])
         if not student_profile:
-            return jsonify({'error': 'Student profile not found'}), 404
+            student_profile = {
+                'full_name': data.get('student_name', 'Student'),
+                'email': student_email,
+                'student_id': data.get('student_id', 'unknown')
+            }
         
-        # Get admin profile
-        admin_profile = supabase_service.get_admin_profile(admin_id)
         if not admin_profile:
-            return jsonify({'error': 'Admin profile not found'}), 404
+            admin_profile = {
+                'full_name': data.get('admin_name', 'Admin'),
+                'email': data.get('admin_email', 'admin@example.com')
+            }
         
         # Calculate total hours (this should be calculated from database)
         total_hours = hours_data.get('hours', 0)  # This should be sum of all approved hours
@@ -971,6 +1008,7 @@ def health_check():
             'FLASK_MAIL_PASSWORD': 'set' if os.getenv('FLASK_MAIL_PASSWORD') else 'not set',
             'FLASK_MAIL_USE_TLS': 'set' if os.getenv('FLASK_MAIL_USE_TLS') else 'not set',
             'FLASK_MAIL_DISPLAY_NAME': 'set' if os.getenv('FLASK_MAIL_DISPLAY_NAME') else 'not set',
+            'NEXT_PUBLIC_SUPABASE_URL': 'set' if os.getenv('NEXT_PUBLIC_SUPABASE_URL') else 'not set',
             'SUPABASE_URL': 'set' if os.getenv('SUPABASE_URL') else 'not set',
             'SUPABASE_SERVICE_ROLE_KEY': 'set' if os.getenv('SUPABASE_SERVICE_ROLE_KEY') else 'not set',
             'NEXT_PUBLIC_APP_URL': 'set' if os.getenv('NEXT_PUBLIC_APP_URL') else 'not set',
