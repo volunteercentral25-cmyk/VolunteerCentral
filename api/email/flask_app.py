@@ -31,9 +31,9 @@ SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
 SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
 SMTP_PORT = int(os.getenv('SMTP_PORT', '587'))
-SMTP_USERNAME = os.getenv('SMTP_USERNAME')
-SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
-FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+SMTP_USERNAME = os.getenv('SMTP_USERNAME', 'CLTVolunteerCentral@gmail.com')
+SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', 'jnkb gfpz qxjz nflx')
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://volunteercentral25-cmyk.vercel.app')
 SECRET_KEY = os.getenv('SECRET_KEY', 'c057f320112909a9eedff367f37a554c65ab7363cccb2f6366d5c1606446938d')
 
 class EmailService:
