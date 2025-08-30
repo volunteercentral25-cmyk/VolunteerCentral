@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ClubSelectionModal } from '@/components/profile'
+import { isMobileDevice, isMobileViewport } from '@/lib/utils/mobileDetection'
 import { 
   Users,
   Calendar,
@@ -86,6 +87,24 @@ export default function AdminDashboard() {
 
     getUser()
   }, [router, supabase])
+
+  // Check if mobile device and redirect to mobile version
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const checkMobile = () => {
+        if (isMobileDevice() || isMobileViewport()) {
+          router.push('/admin/dashboard/mobile')
+        }
+      }
+      
+      // Check immediately
+      checkMobile()
+      
+      // Check on resize
+      window.addEventListener('resize', checkMobile)
+      return () => window.removeEventListener('resize', checkMobile)
+    }
+  }, [router])
 
   const loadDashboardData = async () => {
     try {

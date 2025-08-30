@@ -35,7 +35,9 @@ import {
   X,
   Clock as ClockIcon,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Download,
+  FileSpreadsheet
 } from 'lucide-react'
 
 interface Student {
@@ -98,6 +100,12 @@ export default function AdminStudents() {
     phone: '',
     bio: ''
   })
+  const [clubs, setClubs] = useState<Array<{id: string, name: string}>>([])
+  const [exportModalOpen, setExportModalOpen] = useState(false)
+  const [exportOptions, setExportOptions] = useState({
+    club: '',
+    includeAllStudents: false
+  })
   const [saving, setSaving] = useState(false)
   const router = useRouter()
   const supabase = createClient()
@@ -108,6 +116,7 @@ export default function AdminStudents() {
       if (user) {
         setUser(user)
         await loadStudents()
+        await loadClubs()
       } else {
         router.push('/login')
       }
@@ -116,6 +125,49 @@ export default function AdminStudents() {
 
     getUser()
   }, [router, supabase])
+
+  const loadClubs = async () => {
+    try {
+      const response = await fetch('/api/admin/clubs')
+      if (response.ok) {
+        const data = await response.json()
+        setClubs(data.clubs || [])
+      }
+    } catch (error) {
+      console.error('Error loading clubs:', error)
+    }
+  }
+
+  const handleExport = async () => {
+    try {
+      const params = new URLSearchParams()
+      if (exportOptions.club && !exportOptions.includeAllStudents) {
+        params.append('club', exportOptions.club)
+      }
+      if (exportOptions.includeAllStudents) {
+        params.append('all', 'true')
+      }
+
+      const response = await fetch(`/api/admin/students/export?${params}`)
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `students_export_${new Date().toISOString().split('T')[0]}.csv`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+        setExportModalOpen(false)
+      } else {
+        throw new Error('Export failed')
+      }
+    } catch (error) {
+      console.error('Error exporting students:', error)
+      alert('Failed to export students')
+    }
+  }
 
   useEffect(() => {
     loadStudents()
@@ -391,9 +443,18 @@ export default function AdminStudents() {
                     <option value="both">Both Clubs</option>
                   </select>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Users className="h-4 w-4" />
-                  <span>{studentsData?.pagination.total || 0} students</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Users className="h-4 w-4" />
+                    <span>{studentsData?.pagination.total || 0} students</span>
+                  </div>
+                  <Button
+                    onClick={() => setExportModalOpen(true)}
+                    className="btn-primary"
+                  >
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -819,6 +880,66 @@ export default function AdminStudents() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Export Students Modal */}
+      <Dialog open={exportModalOpen} onOpenChange={setExportModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5" />
+              Export Students
+            </DialogTitle>
+            <DialogDescription>
+              Choose export options for student data
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="export-club">Filter by Club (Optional)</Label>
+              <select
+                id="export-club"
+                value={exportOptions.club}
+                onChange={(e) => setExportOptions({ ...exportOptions, club: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">All Clubs</option>
+                {clubs.map(club => (
+                  <option key={club.id} value={club.name}>{club.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="include-all"
+                checked={exportOptions.includeAllStudents}
+                onChange={(e) => setExportOptions({ ...exportOptions, includeAllStudents: e.target.checked })}
+                className="rounded"
+              />
+              <Label htmlFor="include-all">Include all students regardless of club filter</Label>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setExportModalOpen(false)}
+              >
+                <X className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+              <Button
+                onClick={handleExport}
+                className="btn-primary"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export CSV
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

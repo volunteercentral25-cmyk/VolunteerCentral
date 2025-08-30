@@ -1,18 +1,6 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import crypto from 'crypto'
-
-const SECRET_KEY = process.env.SECRET_KEY || 'c057f320112909a9eedff367f37a554c65ab7363cccb2f6366d5c1606446938d'
-
-function generateVerificationToken(hoursId: string, action: string, email: string): string {
-  const timestamp = Math.floor(Date.now() / 1000)
-  const message = `${hoursId}:${action}:${email}:${timestamp}`
-  const signature = crypto
-    .createHmac('sha256', SECRET_KEY)
-    .update(message)
-    .digest('hex')
-  return `${timestamp}:${signature}`
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,109 +12,142 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const { hoursId, verificationEmail } = body
+    const { hoursId, verificationEmail } = await request.json()
 
     if (!hoursId || !verificationEmail) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+      return NextResponse.json({ error: 'Hours ID and verification email are required' }, { status: 400 })
     }
 
-    // Get the volunteer hours record
-    const { data: hoursData, error: hoursError } = await supabase
+    // Get hours details
+    const { data: hours, error: hoursError } = await supabase
       .from('volunteer_hours')
-      .select('*')
+      .select(`
+        *,
+        volunteer_opportunities (
+          title,
+          location
+        ),
+        profiles!inner (
+          full_name,
+          email
+        )
+      `)
       .eq('id', hoursId)
       .eq('student_id', user.id)
       .single()
 
-    if (hoursError || !hoursData) {
+    if (hoursError || !hours) {
       return NextResponse.json({ error: 'Hours record not found' }, { status: 404 })
     }
 
-    // Check if hours are already verified
-    if (hoursData.status === 'approved' || hoursData.status === 'denied') {
-      return NextResponse.json({ error: 'Hours have already been verified' }, { status: 400 })
+    // Check if hours are still pending
+    if (hours.status !== 'pending') {
+      return NextResponse.json({ error: 'Hours are no longer pending verification' }, { status: 400 })
     }
 
-    // Check cooldown period (1 hour = 3600000 milliseconds)
-    const now = new Date()
-    const lastEmailSent = hoursData.last_verification_email_sent
-    const cooldownPeriod = 3600000 // 1 hour in milliseconds
+    // Generate new verification tokens (expire old ones)
+    const approveToken = crypto.randomBytes(32).toString('hex')
+    const denyToken = crypto.randomBytes(32).toString('hex')
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
 
-    if (lastEmailSent) {
-      const timeSinceLastEmail = now.getTime() - new Date(lastEmailSent).getTime()
-      if (timeSinceLastEmail < cooldownPeriod) {
-        const remainingTime = Math.ceil((cooldownPeriod - timeSinceLastEmail) / 60000) // minutes
-        return NextResponse.json({ 
-          error: `Please wait ${remainingTime} minutes before sending another verification email`,
-          remainingMinutes: remainingTime
-        }, { status: 429 })
-      }
-    }
+    // Delete old tokens for this hours record
+    await supabase
+      .from('verification_tokens')
+      .delete()
+      .eq('hours_id', hoursId)
 
-    // Generate new verification tokens
-    const approveToken = generateVerificationToken(hoursId, 'approve', verificationEmail)
-    const denyToken = generateVerificationToken(hoursId, 'deny', verificationEmail)
+    // Insert new tokens
+    await supabase
+      .from('verification_tokens')
+      .insert([
+        {
+          token_hash: crypto.createHash('sha256').update(approveToken).digest('hex'),
+          hours_id: hoursId,
+          action: 'approve',
+          verifier_email: verificationEmail,
+          expires_at: expiresAt
+        },
+        {
+          token_hash: crypto.createHash('sha256').update(denyToken).digest('hex'),
+          hours_id: hoursId,
+          action: 'deny',
+          verifier_email: verificationEmail,
+          expires_at: expiresAt
+        }
+      ])
 
-    // Update the verification email and last sent time
-    const { error: updateError } = await supabase
+    // Update last verification email sent timestamp
+    await supabase
       .from('volunteer_hours')
       .update({
-        verification_email: verificationEmail,
-        last_verification_email_sent: now.toISOString()
+        last_verification_email_sent: new Date().toISOString()
       })
       .eq('id', hoursId)
 
-    if (updateError) {
-      console.error('Error updating hours:', updateError)
-      return NextResponse.json({ error: 'Failed to update hours record' }, { status: 500 })
+    // Format the volunteer date
+    const volunteerDate = new Date(hours.date).toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+
+    // Prepare email data
+    const emailData = {
+      student_name: hours.profiles.full_name,
+      opportunity_title: hours.volunteer_opportunities?.title || 'Volunteer Service',
+      volunteer_date: volunteerDate,
+      hours_logged: hours.hours,
+      description: hours.description || 'No description provided',
+      approve_url: `${process.env.NEXT_PUBLIC_SITE_URL}/verify-hours?token=${approveToken}&action=approve`,
+      deny_url: `${process.env.NEXT_PUBLIC_SITE_URL}/verify-hours?token=${denyToken}&action=deny`,
+      expires_date: expiresAt.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }),
+      logo_url: `${process.env.NEXT_PUBLIC_SITE_URL}/logo.png`
     }
 
-    // Send verification email
-    try {
-      const emailServiceUrl = process.env.NODE_ENV === 'production' 
-        ? `${process.env.NEXT_PUBLIC_APP_URL}/api/email-service/send-verification`
-        : 'http://localhost:3002/api/email-service/send-verification'
+    // Send email using the email service
+    const emailResponse = await fetch(`${process.env.EMAIL_SERVICE_URL}/send-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.EMAIL_SERVICE_API_KEY}`
+      },
+      body: JSON.stringify({
+        to: verificationEmail,
+        template: 'verification',
+        subject: `Verify Volunteer Hours: ${hours.profiles.full_name}`,
+        data: emailData
+      })
+    })
 
-      const emailResponse = await fetch(emailServiceUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          hours_id: hoursId,
-          verification_email: verificationEmail,
-          student_name: hoursData.description || 'Student',
-          hours: hoursData.hours,
-          date: hoursData.date,
-          approve_token: approveToken,
-          deny_token: denyToken
-        }),
+    if (!emailResponse.ok) {
+      throw new Error('Failed to send email')
+    }
+
+    // Log the email
+    await supabase
+      .from('email_logs')
+      .insert({
+        recipient: verificationEmail,
+        template: 'verification',
+        subject: `Verify Volunteer Hours: ${hours.profiles.full_name}`,
+        data: emailData,
+        status: 'sent'
       })
 
-      if (emailResponse.ok) {
-        const emailResult = await emailResponse.json()
-        console.log('Verification email sent successfully:', emailResult)
-      } else {
-        const errorText = await emailResponse.text()
-        console.error('Email service error:', errorText)
-        return NextResponse.json({ error: 'Failed to send verification email' }, { status: 500 })
-      }
-    } catch (emailError) {
-      console.error('Error sending verification email:', emailError)
-      return NextResponse.json({ error: 'Failed to send verification email' }, { status: 500 })
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Verification email sent successfully',
-      hours_id: hoursId,
-      verification_email: verificationEmail,
-      sent_at: now.toISOString()
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Verification email resent successfully',
+      expiresAt: expiresAt
     })
 
   } catch (error) {
-    console.error('Resend verification error:', error)
+    console.error('Error resending verification email:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

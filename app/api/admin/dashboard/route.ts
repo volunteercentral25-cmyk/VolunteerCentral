@@ -22,16 +22,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
-    // Use the test function to get student count reliably
-    const { data: studentCount, error: studentCountError } = await supabase.rpc('test_admin_student_count')
+    // Get student count using the proper function
+    const { data: studentCount, error: studentCountError } = await supabase.rpc('get_student_count')
     
     if (studentCountError) {
       console.error('Error getting student count:', studentCountError)
     }
 
     console.log('Student count result:', studentCount)
-    console.log('Student count data type:', typeof studentCount)
-    console.log('Student count is array:', Array.isArray(studentCount))
 
     // Fetch other statistics
     const [

@@ -2,13 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { ClubSelectionModal } from '@/components/profile'
 import MobileAdminLayout from '@/components/layout/mobile-admin-layout'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { 
   Users,
   Calendar,
@@ -16,9 +13,10 @@ import {
   Award,
   TrendingUp,
   Star,
-  Shield,
-  ArrowRight
+  ArrowRight,
+  Activity
 } from 'lucide-react'
+import Link from 'next/link'
 
 interface DashboardData {
   stats: {
@@ -57,280 +55,215 @@ interface DashboardData {
 }
 
 export default function MobileAdminDashboard() {
-  const [user, setUser] = useState<any>(null)
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showClubModal, setShowClubModal] = useState(false)
-  const [clubModalChecked, setClubModalChecked] = useState(false)
-  const router = useRouter()
-  const supabase = createClient()
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        setUser(user)
-        await loadDashboardData()
-      } else {
-        router.push('/login')
-      }
-      setLoading(false)
-    }
-
-    getUser()
-  }, [router, supabase])
+    loadDashboardData()
+  }, [])
 
   const loadDashboardData = async () => {
     try {
       const response = await fetch('/api/admin/dashboard')
       if (!response.ok) {
-        if (response.status === 403) {
-          router.push('/student/dashboard')
-          return
-        }
         throw new Error('Failed to load dashboard data')
       }
       const data = await response.json()
       setDashboardData(data)
-      
-      // Check if admin needs to complete club selection
-      if (!clubModalChecked) {
-        try {
-          const clubResponse = await fetch('/api/student/clubs')
-          if (clubResponse.ok) {
-            const clubData = await clubResponse.json()
-            // Show modal if clubs_completed is false or null
-            if (!clubData.clubs_completed) {
-              setShowClubModal(true)
-            }
-          }
-        } catch (error) {
-          console.error('Error checking club status:', error)
-        }
-        setClubModalChecked(true)
-      }
     } catch (error) {
       console.error('Error loading dashboard data:', error)
       setError('Failed to load dashboard data')
+    } finally {
+      setLoading(false)
     }
-  }
-
-  const handleClubModalComplete = () => {
-    setShowClubModal(false)
-    // Refresh dashboard data to get updated club information
-    loadDashboardData()
-  }
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full"
-        />
-      </div>
+      <MobileAdminLayout currentPage="dashboard">
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"
+          />
+        </div>
+      </MobileAdminLayout>
     )
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <Card className="w-full max-w-sm">
+      <MobileAdminLayout currentPage="dashboard">
+        <Card className="border-0 shadow-lg">
           <CardContent className="p-6 text-center">
             <div className="text-red-500 mb-4">
-              <TrendingUp className="h-12 w-12 mx-auto" />
+              <Activity className="h-8 w-8 mx-auto" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Dashboard</h2>
-            <p className="text-gray-600 mb-4 text-sm">{error}</p>
-            <Button onClick={loadDashboardData} className="w-full">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Dashboard</h2>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button onClick={loadDashboardData} className="bg-blue-600 hover:bg-blue-700">
               Try Again
             </Button>
           </CardContent>
         </Card>
-      </div>
+      </MobileAdminLayout>
     )
   }
 
   return (
-    <MobileAdminLayout
-      currentPage="dashboard"
-      pageTitle="Admin Dashboard"
-      pageDescription="Manage the volunteer system. Monitor students, opportunities, and volunteer hours."
-      onSignOut={handleSignOut}
-      userName={dashboardData?.profile?.full_name || 'Admin'}
-    >
-      {/* Stats Cards - Mobile Optimized */}
+    <MobileAdminLayout currentPage="dashboard">
+      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.2 }}
+        transition={{ duration: 0.5 }}
+        className="text-center mb-6"
+      >
+        <Badge className="mb-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+          Admin Control Center
+        </Badge>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          Admin <span className="text-blue-600">Dashboard</span>
+        </h1>
+        <p className="text-gray-600 text-sm">
+          Manage the volunteer system. Monitor students, opportunities, and volunteer hours.
+        </p>
+      </motion.div>
+
+      {/* Stats Cards */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
         className="grid grid-cols-2 gap-4 mb-6"
       >
-        <Card className="border-0 shadow-md">
+        <Card className="border-0 shadow-lg">
           <CardContent className="p-4">
-            <div className="text-center">
-              <div className="p-2 bg-blue-100 rounded-full w-12 h-12 mx-auto mb-2 flex items-center justify-center">
-                <Users className="h-6 w-6 text-blue-600" />
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-600">Students</p>
+                <p className="text-xl font-bold text-blue-600">{dashboardData?.stats.totalStudents || 0}</p>
               </div>
-              <p className="text-2xl font-bold text-blue-600">{dashboardData?.stats.totalStudents || 0}</p>
-              <p className="text-xs text-gray-600">Students</p>
+              <div className="p-2 bg-blue-100 rounded-full">
+                <Users className="h-4 w-4 text-blue-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md">
+        <Card className="border-0 shadow-lg">
           <CardContent className="p-4">
-            <div className="text-center">
-              <div className="p-2 bg-green-100 rounded-full w-12 h-12 mx-auto mb-2 flex items-center justify-center">
-                <Calendar className="h-6 w-6 text-green-600" />
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-600">Opportunities</p>
+                <p className="text-xl font-bold text-green-600">{dashboardData?.stats.totalOpportunities || 0}</p>
               </div>
-              <p className="text-2xl font-bold text-green-600">{dashboardData?.stats.totalOpportunities || 0}</p>
-              <p className="text-xs text-gray-600">Opportunities</p>
+              <div className="p-2 bg-green-100 rounded-full">
+                <Calendar className="h-4 w-4 text-green-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md">
+        <Card className="border-0 shadow-lg">
           <CardContent className="p-4">
-            <div className="text-center">
-              <div className="p-2 bg-orange-100 rounded-full w-12 h-12 mx-auto mb-2 flex items-center justify-center">
-                <Clock className="h-6 w-6 text-orange-600" />
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-600">Pending Hours</p>
+                <p className="text-xl font-bold text-orange-600">{dashboardData?.stats.pendingHours || 0}</p>
               </div>
-              <p className="text-2xl font-bold text-orange-600">{dashboardData?.stats.pendingHours || 0}</p>
-              <p className="text-xs text-gray-600">Pending Hours</p>
+              <div className="p-2 bg-orange-100 rounded-full">
+                <Clock className="h-4 w-4 text-orange-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-md">
+        <Card className="border-0 shadow-lg">
           <CardContent className="p-4">
-            <div className="text-center">
-              <div className="p-2 bg-purple-100 rounded-full w-12 h-12 mx-auto mb-2 flex items-center justify-center">
-                <Award className="h-6 w-6 text-purple-600" />
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-600">Total Hours</p>
+                <p className="text-xl font-bold text-purple-600">{dashboardData?.stats.totalHours || 0}</p>
               </div>
-              <p className="text-2xl font-bold text-purple-600">{dashboardData?.stats.totalHours || 0}</p>
-              <p className="text-xs text-gray-600">Total Hours</p>
+              <div className="p-2 bg-purple-100 rounded-full">
+                <Award className="h-4 w-4 text-purple-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
       </motion.div>
 
-      {/* Management Cards - Mobile Optimized */}
+      {/* Quick Actions */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.4 }}
-        className="space-y-4 mb-6"
+        transition={{ duration: 0.5, delay: 0.2 }}
+        className="mb-6"
       >
-        <Card className="border-0 shadow-md">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Users className="h-5 w-5 text-blue-600" />
-              Student Management
-            </CardTitle>
-            <CardDescription className="text-sm">View and manage student accounts, profiles, and permissions.</CardDescription>
+        <Card className="border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-lg">Quick Actions</CardTitle>
           </CardHeader>
-          <CardContent>
-            <Button className="w-full" asChild>
-              <a href="/admin/students">
-                Manage Students
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </a>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-md">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Calendar className="h-5 w-5 text-green-600" />
-              Opportunity Management
-            </CardTitle>
-            <CardDescription className="text-sm">Create, edit, and manage volunteer opportunities.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button className="w-full" asChild>
-              <a href="/admin/opportunities">
-                Manage Opportunities
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </a>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-md">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Clock className="h-5 w-5 text-orange-600" />
-              Hours Approval
-            </CardTitle>
-            <CardDescription className="text-sm">Review and approve pending volunteer hours.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button className="w-full" asChild>
-              <a href="/admin/hours">
-                Review Hours
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </a>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-md">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Shield className="h-5 w-5 text-indigo-600" />
-              Email Domains
-            </CardTitle>
-            <CardDescription className="text-sm">Manage trusted and untrusted email domains for verification.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button className="w-full" asChild>
-              <a href="/admin/domains">
-                Manage Domains
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </a>
-            </Button>
+          <CardContent className="space-y-3">
+            <Link href="/admin/students">
+              <Button className="w-full justify-between bg-blue-600 hover:bg-blue-700">
+                <span>Manage Students</span>
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Link href="/admin/opportunities">
+              <Button className="w-full justify-between bg-green-600 hover:bg-green-700">
+                <span>Manage Opportunities</span>
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Link href="/admin/hours">
+              <Button className="w-full justify-between bg-orange-600 hover:bg-orange-700">
+                <span>Review Hours</span>
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Link href="/admin/domains">
+              <Button className="w-full justify-between bg-purple-600 hover:bg-purple-700">
+                <span>Manage Domains</span>
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       </motion.div>
 
-      {/* Recent Activity - Mobile Optimized */}
+      {/* Recent Activity */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.6 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
         className="space-y-4"
       >
         {/* Recent Hours */}
-        <Card className="border-0 shadow-md">
-          <CardHeader className="pb-3">
+        <Card className="border-0 shadow-lg">
+          <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <TrendingUp className="h-5 w-5 text-purple-600" />
               Recent Hours
             </CardTitle>
-            <CardDescription className="text-sm">Latest volunteer hours submissions</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {dashboardData?.recentHours.length ? (
                 dashboardData.recentHours.slice(0, 3).map((hour) => (
                   <div key={hour.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 text-sm truncate">{hour.profiles.full_name}</p>
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">{hour.profiles.full_name}</p>
                       <p className="text-xs text-gray-600">{hour.hours} hours</p>
                     </div>
                     <Badge className={
-                      hour.status === 'approved' ? 'bg-green-100 text-green-800 text-xs' :
-                      hour.status === 'pending' ? 'bg-yellow-100 text-yellow-800 text-xs' :
-                      'bg-red-100 text-red-800 text-xs'
+                      hour.status === 'approved' ? 'bg-green-100 text-green-800' :
+                      hour.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
                     }>
                       {hour.status}
                     </Badge>
@@ -344,24 +277,23 @@ export default function MobileAdminDashboard() {
         </Card>
 
         {/* Recent Opportunities */}
-        <Card className="border-0 shadow-md">
-          <CardHeader className="pb-3">
+        <Card className="border-0 shadow-lg">
+          <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Star className="h-5 w-5 text-yellow-600" />
               Upcoming Opportunities
             </CardTitle>
-            <CardDescription className="text-sm">Latest volunteer opportunities</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {dashboardData?.recentOpportunities.length ? (
                 dashboardData.recentOpportunities.slice(0, 3).map((opportunity) => (
                   <div key={opportunity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 text-sm truncate">{opportunity.title}</p>
-                      <p className="text-xs text-gray-600 truncate">{opportunity.location}</p>
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">{opportunity.title}</p>
+                      <p className="text-xs text-gray-600">{opportunity.location}</p>
                     </div>
-                    <p className="text-xs text-gray-500 ml-2">
+                    <p className="text-xs text-gray-500">
                       {new Date(opportunity.date).toLocaleDateString()}
                     </p>
                   </div>
@@ -373,14 +305,6 @@ export default function MobileAdminDashboard() {
           </CardContent>
         </Card>
       </motion.div>
-
-      {/* Club Selection Modal */}
-      <ClubSelectionModal
-        isOpen={showClubModal}
-        onClose={() => setShowClubModal(false)}
-        onComplete={handleClubModalComplete}
-        userRole="admin"
-      />
     </MobileAdminLayout>
   )
 }

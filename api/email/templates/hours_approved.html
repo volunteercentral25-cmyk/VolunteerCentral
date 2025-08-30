@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Opportunity Reminder</title>
+    <title>Volunteer Hours Approved</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -30,7 +30,7 @@
             margin-bottom: 20px;
         }
         .title {
-            color: #dc2626;
+            color: #059669;
             font-size: 24px;
             font-weight: bold;
             margin-bottom: 10px;
@@ -42,9 +42,9 @@
         .content {
             margin-bottom: 30px;
         }
-        .opportunity-details {
-            background-color: #fef2f2;
-            border: 2px solid #fecaca;
+        .hours-details {
+            background-color: #f0fdf4;
+            border: 2px solid #bbf7d0;
             border-radius: 8px;
             padding: 20px;
             margin: 20px 0;
@@ -61,15 +61,15 @@
         .detail-value {
             color: #6b7280;
         }
-        .urgent {
-            background-color: #fef3c7;
-            border: 2px solid #fbbf24;
-            color: #92400e;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-            text-align: center;
+        .approved-badge {
+            background-color: #d1fae5;
+            color: #065f46;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
             font-weight: 600;
+            display: inline-block;
+            margin: 10px 0;
         }
         .footer {
             text-align: center;
@@ -81,7 +81,7 @@
         }
         .button {
             display: inline-block;
-            background-color: #dc2626;
+            background-color: #059669;
             color: white;
             padding: 12px 24px;
             text-decoration: none;
@@ -89,15 +89,18 @@
             margin: 20px 0;
             font-weight: 600;
         }
-        .button-secondary {
-            display: inline-block;
-            background-color: #6b7280;
-            color: white;
-            padding: 12px 24px;
-            text-decoration: none;
-            border-radius: 6px;
-            margin: 20px 10px;
-            font-weight: 600;
+        .total-hours {
+            background-color: #eff6ff;
+            border: 2px solid #dbeafe;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .total-hours-number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #1d4ed8;
         }
     </style>
 </head>
@@ -105,55 +108,60 @@
     <div class="container">
         <div class="header">
             <img src="{{logo_url}}" alt="Volunteer Central Logo" class="logo">
-            <div class="title">Opportunity Reminder</div>
-            <div class="subtitle">Don't forget about your upcoming volunteer opportunity!</div>
+            <div class="title">Hours Approved!</div>
+            <div class="subtitle">Your volunteer hours have been approved</div>
         </div>
 
         <div class="content">
             <p>Hello {{student_name}},</p>
             
-            <p>This is a friendly reminder about your upcoming volunteer opportunity. Please make sure you're prepared!</p>
+            <p>Great news! Your volunteer hours have been approved. Thank you for your service to the community!</p>
 
-            <div class="opportunity-details">
+            <div class="approved-badge">✅ APPROVED</div>
+
+            <div class="hours-details">
                 <div class="detail-row">
                     <span class="detail-label">Opportunity:</span>
                     <span class="detail-value">{{opportunity_title}}</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Date:</span>
-                    <span class="detail-value">{{opportunity_date}}</span>
+                    <span class="detail-value">{{volunteer_date}}</span>
                 </div>
                 <div class="detail-row">
-                    <span class="detail-label">Time:</span>
-                    <span class="detail-value">{{opportunity_time}}</span>
+                    <span class="detail-label">Hours:</span>
+                    <span class="detail-value">{{hours_logged}} hours</span>
                 </div>
                 <div class="detail-row">
-                    <span class="detail-label">Location:</span>
-                    <span class="detail-value">{{opportunity_location}}</span>
+                    <span class="detail-label">Description:</span>
+                    <span class="detail-value">{{description}}</span>
                 </div>
                 <div class="detail-row">
-                    <span class="detail-label">Requirements:</span>
-                    <span class="detail-value">{{opportunity_requirements}}</span>
+                    <span class="detail-label">Approved by:</span>
+                    <span class="detail-value">{{approved_by}}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Approved on:</span>
+                    <span class="detail-value">{{approved_date}}</span>
                 </div>
             </div>
 
-            <div class="urgent">
-                ⏰ This opportunity is {{days_until_opportunity}} day(s) away!
+            <div class="total-hours">
+                <p><strong>Your Total Volunteer Hours:</strong></p>
+                <div class="total-hours-number">{{total_hours}}</div>
+                <p>hours</p>
             </div>
 
-            <p><strong>Important reminders:</strong></p>
+            <p><strong>What this means:</strong></p>
             <ul>
-                <li>Please arrive 10-15 minutes early</li>
-                <li>Bring any required materials or documentation</li>
-                <li>Dress appropriately for the activity</li>
-                <li>Contact the organizer if you need to cancel</li>
+                <li>Your hours have been officially recorded</li>
+                <li>They count toward your volunteer service requirements</li>
+                <li>You can view them in your dashboard</li>
+                <li>Keep up the great work!</li>
             </ul>
 
-            <p>If you can no longer attend, please unregister as soon as possible so another student can take your spot.</p>
-
             <div style="text-align: center;">
-                <a href="{{dashboard_url}}" class="button">View Details</a>
-                <a href="{{unregister_url}}" class="button-secondary">Unregister</a>
+                <a href="{{dashboard_url}}" class="button">View Dashboard</a>
             </div>
         </div>
 

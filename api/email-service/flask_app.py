@@ -31,6 +31,9 @@ SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
 SECRET_KEY = os.getenv('SECRET_KEY', 'c057f320112909a9eedff367f37a554c65ab7363cccb2f6366d5c1606446938d')
 
+# Email templates directory
+TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'email', 'templates')
+
 class EmailService:
     def __init__(self):
         self.smtp_server = SMTP_SERVER
@@ -67,6 +70,36 @@ class EmailService:
         except Exception as e:
             logger.error(f"Failed to send email to {to_email}: {str(e)}")
             return False
+
+class TemplateService:
+    def __init__(self):
+        self.templates_dir = TEMPLATES_DIR
+        
+    def load_template(self, template_name: str) -> str:
+        """Load HTML template from file"""
+        try:
+            template_path = os.path.join(self.templates_dir, f"{template_name}.html")
+            with open(template_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except Exception as e:
+            logger.error(f"Failed to load template {template_name}: {str(e)}")
+            return ""
+    
+    def render_template(self, template_name: str, **kwargs) -> str:
+        """Load and render template with variables"""
+        template_content = self.load_template(template_name)
+        if template_content:
+            # Simple template rendering without Flask context
+            try:
+                return render_template_string(template_content, **kwargs)
+            except RuntimeError:
+                # Fallback to simple string replacement for testing
+                rendered = template_content
+                for key, value in kwargs.items():
+                    rendered = rendered.replace(f'{{{{ {key} }}}}', str(value))
+                    rendered = rendered.replace(f'{{{{{key}}}}}', str(value))
+                return rendered
+        return ""
 
 class SupabaseService:
     def __init__(self):
@@ -131,6 +164,48 @@ class SupabaseService:
             logger.error(f"Failed to get student profile: {str(e)}")
             return None
     
+    def get_opportunity_by_id(self, opportunity_id: str) -> Optional[Dict[str, Any]]:
+        """Get opportunity by ID"""
+        try:
+            response = requests.get(
+                f"{self.url}/rest/v1/opportunities?id=eq.{opportunity_id}",
+                headers=self.headers
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data[0] if data else None
+        except Exception as e:
+            logger.error(f"Failed to get opportunity: {str(e)}")
+            return None
+    
+    def get_registration_by_id(self, registration_id: str) -> Optional[Dict[str, Any]]:
+        """Get registration by ID"""
+        try:
+            response = requests.get(
+                f"{self.url}/rest/v1/opportunity_registrations?id=eq.{registration_id}",
+                headers=self.headers
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data[0] if data else None
+        except Exception as e:
+            logger.error(f"Failed to get registration: {str(e)}")
+            return None
+    
+    def get_admin_profile(self, admin_id: str) -> Optional[Dict[str, Any]]:
+        """Get admin profile by ID"""
+        try:
+            response = requests.get(
+                f"{self.url}/rest/v1/profiles?id=eq.{admin_id}",
+                headers=self.headers
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data[0] if data else None
+        except Exception as e:
+            logger.error(f"Failed to get admin profile: {str(e)}")
+            return None
+    
     def log_email_sent(self, recipient: str, template: str, subject: str, data: Dict[str, Any]) -> bool:
         """Log email sent to database"""
         try:
@@ -154,178 +229,33 @@ class SupabaseService:
         except Exception as e:
             logger.error(f"Failed to log email: {str(e)}")
             return False
+    
+    def log_admin_activity(self, admin_id: str, action: str, details: Dict[str, Any]) -> bool:
+        """Log admin activity"""
+        try:
+            log_data = {
+                'admin_id': admin_id,
+                'action': action,
+                'details': json.dumps(details),
+                'timestamp': datetime.utcnow().isoformat()
+            }
+            
+            response = requests.post(
+                f"{self.url}/rest/v1/admin_activity_logs",
+                headers=self.headers,
+                json=log_data
+            )
+            response.raise_for_status()
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to log admin activity: {str(e)}")
+            return False
 
 # Initialize services
 email_service = EmailService()
+template_service = TemplateService()
 supabase_service = SupabaseService()
-
-# Email templates
-VERIFICATION_EMAIL_TEMPLATE = """
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Volunteer Hours Verification Request</title>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-        .hours-details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea; }
-        .button { display: inline-block; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; margin: 10px 5px; }
-        .button.approve { background: #28a745; }
-        .button.deny { background: #dc3545; }
-        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-        .student-info { background: #e3f2fd; padding: 15px; border-radius: 6px; margin: 15px 0; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Volunteer Hours Verification</h1>
-            <p>volunteer</p>
-        </div>
-        
-        <div class="content">
-            <h2>Hello!</h2>
-            <p>A student has submitted volunteer hours for your verification. Please review the details below and approve or deny the submission.</p>
-            
-            <div class="student-info">
-                <h3>Student Information</h3>
-                <p><strong>Name:</strong> {{ student_name }}</p>
-                <p><strong>Email:</strong> {{ student_email }}</p>
-                <p><strong>Student ID:</strong> {{ student_id }}</p>
-            </div>
-            
-            <div class="hours-details">
-                <h3>Volunteer Hours Details</h3>
-                <p><strong>Activity:</strong> {{ activity }}</p>
-                <p><strong>Hours:</strong> {{ hours }}</p>
-                <p><strong>Date:</strong> {{ date }}</p>
-                <p><strong>Description:</strong> {{ description }}</p>
-                <p><strong>Submitted:</strong> {{ submitted_date }}</p>
-            </div>
-            
-            <p>Please click one of the buttons below to approve or deny these volunteer hours:</p>
-            
-            <div style="text-align: center;">
-                <a href="{{ approve_url }}" class="button approve">✓ Approve Hours</a>
-                <a href="{{ deny_url }}" class="button deny">✗ Deny Hours</a>
-            </div>
-            
-            <p style="margin-top: 30px; font-size: 14px; color: #666;">
-                <strong>Note:</strong> This verification link will expire in 7 days. If you have any questions, please contact the volunteer team.
-            </p>
-        </div>
-        
-        <div class="footer">
-            <p>volunteer - Building Community Through Service</p>
-            <p>This is an automated message. Please do not reply to this email.</p>
-        </div>
-    </div>
-</body>
-</html>
-"""
-
-APPROVAL_CONFIRMATION_TEMPLATE = """
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hours Approved</title>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #28a745; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-        .success-icon { font-size: 48px; margin-bottom: 20px; }
-        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <div class="success-icon">✓</div>
-            <h1>Hours Approved Successfully</h1>
-        </div>
-        
-        <div class="content">
-            <h2>Thank you for your verification!</h2>
-            <p>The volunteer hours have been approved and the student has been notified.</p>
-            
-            <h3>Approved Details:</h3>
-            <ul>
-                <li><strong>Student:</strong> {{ student_name }}</li>
-                <li><strong>Activity:</strong> {{ activity }}</li>
-                <li><strong>Hours:</strong> {{ hours }}</li>
-                <li><strong>Date:</strong> {{ date }}</li>
-                <li><strong>Approved by:</strong> {{ verifier_email }}</li>
-                <li><strong>Approved on:</strong> {{ approval_date }}</li>
-            </ul>
-            
-            <p>Thank you for supporting our volunteer program!</p>
-        </div>
-        
-        <div class="footer">
-            <p>volunteer - Building Community Through Service</p>
-        </div>
-    </div>
-</body>
-</html>
-"""
-
-DENIAL_CONFIRMATION_TEMPLATE = """
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hours Denied</title>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #dc3545; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-        .denial-icon { font-size: 48px; margin-bottom: 20px; }
-        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <div class="denial-icon">✗</div>
-            <h1>Hours Denied</h1>
-        </div>
-        
-        <div class="content">
-            <h2>Verification Complete</h2>
-            <p>The volunteer hours have been denied and the student has been notified.</p>
-            
-            <h3>Denied Details:</h3>
-            <ul>
-                <li><strong>Student:</strong> {{ student_name }}</li>
-                <li><strong>Activity:</strong> {{ activity }}</li>
-                <li><strong>Hours:</strong> {{ hours }}</li>
-                <li><strong>Date:</strong> {{ date }}</li>
-                <li><strong>Denied by:</strong> {{ verifier_email }}</li>
-                <li><strong>Denied on:</strong> {{ denial_date }}</li>
-                {% if notes %}
-                <li><strong>Reason:</strong> {{ notes }}</li>
-                {% endif %}
-            </ul>
-            
-            <p>Thank you for your time and attention to this matter.</p>
-        </div>
-        
-        <div class="footer">
-            <p>volunteer - Building Community Through Service</p>
-        </div>
-    </div>
-</body>
-</html>
-"""
 
 def generate_verification_token(hours_id: str, action: str, verifier_email: str) -> str:
     """Generate a secure verification token"""
@@ -417,28 +347,12 @@ def send_verification_email():
             'deny_url': deny_url
         }
         
-        # Render email template
-        html_content = render_template_string(VERIFICATION_EMAIL_TEMPLATE, **template_data)
-        text_content = f"""
-Volunteer Hours Verification Request
-
-A student has submitted volunteer hours for your verification.
-
-Student: {template_data['student_name']} ({template_data['student_email']})
-Activity: {template_data['activity']}
-Hours: {template_data['hours']}
-Date: {template_data['date']}
-Description: {template_data['description']}
-
-To approve: {approve_url}
-To deny: {deny_url}
-
-This link will expire in 7 days.
-        """
+        # Render email template using new template
+        html_content = template_service.render_template('verification_request', **template_data)
         
         # Send email
         subject = f"Volunteer Hours Verification Request - {template_data['student_name']}"
-        success = email_service.send_email(verifier_email, subject, html_content, text_content)
+        success = email_service.send_email(verifier_email, subject, html_content)
         
         if success:
             # Log email sent
@@ -509,12 +423,12 @@ def verify_hours():
             'notes': notes
         }
         
-        # Send confirmation email to verifier
+        # Send confirmation email to verifier using new templates
         if action == 'approve':
-            html_content = render_template_string(APPROVAL_CONFIRMATION_TEMPLATE, **template_data)
+            html_content = template_service.render_template('approval', **template_data)
             subject = f"Hours Approved - {template_data['student_name']}"
         else:
-            html_content = render_template_string(DENIAL_CONFIRMATION_TEMPLATE, **template_data)
+            html_content = template_service.render_template('denial', **template_data)
             subject = f"Hours Denied - {template_data['student_name']}"
         
         email_service.send_email(verifier_email, subject, html_content)
@@ -562,46 +476,30 @@ def send_notification():
         if not hours_data:
             return jsonify({'error': 'Hours record not found'}), 404
         
-        # Prepare email content based on status
+        # Get student profile
+        student_profile = supabase_service.get_student_profile(hours_data['student_id'])
+        if not student_profile:
+            return jsonify({'error': 'Student profile not found'}), 404
+        
+        # Prepare email content using new templates
+        template_data = {
+            'student_name': student_profile.get('full_name', 'Unknown'),
+            'activity': hours_data.get('description', 'Volunteer Activity'),
+            'hours': hours_data.get('hours', 0),
+            'date': hours_data.get('date', 'Unknown'),
+            'description': hours_data.get('description', 'No description provided'),
+            'verifier_email': verifier_email,
+            'verification_date': datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'),
+            'notes': notes,
+            'total_hours': hours_data.get('hours', 0)  # This should be calculated from total
+        }
+        
         if status == 'approved':
-            subject = "Your Volunteer Hours Have Been Approved!"
-            html_content = f"""
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #28a745;">✓ Hours Approved!</h2>
-                <p>Great news! Your volunteer hours have been approved.</p>
-                
-                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                    <h3>Approved Details:</h3>
-                    <p><strong>Activity:</strong> {hours_data.get('description', 'Volunteer Activity')}</p>
-                    <p><strong>Hours:</strong> {hours_data.get('hours', 0)}</p>
-                    <p><strong>Date:</strong> {hours_data.get('date', 'Unknown')}</p>
-                    <p><strong>Approved by:</strong> {verifier_email}</p>
-                    <p><strong>Approved on:</strong> {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}</p>
-                </div>
-                
-                <p>Thank you for your volunteer service!</p>
-            </div>
-            """
+            html_content = template_service.render_template('hours_approved', **template_data)
+            subject = f"Your Volunteer Hours Have Been Approved! - {template_data['student_name']}"
         else:
-            subject = "Volunteer Hours Update"
-            html_content = f"""
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #dc3545;">Hours Status Update</h2>
-                <p>Your volunteer hours have been reviewed.</p>
-                
-                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                    <h3>Details:</h3>
-                    <p><strong>Activity:</strong> {hours_data.get('description', 'Volunteer Activity')}</p>
-                    <p><strong>Hours:</strong> {hours_data.get('hours', 0)}</p>
-                    <p><strong>Date:</strong> {hours_data.get('date', 'Unknown')}</p>
-                    <p><strong>Status:</strong> {status.title()}</p>
-                    <p><strong>Reviewed by:</strong> {verifier_email}</p>
-                    {f'<p><strong>Notes:</strong> {notes}</p>' if notes else ''}
-                </div>
-                
-                <p>If you have any questions, please contact the organization directly.</p>
-            </div>
-            """
+            html_content = template_service.render_template('hours_denied', **template_data)
+            subject = f"Volunteer Hours Update - {template_data['student_name']}"
         
         # Send email
         success = email_service.send_email(student_email, subject, html_content)
@@ -631,6 +529,313 @@ def send_notification():
             
     except Exception as e:
         logger.error(f"Error sending notification: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/send-opportunity-registration', methods=['POST'])
+def send_opportunity_registration():
+    """Send confirmation email for opportunity registration"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['registration_id', 'student_email']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        registration_id = data['registration_id']
+        student_email = data['student_email']
+        
+        # Get registration details
+        registration = supabase_service.get_registration_by_id(registration_id)
+        if not registration:
+            return jsonify({'error': 'Registration not found'}), 404
+        
+        # Get opportunity details
+        opportunity = supabase_service.get_opportunity_by_id(registration['opportunity_id'])
+        if not opportunity:
+            return jsonify({'error': 'Opportunity not found'}), 404
+        
+        # Get student profile
+        student_profile = supabase_service.get_student_profile(registration['student_id'])
+        if not student_profile:
+            return jsonify({'error': 'Student profile not found'}), 404
+        
+        # Prepare email content
+        template_data = {
+            'student_name': student_profile.get('full_name', 'Unknown'),
+            'opportunity_title': opportunity.get('title', 'Volunteer Opportunity'),
+            'opportunity_date': opportunity.get('date', 'TBD'),
+            'opportunity_time': opportunity.get('time', 'TBD'),
+            'opportunity_location': opportunity.get('location', 'TBD'),
+            'opportunity_requirements': opportunity.get('requirements', 'None'),
+            'registration_status': 'Confirmed',
+            'dashboard_url': f"{FRONTEND_URL}/student/opportunities"
+        }
+        
+        # Render and send email
+        html_content = template_service.render_template('opportunity_registration', **template_data)
+        subject = f"Registration Confirmed - {template_data['opportunity_title']}"
+        
+        success = email_service.send_email(student_email, subject, html_content)
+        
+        if success:
+            # Log email sent
+            supabase_service.log_email_sent(
+                recipient=student_email,
+                template='opportunity_registration',
+                subject=subject,
+                data=template_data
+            )
+            
+            return jsonify({
+                'success': True,
+                'message': 'Registration confirmation email sent',
+                'student_email': student_email,
+                'opportunity_title': template_data['opportunity_title']
+            })
+        else:
+            return jsonify({'error': 'Failed to send registration email'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error sending opportunity registration email: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/send-opportunity-reminder', methods=['POST'])
+def send_opportunity_reminder():
+    """Send reminder email for upcoming opportunity"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['registration_id', 'student_email']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        registration_id = data['registration_id']
+        student_email = data['student_email']
+        
+        # Get registration details
+        registration = supabase_service.get_registration_by_id(registration_id)
+        if not registration:
+            return jsonify({'error': 'Registration not found'}), 404
+        
+        # Get opportunity details
+        opportunity = supabase_service.get_opportunity_by_id(registration['opportunity_id'])
+        if not opportunity:
+            return jsonify({'error': 'Opportunity not found'}), 404
+        
+        # Get student profile
+        student_profile = supabase_service.get_student_profile(registration['student_id'])
+        if not student_profile:
+            return jsonify({'error': 'Student profile not found'}), 404
+        
+        # Calculate days until opportunity
+        opportunity_date = datetime.strptime(opportunity['date'], '%Y-%m-%d')
+        days_until = (opportunity_date - datetime.now()).days
+        
+        # Prepare email content
+        template_data = {
+            'student_name': student_profile.get('full_name', 'Unknown'),
+            'opportunity_title': opportunity.get('title', 'Volunteer Opportunity'),
+            'opportunity_date': opportunity.get('date', 'TBD'),
+            'opportunity_time': opportunity.get('time', 'TBD'),
+            'opportunity_location': opportunity.get('location', 'TBD'),
+            'opportunity_requirements': opportunity.get('requirements', 'None'),
+            'days_until': days_until,
+            'view_details_url': f"{FRONTEND_URL}/student/opportunities",
+            'unregister_url': f"{FRONTEND_URL}/student/opportunities/unregister/{registration_id}"
+        }
+        
+        # Render and send email
+        html_content = template_service.render_template('opportunity_reminder', **template_data)
+        subject = f"Reminder: {template_data['opportunity_title']} in {days_until} days"
+        
+        success = email_service.send_email(student_email, subject, html_content)
+        
+        if success:
+            # Log email sent
+            supabase_service.log_email_sent(
+                recipient=student_email,
+                template='opportunity_reminder',
+                subject=subject,
+                data=template_data
+            )
+            
+            return jsonify({
+                'success': True,
+                'message': 'Reminder email sent',
+                'student_email': student_email,
+                'opportunity_title': template_data['opportunity_title'],
+                'days_until': days_until
+            })
+        else:
+            return jsonify({'error': 'Failed to send reminder email'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error sending opportunity reminder email: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/send-opportunity-unregistration', methods=['POST'])
+def send_opportunity_unregistration():
+    """Send confirmation email for opportunity unregistration"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['registration_id', 'student_email']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        registration_id = data['registration_id']
+        student_email = data['student_email']
+        
+        # Get registration details
+        registration = supabase_service.get_registration_by_id(registration_id)
+        if not registration:
+            return jsonify({'error': 'Registration not found'}), 404
+        
+        # Get opportunity details
+        opportunity = supabase_service.get_opportunity_by_id(registration['opportunity_id'])
+        if not opportunity:
+            return jsonify({'error': 'Opportunity not found'}), 404
+        
+        # Get student profile
+        student_profile = supabase_service.get_student_profile(registration['student_id'])
+        if not student_profile:
+            return jsonify({'error': 'Student profile not found'}), 404
+        
+        # Prepare email content
+        template_data = {
+            'student_name': student_profile.get('full_name', 'Unknown'),
+            'opportunity_title': opportunity.get('title', 'Volunteer Opportunity'),
+            'opportunity_date': opportunity.get('date', 'TBD'),
+            'opportunity_time': opportunity.get('time', 'TBD'),
+            'opportunity_location': opportunity.get('location', 'TBD'),
+            'dashboard_url': f"{FRONTEND_URL}/student/opportunities"
+        }
+        
+        # Render and send email
+        html_content = template_service.render_template('opportunity_unregistration', **template_data)
+        subject = f"Unregistration Confirmed - {template_data['opportunity_title']}"
+        
+        success = email_service.send_email(student_email, subject, html_content)
+        
+        if success:
+            # Log email sent
+            supabase_service.log_email_sent(
+                recipient=student_email,
+                template='opportunity_unregistration',
+                subject=subject,
+                data=template_data
+            )
+            
+            return jsonify({
+                'success': True,
+                'message': 'Unregistration confirmation email sent',
+                'student_email': student_email,
+                'opportunity_title': template_data['opportunity_title']
+            })
+        else:
+            return jsonify({'error': 'Failed to send unregistration email'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error sending opportunity unregistration email: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/send-hours-notification', methods=['POST'])
+def send_hours_notification():
+    """Send notification email when admin approves/denies hours"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['hours_id', 'student_email', 'status', 'admin_id']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        hours_id = data['hours_id']
+        student_email = data['student_email']
+        status = data['status']
+        admin_id = data['admin_id']
+        notes = data.get('notes', '')
+        
+        # Get hours data
+        hours_data = supabase_service.get_hours_by_id(hours_id)
+        if not hours_data:
+            return jsonify({'error': 'Hours record not found'}), 404
+        
+        # Get student profile
+        student_profile = supabase_service.get_student_profile(hours_data['student_id'])
+        if not student_profile:
+            return jsonify({'error': 'Student profile not found'}), 404
+        
+        # Get admin profile
+        admin_profile = supabase_service.get_admin_profile(admin_id)
+        if not admin_profile:
+            return jsonify({'error': 'Admin profile not found'}), 404
+        
+        # Calculate total hours (this should be calculated from database)
+        total_hours = hours_data.get('hours', 0)  # This should be sum of all approved hours
+        
+        # Prepare email content
+        template_data = {
+            'student_name': student_profile.get('full_name', 'Unknown'),
+            'activity': hours_data.get('description', 'Volunteer Activity'),
+            'hours': hours_data.get('hours', 0),
+            'date': hours_data.get('date', 'Unknown'),
+            'description': hours_data.get('description', 'No description provided'),
+            'admin_name': admin_profile.get('full_name', 'Admin'),
+            'verification_date': datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'),
+            'notes': notes,
+            'total_hours': total_hours
+        }
+        
+        if status == 'approved':
+            html_content = template_service.render_template('hours_approved', **template_data)
+            subject = f"Your Volunteer Hours Have Been Approved! - {template_data['student_name']}"
+        else:
+            html_content = template_service.render_template('hours_denied', **template_data)
+            subject = f"Volunteer Hours Update - {template_data['student_name']}"
+        
+        # Send email
+        success = email_service.send_email(student_email, subject, html_content)
+        
+        if success:
+            # Log email sent
+            supabase_service.log_email_sent(
+                recipient=student_email,
+                template=f'hours_{status}',
+                subject=subject,
+                data=template_data
+            )
+            
+            # Log admin activity
+            supabase_service.log_admin_activity(
+                admin_id=admin_id,
+                action=f'hours_{status}',
+                details={
+                    'hours_id': hours_id,
+                    'student_id': hours_data['student_id'],
+                    'student_email': student_email,
+                    'notes': notes
+                }
+            )
+            
+            return jsonify({
+                'success': True,
+                'message': f'Hours {status} notification sent',
+                'student_email': student_email,
+                'status': status
+            })
+        else:
+            return jsonify({'error': 'Failed to send hours notification email'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error sending hours notification: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
