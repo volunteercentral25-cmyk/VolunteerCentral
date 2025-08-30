@@ -108,23 +108,19 @@ export async function GET(request: NextRequest) {
 
     // Send email notification to student
     try {
-      const emailServiceUrl = process.env.NODE_ENV === 'production' 
-        ? `${process.env.NEXT_PUBLIC_APP_URL}/api/email-service/send-notification`
-        : 'http://localhost:3002/api/email-service/send-notification'
+      const emailServiceUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
-      console.log('Sending email notification to:', emailServiceUrl)
+      console.log('Sending email notification to:', `${emailServiceUrl}/api/email-service/send-hours-notification`)
 
-      const emailResponse = await fetch(emailServiceUrl, {
+      const emailResponse = await fetch(`${emailServiceUrl}/api/email-service/send-hours-notification`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          hours_id: hoursId,
-          student_email: studentProfile.email,
-          status: status,
-          verifier_email: verifierEmail,
-          notes: notes
+          hoursId: hoursId,
+          action: action,
+          reason: notes
         }),
       })
 

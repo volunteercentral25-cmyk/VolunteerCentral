@@ -165,7 +165,7 @@ export default function MobileAdminHours() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          hourId: selectedHour.id,
+          hoursId: selectedHour.id,
           status: reviewData.status,
           notes: reviewData.notes
         })

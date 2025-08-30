@@ -180,33 +180,31 @@ export async function PUT(request: NextRequest) {
 
     console.log('Successfully updated hours:', data)
 
-    // Send verification email if there's a verification email address
-    if (data.verification_email && (status === 'approved' || status === 'denied')) {
+    // Send email notification when hours are approved or denied
+    if (status === 'approved' || status === 'denied') {
       try {
-        console.log('Sending verification email to:', data.verification_email)
+        console.log('Sending hours notification email for status:', status)
         
-        // Call the email service to send verification notification
-        const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/email-service/hours-update-notification`, {
+        // Call the email service to send hours notification
+        const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/email-service/send-hours-notification`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            hours_id: hoursId,
-            verifier_email: data.verification_email,
-            status: status,
-            notes: notes,
-            admin_email: profile.email
+            hoursId: hoursId,
+            action: status === 'approved' ? 'approve' : 'deny',
+            reason: notes
           }),
         })
 
         if (!emailResponse.ok) {
-          console.error('Failed to send verification email:', await emailResponse.text())
+          console.error('Failed to send hours notification email:', await emailResponse.text())
         } else {
-          console.log('Verification email sent successfully')
+          console.log('Hours notification email sent successfully')
         }
       } catch (emailError) {
-        console.error('Error sending verification email:', emailError)
+        console.error('Error sending hours notification email:', emailError)
         // Don't fail the update if email fails
       }
     }
