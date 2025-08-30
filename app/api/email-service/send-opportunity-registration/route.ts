@@ -67,22 +67,30 @@ export async function POST(request: NextRequest) {
       logo_url: `${process.env.NEXT_PUBLIC_SITE_URL}/logo.png`
     }
 
-    // Send email using the email service
-    const emailResponse = await fetch(`${process.env.EMAIL_SERVICE_URL}/send-email`, {
+    // Send email using the Flask email service
+    const emailServiceUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    console.log('🔧 Using email service URL:', emailServiceUrl)
+    const emailResponse = await fetch(`${emailServiceUrl}/api/email/opportunity-confirmation`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.EMAIL_SERVICE_API_KEY}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        to: registration.profiles.email,
-        template: 'opportunity_registration',
-        subject: `Registration Confirmation: ${registration.volunteer_opportunities.title}`,
-        data: emailData
+        student_email: registration.profiles.email,
+        student_name: registration.profiles.full_name,
+        opportunity_title: registration.volunteer_opportunities.title,
+        opportunity_date: opportunityDate,
+        opportunity_time: opportunityTime,
+        opportunity_location: registration.volunteer_opportunities.location || 'TBD',
+        opportunity_requirements: registration.volunteer_opportunities.requirements || 'None specified',
+        registration_status: registration.status,
+        dashboard_url: `${process.env.NEXT_PUBLIC_SITE_URL}/student/dashboard`
       })
     })
 
     if (!emailResponse.ok) {
+      const errorText = await emailResponse.text()
+      console.error('❌ Flask email service failed:', errorText)
       throw new Error('Failed to send email')
     }
 

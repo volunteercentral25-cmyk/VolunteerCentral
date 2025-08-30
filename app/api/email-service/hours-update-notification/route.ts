@@ -14,11 +14,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Forward the request to the Flask email service
-    const emailServiceUrl = process.env.EMAIL_SERVICE_URL || 'https://volunteercentral25-cmyk.vercel.app/api/email'
+    const emailServiceUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    console.log('🔧 Using email service URL:', emailServiceUrl)
 
-    console.log('Forwarding to email service:', emailServiceUrl)
-
-    const response = await fetch(emailServiceUrl, {
+    const response = await fetch(`${emailServiceUrl}/api/email/send-hours-notification`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

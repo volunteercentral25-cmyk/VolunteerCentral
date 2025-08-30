@@ -183,36 +183,98 @@ export async function PUT(request: NextRequest) {
             // Send email notification when hours are approved or denied
         if (status === 'approved' || status === 'denied') {
           try {
-            console.log('🔔 ADMIN API: Triggering email notification for status:', status)
-            
-            // Use the Next.js email service directly (it's working and has proper templates)
-            const emailPayload = {
-              hoursId: hoursId,
-              action: status === 'approved' ? 'approve' : 'deny',
-              reason: notes,
-              bypassAuth: false  // Admin call, so keep auth check
-            }
-            
-            console.log('📦 Email payload:', emailPayload)
-            console.log('📍 EMAIL URL:', `${process.env.NEXT_PUBLIC_APP_URL}/api/email-service/send-hours-notification`)
-            
-            const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/email-service/send-hours-notification`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(emailPayload),
-            })
+            // Get the student email from the hours record
+            const { data: hoursWithStudent, error: studentError } = await supabase
+              .from('volunteer_hours')
+              .select(`
+                *,
+                profiles!inner (
+                  email,
+                  full_name
+                )
+              `)
+              .eq('id', hoursId)
+              .single()
 
-            console.log('📬 Email service response status:', emailResponse.status)
+            if (studentError || !hoursWithStudent) {
+              console.error('❌ Failed to get student info for email:', studentError)
+              throw new Error('Could not get student information')
+            }
+
+            console.log('🔔 ADMIN API: Triggering email notification for status:', status)
+            console.log('📧 Student email:', hoursWithStudent.profiles.email)
+            console.log('📍 EMAIL URL:', `${process.env.NEXT_PUBLIC_APP_URL}/api/email/send-hours-notification`)
             
-            if (emailResponse.ok) {
-              const result = await emailResponse.json()
-              console.log('✅ Hours notification email sent successfully:', result)
-            } else {
-              const errorText = await emailResponse.text()
-              console.error('❌ Email service failed:', errorText)
-              console.error('❌ Response headers:', Object.fromEntries(emailResponse.headers.entries()))
+            const emailPayload = {
+              hours_id: hoursId,
+              student_email: hoursWithStudent.profiles.email,
+              status: status,
+              admin_id: user.id,
+              notes: notes
+            }
+            console.log('📦 Flask Email payload:', emailPayload)
+            
+            // Try Flask email service first (same as verification system)
+            let emailSent = false
+            try {
+              const flaskResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/email/send-hours-notification`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(emailPayload),
+              })
+
+              console.log('📬 Flask email service response status:', flaskResponse.status)
+              
+              if (flaskResponse.ok) {
+                const result = await flaskResponse.json()
+                console.log('✅ Flask hours notification email sent successfully:', result)
+                emailSent = true
+              } else {
+                const errorText = await flaskResponse.text()
+                console.error('❌ Flask email service failed:', errorText)
+              }
+            } catch (flaskError) {
+              console.error('💥 Flask email service error:', flaskError)
+            }
+
+            // Fallback to Next.js email service if Flask failed
+            if (!emailSent) {
+              console.log('🔄 Falling back to Next.js email service...')
+              try {
+                const nextjsPayload = {
+                  hoursId: hoursId,
+                  action: status === 'approved' ? 'approve' : 'deny',
+                  reason: notes,
+                  bypassAuth: false  // Admin call, so keep auth check
+                }
+                
+                const nextjsResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/email-service/send-hours-notification`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(nextjsPayload),
+                })
+
+                console.log('📬 Next.js email service response status:', nextjsResponse.status)
+                
+                if (nextjsResponse.ok) {
+                  const result = await nextjsResponse.json()
+                  console.log('✅ Next.js hours notification email sent successfully:', result)
+                  emailSent = true
+                } else {
+                  const errorText = await nextjsResponse.text()
+                  console.error('❌ Next.js email service also failed:', errorText)
+                }
+              } catch (nextjsError) {
+                console.error('💥 Next.js email service error:', nextjsError)
+              }
+            }
+
+            if (!emailSent) {
+              console.error('💥 All email services failed!')
             }
           } catch (emailError) {
             console.error('💥 Error sending hours notification email:', emailError)

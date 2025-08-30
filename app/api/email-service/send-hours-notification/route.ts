@@ -270,32 +270,75 @@ export async function POST(request: NextRequest) {
     console.log('📧 Preparing to send email to:', hours.profiles.email)
     console.log('📬 Email subject:', subject)
 
-    // Send email directly using nodemailer
-    const transporter = nodemailer.createTransport({
-      host: process.env.FLASK_MAIL_SERVER || 'smtp.gmail.com',
-      port: parseInt(process.env.FLASK_MAIL_PORT || '587'),
-      secure: false,
-      auth: {
-        user: process.env.FLASK_MAIL_USERNAME || 'CLTVolunteerCentral@gmail.com',
-        pass: process.env.FLASK_MAIL_PASSWORD || 'jnkb gfpz qxjz nflx'
-      }
-    })
-
-    console.log('🔧 Email transporter configured')
-
-    // Send email
-    console.log('🚀 Sending email...')
+    // Try Flask email service first
+    let emailSent = false
     try {
-      const mailResult = await transporter.sendMail({
-        from: `"Volunteer Central" <${process.env.FLASK_MAIL_USERNAME || 'CLTVolunteerCentral@gmail.com'}>`,
-        to: hours.profiles.email,
-        subject: subject,
-        html: emailHtml
+      const emailServiceUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+      console.log('🔧 Using email service URL:', emailServiceUrl)
+      const flaskPayload = {
+        hours_id: hoursId,
+        student_email: hours.profiles.email,
+        status: action === 'approve' ? 'approved' : 'denied',
+        admin_id: adminId || 'system',
+        notes: reason
+      }
+      
+      console.log('🔄 Trying Flask email service...')
+      const flaskResponse = await fetch(`${emailServiceUrl}/api/email/send-hours-notification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(flaskPayload),
       })
-      console.log('✅ Email sent successfully!', mailResult.messageId)
-    } catch (emailError) {
-      console.error('❌ Email send failed:', emailError)
-      throw emailError
+
+      if (flaskResponse.ok) {
+        const result = await flaskResponse.json()
+        console.log('✅ Flask email service sent successfully:', result)
+        emailSent = true
+      } else {
+        const errorText = await flaskResponse.text()
+        console.error('❌ Flask email service failed:', errorText)
+      }
+    } catch (flaskError) {
+      console.error('💥 Flask email service error:', flaskError)
+    }
+
+    // Fallback to nodemailer if Flask failed
+    if (!emailSent) {
+      console.log('🔄 Falling back to nodemailer...')
+      const transporter = nodemailer.createTransport({
+        host: process.env.FLASK_MAIL_SERVER || 'smtp.gmail.com',
+        port: parseInt(process.env.FLASK_MAIL_PORT || '587'),
+        secure: false,
+        auth: {
+          user: process.env.FLASK_MAIL_USERNAME || 'CLTVolunteerCentral@gmail.com',
+          pass: process.env.FLASK_MAIL_PASSWORD || 'jnkb gfpz qxjz nflx'
+        }
+      })
+
+      console.log('🔧 Email transporter configured')
+
+      // Send email
+      console.log('🚀 Sending email...')
+      try {
+        const mailResult = await transporter.sendMail({
+          from: `"Volunteer Central" <${process.env.FLASK_MAIL_USERNAME || 'CLTVolunteerCentral@gmail.com'}>`,
+          to: hours.profiles.email,
+          subject: subject,
+          html: emailHtml
+        })
+        console.log('✅ Email sent successfully!', mailResult.messageId)
+        emailSent = true
+      } catch (emailError) {
+        console.error('❌ Email send failed:', emailError)
+        throw emailError
+      }
+    }
+
+    if (!emailSent) {
+      console.error('💥 All email services failed!')
+      throw new Error('Failed to send email through any service')
     }
 
     // Log the email

@@ -19,20 +19,30 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)
 
-# Configuration - Using exact Vercel environment variable names
+# Configuration - Properly access Vercel environment variables
 app.config['MAIL_SERVER'] = os.getenv('FLASK_MAIL_SERVER', 'smtp.gmail.com')
-app.config['MAIL_PORT'] = int(os.getenv('FLASK_MAIL_PORT', 587))
+app.config['MAIL_PORT'] = int(os.getenv('FLASK_MAIL_PORT', '587'))
 app.config['MAIL_USE_TLS'] = os.getenv('FLASK_MAIL_USE_TLS', 'true').lower() == 'true'
 app.config['MAIL_USERNAME'] = os.getenv('FLASK_MAIL_USERNAME', 'CLTVolunteerCentral@gmail.com')
 app.config['MAIL_PASSWORD'] = os.getenv('FLASK_MAIL_PASSWORD', 'jnkb gfpz qxjz nflx')
-app.config['MAIL_DEFAULT_SENDER'] = (os.getenv('FLASK_MAIL_USERNAME', 'CLTVolunteerCentral@gmail.com'), os.getenv('FLASK_MAIL_DISPLAY_NAME', 'volunteer'))
+app.config['MAIL_DEFAULT_SENDER'] = (os.getenv('FLASK_MAIL_USERNAME', 'CLTVolunteerCentral@gmail.com'), os.getenv('FLASK_MAIL_DISPLAY_NAME', 'Volunteer Central'))
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
 
-# Supabase Configuration
+# Supabase Configuration - Properly access Vercel environment variables
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
-FRONTEND_URL = os.getenv('NEXT_PUBLIC_APP_URL', 'https://volunteercentral25-cmyk.vercel.app')
+FRONTEND_URL = os.getenv('NEXT_PUBLIC_APP_URL', 'http://localhost:3000')
 SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')
+
+# Log environment variable status for debugging
+logger.info(f"Environment variables status:")
+logger.info(f"  FLASK_MAIL_SERVER: {'set' if os.getenv('FLASK_MAIL_SERVER') else 'not set'}")
+logger.info(f"  FLASK_MAIL_PORT: {'set' if os.getenv('FLASK_MAIL_PORT') else 'not set'}")
+logger.info(f"  FLASK_MAIL_USERNAME: {'set' if os.getenv('FLASK_MAIL_USERNAME') else 'not set'}")
+logger.info(f"  FLASK_MAIL_PASSWORD: {'set' if os.getenv('FLASK_MAIL_PASSWORD') else 'not set'}")
+logger.info(f"  SUPABASE_URL: {'set' if SUPABASE_URL else 'not set'}")
+logger.info(f"  SUPABASE_SERVICE_ROLE_KEY: {'set' if SUPABASE_SERVICE_KEY else 'not set'}")
+logger.info(f"  NEXT_PUBLIC_APP_URL: {'set' if os.getenv('NEXT_PUBLIC_APP_URL') else 'not set'}")
 
 mail = Mail(app)
 
@@ -206,6 +216,75 @@ def verify_token(token: str, hours_id: str, action: str, verifier_email: str) ->
     except:
         return False
 
+# Email templates
+HOURS_VERIFICATION_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Volunteer Hours Verification Request</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .hours-details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea; }
+        .button { display: inline-block; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; margin: 10px 5px; }
+        .button.approve { background: #28a745; }
+        .button.deny { background: #dc3545; }
+        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+        .student-info { background: #e3f2fd; padding: 15px; border-radius: 6px; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Volunteer Hours Verification</h1>
+            <p>volunteer</p>
+        </div>
+        
+        <div class="content">
+            <h2>Hello!</h2>
+            <p>A student has submitted volunteer hours for your verification. Please review the details below and approve or deny the submission.</p>
+            
+            <div class="student-info">
+                <h3>Student Information</h3>
+                <p><strong>Name:</strong> {{ student_name }}</p>
+                <p><strong>Email:</strong> {{ student_email }}</p>
+                <p><strong>Student ID:</strong> {{ student_id }}</p>
+            </div>
+            
+            <div class="hours-details">
+                <h3>Volunteer Hours Details</h3>
+                <p><strong>Activity:</strong> {{ activity }}</p>
+                <p><strong>Hours:</strong> {{ hours }}</p>
+                <p><strong>Date:</strong> {{ date }}</p>
+                <p><strong>Description:</strong> {{ description }}</p>
+                <p><strong>Submitted:</strong> {{ submitted_date }}</p>
+            </div>
+            
+            <p>Please click one of the buttons below to approve or deny these volunteer hours:</p>
+            
+            <div style="text-align: center;">
+                <a href="{{ approve_url }}" class="button approve">✓ Approve Hours</a>
+                <a href="{{ deny_url }}" class="button deny">✗ Deny Hours</a>
+            </div>
+            
+            <p style="margin-top: 30px; font-size: 14px; color: #666;">
+                <strong>Note:</strong> This verification link will expire in 7 days. If you have any questions, please contact the volunteer team.
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p>volunteer - Building Community Through Service</p>
+            <p>This is an automated message. Please do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+
 @app.route('/api/email/send-verification-email', methods=['POST'])
 def send_verification_email():
     """Send verification email to supervisor/organization"""
@@ -261,21 +340,23 @@ def send_verification_email():
         # Render email template via Jinja file and inline CSS
         html_content = render_email(
             'verification_request.html',
+            subject='Action Needed: Verify Student Volunteer Hours',
+            preheader=f"Review and approve/deny the hours for {template_data['student_name']}",
             **template_data
         )
         
         # Send email using Flask-Mail
         logger.info(f"Preparing to send email to: {verifier_email}")
-        
-        subject = f"Volunteer Hours Verification Request - {template_data['student_name']}"
+        logger.info(f"Mail configuration - Server: {app.config['MAIL_SERVER']}, Port: {app.config['MAIL_PORT']}, Username: {app.config['MAIL_USERNAME']}")
         
         msg = Message(
-            subject,
+            f"Volunteer Hours Verification Request - {template_data['student_name']}",
             sender=app.config['MAIL_USERNAME'],
             recipients=[verifier_email]
         )
         msg.html = html_content
         
+        logger.info("Sending email...")
         mail.send(msg)
         logger.info("Email sent successfully!")
         
@@ -283,7 +364,7 @@ def send_verification_email():
         supabase_service.log_email_sent(
             recipient=verifier_email,
             template='verification_request',
-            subject=subject,
+            subject=msg.subject,
             data=template_data
         )
         
@@ -336,6 +417,8 @@ def verify_hours():
                 subject = f"Hours Approved — {student_profile.get('full_name','Student')}"
                 html_conf = render_email(
                     'approval.html',
+                    subject=subject,
+                    preheader=f"Thanks for reviewing. Hours approved for {student_profile.get('full_name','Student')}",
                     student_name=student_profile.get('full_name','Unknown'),
                     activity=hours_data.get('description',''),
                     hours=hours_data.get('hours',0),
@@ -347,6 +430,8 @@ def verify_hours():
                 subject = f"Hours Denied — {student_profile.get('full_name','Student')}"
                 html_conf = render_email(
                     'denial.html',
+                    subject=subject,
+                    preheader=f"Hours were denied for {student_profile.get('full_name','Student')}",
                     student_name=student_profile.get('full_name','Unknown'),
                     activity=hours_data.get('description',''),
                     hours=hours_data.get('hours',0),
@@ -356,11 +441,7 @@ def verify_hours():
                     notes=notes
                 )
 
-            msg = Message(
-                subject,
-                sender=app.config['MAIL_USERNAME'],
-                recipients=[verifier_email]
-            )
+            msg = Message(subject, sender=app.config['MAIL_USERNAME'], recipients=[verifier_email])
             msg.html = html_conf
             mail.send(msg)
         except Exception as e:
@@ -373,6 +454,8 @@ def verify_hours():
                 subject_s = f"Your Volunteer Hours Were {status.title()}"
                 html_s = render_email(
                     'student_notification.html',
+                    subject=subject_s,
+                    preheader=f"Your hours have been {status}",
                     student_name=student_profile.get('full_name','Student'),
                     activity=hours_data.get('description',''),
                     hours=hours_data.get('hours',0),
@@ -381,13 +464,9 @@ def verify_hours():
                     verifier_email=verifier_email,
                     notes=notes
                 )
-                msg = Message(
-                    subject_s,
-                    sender=app.config['MAIL_USERNAME'],
-                    recipients=[student_email]
-                )
-                msg.html = html_s
-                mail.send(msg)
+                msg_s = Message(subject_s, sender=app.config['MAIL_USERNAME'], recipients=[student_email])
+                msg_s.html = html_s
+                mail.send(msg_s)
         except Exception as e:
             logger.warning(f"Failed to notify student: {str(e)}")
 
@@ -427,13 +506,20 @@ def test_email_service():
             supabase_status = "❌ not configured"
             supabase_connection = "❌ no credentials"
         
-        # Test Flask-Mail configuration
+        # Test Flask Mail configuration
         mail_config = {
-            'server': app.config['MAIL_SERVER'],
-            'port': app.config['MAIL_PORT'],
-            'username': app.config['MAIL_USERNAME'],
-            'password_set': '✅ yes' if app.config['MAIL_PASSWORD'] and app.config['MAIL_PASSWORD'] != 'your_app_password' else '❌ no'
+            'server': app.config.get('MAIL_SERVER', 'not set'),
+            'port': app.config.get('MAIL_PORT', 'not set'),
+            'use_tls': app.config.get('MAIL_USE_TLS', 'not set'),
+            'username': app.config.get('MAIL_USERNAME', 'not set'),
+            'password_set': '✅ yes' if app.config.get('MAIL_PASSWORD') and app.config.get('MAIL_PASSWORD') != 'your_app_password' else '❌ no'
         }
+        
+        # Check if Flask-Mail is properly initialized
+        try:
+            mail_initialized = "✅ yes" if hasattr(mail, 'app') and mail.app == app else "❌ no"
+        except:
+            mail_initialized = "❌ error"
         
         # Environment variable check
         env_vars = {
@@ -441,16 +527,15 @@ def test_email_service():
             'FLASK_MAIL_PORT': '✅ set' if os.getenv('FLASK_MAIL_PORT') else '❌ not set',
             'FLASK_MAIL_USERNAME': '✅ set' if os.getenv('FLASK_MAIL_USERNAME') else '❌ not set',
             'FLASK_MAIL_PASSWORD': '✅ set' if os.getenv('FLASK_MAIL_PASSWORD') else '❌ not set',
-            'FLASK_MAIL_DISPLAY_NAME': '✅ set' if os.getenv('FLASK_MAIL_DISPLAY_NAME') else '❌ not set',
-            'NEXT_PUBLIC_APP_URL': '✅ set' if os.getenv('NEXT_PUBLIC_APP_URL') else '❌ not set',
             'SUPABASE_URL': '✅ set' if os.getenv('SUPABASE_URL') else '❌ not set',
             'SUPABASE_SERVICE_ROLE_KEY': '✅ set' if os.getenv('SUPABASE_SERVICE_ROLE_KEY') else '❌ not set',
             'SECRET_KEY': '✅ set' if os.getenv('SECRET_KEY') else '❌ not set'
         }
         
         return jsonify({
-            'status': 'Flask-Mail Email Service Diagnostics',
-            'mail': {
+            'status': 'Flask Email Service Diagnostics',
+            'flask_mail': {
+                'initialized': mail_initialized,
                 'configuration': mail_config
             },
             'environment_variables': env_vars,
@@ -476,8 +561,18 @@ def test_send_email():
         if not test_email:
             return jsonify({'error': 'Email address is required'}), 400
         
-        # Create test email content
-        html_content = f"""
+        # Check if Flask-Mail is configured
+        if not (app.config.get('MAIL_USERNAME') and app.config.get('MAIL_PASSWORD')):
+            return jsonify({'error': 'Flask-Mail not configured properly'}), 500
+        
+        # Create test email
+        msg = Message(
+            'volunteer - Email Service Test',
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[test_email]
+        )
+        
+        msg.html = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
                 <h1>✅ Email Service Test</h1>
@@ -485,14 +580,15 @@ def test_send_email():
             </div>
             <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
                 <h2>Success! 🎉</h2>
-                <p>This email confirms that the Flask-Mail email service is working properly.</p>
+                <p>This email confirms that the Flask mail service is working properly.</p>
                 
                 <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
                     <h3>Configuration Details:</h3>
                     <ul>
-                        <li><strong>Server:</strong> {app.config['MAIL_SERVER']}</li>
-                        <li><strong>Port:</strong> {app.config['MAIL_PORT']}</li>
-                        <li><strong>From:</strong> {app.config['MAIL_USERNAME']}</li>
+                        <li><strong>Server:</strong> {app.config.get('MAIL_SERVER')}</li>
+                        <li><strong>Port:</strong> {app.config.get('MAIL_PORT')}</li>
+                        <li><strong>TLS:</strong> {app.config.get('MAIL_USE_TLS')}</li>
+                        <li><strong>From:</strong> {app.config.get('MAIL_USERNAME')}</li>
                     </ul>
                 </div>
                 
@@ -505,15 +601,9 @@ def test_send_email():
         </div>
         """
         
-        # Send the email using Flask-Mail
-        msg = Message(
-            'volunteer - Email Service Test',
-            sender=app.config['MAIL_USERNAME'],
-            recipients=[test_email]
-        )
-        msg.html = html_content
-        
+        # Send the email
         mail.send(msg)
+        
         logger.info(f"Test email sent successfully to {test_email}")
         
         return jsonify({
@@ -547,6 +637,8 @@ def opportunity_confirmation():
             return jsonify({'error': 'Missing required fields'}), 400
 
         html = render_email('opportunity_confirmation.html',
+            subject=f'You are registered: {title}',
+            preheader=f'Registration confirmed for {title}',
             student_name=student_name,
             title=title,
             organization=organization,
@@ -555,17 +647,10 @@ def opportunity_confirmation():
             time=time,
             duration=duration
         )
-        
-        msg = Message(
-            f'You are registered: {title}',
-            sender=app.config['MAIL_USERNAME'],
-            recipients=[student_email]
-        )
+        msg = Message(f'You are registered: {title}', sender=app.config['MAIL_USERNAME'], recipients=[student_email])
         msg.html = html
-        
         mail.send(msg)
         return jsonify({'success': True})
-            
     except Exception as e:
         logger.error(f"Opportunity confirmation error: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
@@ -587,6 +672,8 @@ def opportunity_reminder():
             return jsonify({'error': 'Missing required fields'}), 400
 
         html = render_email('opportunity_reminder.html',
+            subject=f'Reminder: {title} is coming up',
+            preheader='Your volunteer opportunity starts soon',
             student_name=student_name,
             title=title,
             organization=organization,
@@ -595,17 +682,10 @@ def opportunity_reminder():
             time=time,
             duration=duration
         )
-        
-        msg = Message(
-            f'Reminder: {title} is coming up',
-            sender=app.config['MAIL_USERNAME'],
-            recipients=[student_email]
-        )
+        msg = Message(f'Reminder: {title} is coming up', sender=app.config['MAIL_USERNAME'], recipients=[student_email])
         msg.html = html
-        
         mail.send(msg)
         return jsonify({'success': True})
-            
     except Exception as e:
         logger.error(f"Opportunity reminder error: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
@@ -627,6 +707,8 @@ def opportunity_cancellation():
             return jsonify({'error': 'Missing required fields'}), 400
 
         html = render_email('opportunity_cancellation.html',
+            subject=f'Registration cancelled: {title}',
+            preheader=f'You have left {title}',
             student_name=student_name,
             title=title,
             organization=organization,
@@ -635,17 +717,10 @@ def opportunity_cancellation():
             time=time,
             duration=duration
         )
-        
-        msg = Message(
-            f'Registration cancelled: {title}',
-            sender=app.config['MAIL_USERNAME'],
-            recipients=[student_email]
-        )
+        msg = Message(f'Registration cancelled: {title}', sender=app.config['MAIL_USERNAME'], recipients=[student_email])
         msg.html = html
-        
         mail.send(msg)
         return jsonify({'success': True})
-            
     except Exception as e:
         logger.error(f"Opportunity cancellation error: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
@@ -747,11 +822,7 @@ def hours_update_notification():
                     verifier_email=verifier_email,
                     notes=notes
                 )
-                student_msg = Message(
-                    student_subject,
-                    sender=app.config['MAIL_USERNAME'],
-                    recipients=[student_email]
-                )
+                student_msg = Message(student_subject, sender=app.config['MAIL_USERNAME'], recipients=[student_email])
                 student_msg.html = student_html
                 mail.send(student_msg)
                 logger.info(f"Student notification sent to: {student_email}")
@@ -894,10 +965,16 @@ def health_check():
             'use_tls': app.config.get('MAIL_USE_TLS')
         },
         'env_vars': {
-            'FLASK_MAIL_SERVER': os.getenv('FLASK_MAIL_SERVER'),
-            'FLASK_MAIL_PORT': os.getenv('FLASK_MAIL_PORT'),
-            'FLASK_MAIL_USERNAME': os.getenv('FLASK_MAIL_USERNAME'),
-            'FLASK_MAIL_PASSWORD': '***set***' if os.getenv('FLASK_MAIL_PASSWORD') else 'not set'
+            'FLASK_MAIL_SERVER': 'set' if os.getenv('FLASK_MAIL_SERVER') else 'not set',
+            'FLASK_MAIL_PORT': 'set' if os.getenv('FLASK_MAIL_PORT') else 'not set',
+            'FLASK_MAIL_USERNAME': 'set' if os.getenv('FLASK_MAIL_USERNAME') else 'not set',
+            'FLASK_MAIL_PASSWORD': 'set' if os.getenv('FLASK_MAIL_PASSWORD') else 'not set',
+            'FLASK_MAIL_USE_TLS': 'set' if os.getenv('FLASK_MAIL_USE_TLS') else 'not set',
+            'FLASK_MAIL_DISPLAY_NAME': 'set' if os.getenv('FLASK_MAIL_DISPLAY_NAME') else 'not set',
+            'SUPABASE_URL': 'set' if os.getenv('SUPABASE_URL') else 'not set',
+            'SUPABASE_SERVICE_ROLE_KEY': 'set' if os.getenv('SUPABASE_SERVICE_ROLE_KEY') else 'not set',
+            'NEXT_PUBLIC_APP_URL': 'set' if os.getenv('NEXT_PUBLIC_APP_URL') else 'not set',
+            'SECRET_KEY': 'set' if os.getenv('SECRET_KEY') else 'not set'
         }
     }), 200
 

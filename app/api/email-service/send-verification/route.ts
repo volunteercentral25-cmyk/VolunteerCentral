@@ -13,56 +13,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Prepare email content
-    const subject = "Volunteer Hours Verification Request"
-    const htmlContent = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">Volunteer Hours Verification Request</h2>
-        <p>Hello,</p>
-        <p>You have received a request to verify volunteer hours for <strong>${student_name}</strong>.</p>
-        
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <h3>Volunteer Hours Details:</h3>
-          <p><strong>Activity:</strong> ${student_name}</p>
-          <p><strong>Hours:</strong> ${hours}</p>
-          <p><strong>Date:</strong> ${date}</p>
-          <p><strong>Student:</strong> ${student_name}</p>
-        </div>
-        
-        <p>Please click one of the buttons below to verify these hours:</p>
-        
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3002'}/api/email-service/verify-hours?token=${approve_token}&action=approve&hours_id=${hours_id}&email=${verification_email}" 
-             style="background: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-right: 10px; display: inline-block;">
-            ✓ Approve Hours
-          </a>
-          
-          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3002'}/api/email-service/verify-hours?token=${deny_token}&action=deny&hours_id=${hours_id}&email=${verification_email}" 
-             style="background: #dc3545; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-            ✗ Deny Hours
-          </a>
-        </div>
-        
-        <p style="font-size: 12px; color: #666;">
-          This verification link will expire in 7 days. If you have any questions, please contact the student directly.
-        </p>
-      </div>
-    `
+    // Send email using the Flask email service
+    const emailServiceUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    console.log('🔧 Using email service URL:', emailServiceUrl)
+    const emailResponse = await fetch(`${emailServiceUrl}/api/email/send-verification-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        hours_id: hours_id,
+        verifier_email: verification_email,
+        student_name: student_name,
+        hours: hours,
+        date: date,
+        approve_token: approve_token,
+        deny_token: deny_token
+      })
+    })
 
-    // For now, just log the email content since we don't have a direct email service
-    console.log('Email would be sent to:', verification_email)
-    console.log('Subject:', subject)
-    console.log('Content:', htmlContent)
+    if (!emailResponse.ok) {
+      const errorText = await emailResponse.text()
+      console.error('❌ Flask email service failed:', errorText)
+      throw new Error('Failed to send verification email')
+    }
 
-    // TODO: Integrate with actual email service (Resend, SendGrid, etc.)
-    // For now, we'll just return success and log the email content
+    const result = await emailResponse.json()
+    console.log('✅ Verification email sent successfully:', result)
 
     return NextResponse.json({
       success: true,
       message: `Verification email prepared for ${verification_email}`,
       verification_email: verification_email,
-      hours_id: hours_id,
-      subject: subject
+      hours_id: hours_id
     })
 
   } catch (error) {
