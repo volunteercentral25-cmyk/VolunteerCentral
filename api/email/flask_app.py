@@ -29,15 +29,19 @@ CORS(app)
 # Configuration
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
-SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
-SMTP_PORT = int(os.getenv('SMTP_PORT', '587'))
-SMTP_USERNAME = os.getenv('SMTP_USERNAME', 'CLTVolunteerCentral@gmail.com')
-SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', 'jnkb gfpz qxjz nflx')
-FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://volunteercentral25-cmyk.vercel.app')
-SECRET_KEY = os.getenv('SECRET_KEY', 'c057f320112909a9eedff367f37a554c65ab7363cccb2f6366d5c1606446938d')
+SMTP_SERVER = os.getenv('SMTP_SERVER')
+SMTP_PORT = int(os.getenv('SMTP_PORT', '587')) if os.getenv('SMTP_PORT') else 587
+SMTP_USERNAME = os.getenv('SMTP_USERNAME')
+SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
+FRONTEND_URL = os.getenv('FRONTEND_URL')
+SECRET_KEY = os.getenv('SECRET_KEY')
 
 class EmailService:
     def __init__(self):
+        if not SMTP_SERVER or not SMTP_USERNAME or not SMTP_PASSWORD:
+            logger.error("SMTP configuration incomplete. Missing required environment variables.")
+            raise ValueError("SMTP configuration incomplete. Please set SMTP_SERVER, SMTP_USERNAME, and SMTP_PASSWORD environment variables.")
+        
         self.smtp_server = SMTP_SERVER
         self.smtp_port = SMTP_PORT
         self.username = SMTP_USERNAME
@@ -88,13 +92,19 @@ def render_email(template_name: str, **context) -> str:
 
 class SupabaseService:
     def __init__(self):
-        self.url = SUPABASE_URL
-        self.service_key = SUPABASE_SERVICE_KEY
-        self.headers = {
-            'apikey': self.service_key,
-            'Authorization': f'Bearer {self.service_key}',
-            'Content-Type': 'application/json'
-        }
+        if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+            logger.warning("Supabase configuration incomplete. Some features may not work.")
+            self.url = None
+            self.service_key = None
+            self.headers = None
+        else:
+            self.url = SUPABASE_URL
+            self.service_key = SUPABASE_SERVICE_KEY
+            self.headers = {
+                'apikey': self.service_key,
+                'Authorization': f'Bearer {self.service_key}',
+                'Content-Type': 'application/json'
+            }
     
     def get_hours_by_id(self, hours_id: str) -> Optional[Dict[str, Any]]:
         """Get volunteer hours by ID"""
@@ -210,8 +220,19 @@ class SupabaseService:
             return False
 
 # Initialize services
-email_service = EmailService()
-supabase_service = SupabaseService()
+try:
+    email_service = EmailService()
+    logger.info("Email service initialized successfully")
+except Exception as e:
+    logger.error(f"Failed to initialize email service: {str(e)}")
+    email_service = None
+
+try:
+    supabase_service = SupabaseService()
+    logger.info("Supabase service initialized successfully")
+except Exception as e:
+    logger.error(f"Failed to initialize Supabase service: {str(e)}")
+    supabase_service = None
 
 def generate_verification_token(hours_id: str, action: str, verifier_email: str) -> str:
     """Generate HMAC verification token"""
@@ -579,9 +600,9 @@ def test_send_email():
         if not test_email:
             return jsonify({'error': 'Email address is required'}), 400
         
-        # Check if SMTP is configured
-        if not (SMTP_USERNAME and SMTP_PASSWORD):
-            return jsonify({'error': 'SMTP not configured properly'}), 500
+        # Check if email service is available
+        if not email_service:
+            return jsonify({'error': 'Email service not configured properly. Check environment variables.'}), 500
         
         # Create test email content
         html_content = f"""
@@ -992,7 +1013,7 @@ def send_hours_notification():
 @app.route('/api/email/health', methods=['GET'])
 def health_check():
     return jsonify({
-        'status': 'healthy', 
+        'status': 'healthy' if email_service else 'unhealthy', 
         'service': 'volunteer Email Service',
         'timestamp': datetime.utcnow().isoformat(),
         'supabase_configured': bool(SUPABASE_URL and SUPABASE_SERVICE_KEY),
@@ -1004,10 +1025,18 @@ def health_check():
             'password_set': bool(SMTP_PASSWORD),
         },
         'env_vars': {
-            'SMTP_SERVER': os.getenv('SMTP_SERVER'),
-            'SMTP_PORT': os.getenv('SMTP_PORT'),
-            'SMTP_USERNAME': os.getenv('SMTP_USERNAME'),
-            'SMTP_PASSWORD': '***set***' if os.getenv('SMTP_PASSWORD') else 'not set'
+            'SMTP_SERVER': 'set' if os.getenv('SMTP_SERVER') else 'not set',
+            'SMTP_PORT': 'set' if os.getenv('SMTP_PORT') else 'not set',
+            'SMTP_USERNAME': 'set' if os.getenv('SMTP_USERNAME') else 'not set',
+            'SMTP_PASSWORD': 'set' if os.getenv('SMTP_PASSWORD') else 'not set',
+            'SUPABASE_URL': 'set' if os.getenv('SUPABASE_URL') else 'not set',
+            'SUPABASE_SERVICE_ROLE_KEY': 'set' if os.getenv('SUPABASE_SERVICE_ROLE_KEY') else 'not set',
+            'FRONTEND_URL': 'set' if os.getenv('FRONTEND_URL') else 'not set',
+            'SECRET_KEY': 'set' if os.getenv('SECRET_KEY') else 'not set'
+        },
+        'services': {
+            'email_service': 'initialized' if email_service else 'failed',
+            'supabase_service': 'initialized' if supabase_service else 'failed'
         }
     }), 200
 
