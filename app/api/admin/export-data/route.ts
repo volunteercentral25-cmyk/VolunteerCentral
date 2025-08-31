@@ -88,155 +88,154 @@ export async function GET(request: NextRequest) {
     console.log('Supervised club names:', supervisedClubNames)
 
     // Get all students in supervised clubs with their details
-    console.log('Fetching students...')
-    let students: any[] = []
-    
-    try {
-      let studentQuery
-      if (supervisedClubNames.includes('Beta Club') && supervisedClubNames.includes('NTHS')) {
-        studentQuery = supabase
-          .from('profiles')
-          .select(`
-            id,
-            full_name,
-            email,
-            student_id,
-            phone,
-            bio,
-            created_at,
-            updated_at,
-            beta_club,
-            nths
-          `)
-          .eq('role', 'student')
-          .or('beta_club.eq.true,nths.eq.true')
-          .order('full_name')
-      } else if (supervisedClubNames.includes('Beta Club')) {
-        studentQuery = supabase
-          .from('profiles')
-          .select(`
-            id,
-            full_name,
-            email,
-            student_id,
-            phone,
-            bio,
-            created_at,
-            updated_at,
-            beta_club,
-            nths
-          `)
-          .eq('role', 'student')
-          .eq('beta_club', true)
-          .order('full_name')
-      } else if (supervisedClubNames.includes('NTHS')) {
-        studentQuery = supabase
-          .from('profiles')
-          .select(`
-            id,
-            full_name,
-            email,
-            student_id,
-            phone,
-            bio,
-            created_at,
-            updated_at,
-            beta_club,
-            nths
-          `)
-          .eq('role', 'student')
-          .eq('nths', true)
-          .order('full_name')
-      } else {
-        // If no clubs selected, return empty result
-        studentQuery = supabase
-          .from('profiles')
-          .select(`
-            id,
-            full_name,
-            email,
-            student_id,
-            phone,
-            bio,
-            created_at,
-            updated_at,
-            beta_club,
-            nths
-          `)
-          .eq('role', 'student')
-          .eq('id', '00000000-0000-0000-0000-000000000000')
-          .order('full_name')
-      }
-      
-      const { data: studentsData, error: studentsError } = await studentQuery
 
-      if (studentsError) {
-        console.error('Error getting students:', studentsError)
-        return NextResponse.json({ error: 'Failed to get students' }, { status: 500 })
-      }
-      
-      students = studentsData || []
-    } catch (error) {
-      console.error('Exception getting students:', error)
+    // Get all students in supervised clubs with their details
+    console.log('Fetching students...')
+    let studentQuery
+    if (supervisedClubNames.includes('Beta Club') && supervisedClubNames.includes('NTHS')) {
+      studentQuery = supabase
+        .from('profiles')
+        .select(`
+          id,
+          full_name,
+          email,
+          student_id,
+          phone,
+          bio,
+          created_at,
+          updated_at,
+          beta_club,
+          nths
+        `)
+        .eq('role', 'student')
+        .or('beta_club.eq.true,nths.eq.true')
+        .order('full_name')
+    } else if (supervisedClubNames.includes('Beta Club')) {
+      studentQuery = supabase
+        .from('profiles')
+        .select(`
+          id,
+          full_name,
+          email,
+          student_id,
+          phone,
+          bio,
+          created_at,
+          updated_at,
+          beta_club,
+          nths
+        `)
+        .eq('role', 'student')
+        .eq('beta_club', true)
+        .order('full_name')
+    } else if (supervisedClubNames.includes('NTHS')) {
+      studentQuery = supabase
+        .from('profiles')
+        .select(`
+          id,
+          full_name,
+          email,
+          student_id,
+          phone,
+          bio,
+          created_at,
+          updated_at,
+          beta_club,
+          nths
+        `)
+        .eq('role', 'student')
+        .eq('nths', true)
+        .order('full_name')
+    } else {
+      // If no clubs selected, return empty result
+      studentQuery = supabase
+        .from('profiles')
+        .select(`
+          id,
+          full_name,
+          email,
+          student_id,
+          phone,
+          bio,
+          created_at,
+          updated_at,
+          beta_club,
+          nths
+        `)
+        .eq('role', 'student')
+        .eq('id', '00000000-0000-0000-0000-000000000000')
+        .order('full_name')
+    }
+    
+    const { data: students, error: studentsError } = await studentQuery
+
+    if (studentsError) {
+      console.error('Error getting students:', studentsError)
+      console.error('Student query error details:', {
+        message: studentsError.message,
+        details: studentsError.details,
+        hint: studentsError.hint
+      })
       return NextResponse.json({ error: 'Failed to get students' }, { status: 500 })
     }
 
-    console.log('Students found:', students.length)
+    console.log('Students found:', students?.length || 0)
+    if (students && students.length > 0) {
+      console.log('Sample student:', students[0])
+    }
 
     // Get all volunteer hours for these students
     console.log('Fetching volunteer hours...')
     let volunteerHours: any[] = []
     if (students && students.length > 0) {
-      try {
-        const studentIds = students.map(s => s.id)
-        console.log('Student IDs for hours query:', studentIds)
-        
-        const { data: hours, error: hoursError } = await supabase
-          .from('volunteer_hours')
-          .select(`
-            id,
-            hours,
-            date,
-            description,
-            status,
-            verification_email,
-            created_at,
-            verification_date,
-            verified_by,
-            verification_notes,
-            student_id
-          `)
-          .in('student_id', studentIds)
-          .order('created_at', { ascending: false })
+      const { data: hours, error: hoursError } = await supabase
+        .from('volunteer_hours')
+        .select(`
+          id,
+          hours,
+          date,
+          description,
+          status,
+          verification_email,
+          created_at,
+          verification_date,
+          verified_by,
+          verification_notes,
+          student_id,
+          admin_override_email,
+          admin_override_by,
+          admin_override_reason,
+          admin_override_date,
+          last_verification_email_sent
+        `)
+        .in('student_id', students.map(s => s.id))
+        .order('created_at', { ascending: false })
 
-        if (hoursError) {
-          console.error('Error getting volunteer hours:', hoursError)
-          return NextResponse.json({ error: 'Failed to get volunteer hours' }, { status: 500 })
-        }
-        volunteerHours = hours || []
-      } catch (error) {
-        console.error('Exception getting volunteer hours:', error)
+      if (hoursError) {
+        console.error('Error getting volunteer hours:', hoursError)
+        console.error('Volunteer hours query error details:', {
+          message: hoursError.message,
+          details: hoursError.details,
+          hint: hoursError.hint
+        })
         return NextResponse.json({ error: 'Failed to get volunteer hours' }, { status: 500 })
       }
+      volunteerHours = hours || []
     }
 
     console.log('Volunteer hours found:', volunteerHours.length)
+    if (volunteerHours.length > 0) {
+      console.log('Sample volunteer hour:', volunteerHours[0])
+    }
 
     // Get student profiles for volunteer hours separately
-    let studentProfiles: any[] = []
-    try {
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, full_name, email, student_id, phone, beta_club, nths')
-        .in('id', students.map(s => s.id))
+    const { data: studentProfiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, student_id, phone, beta_club, nths')
+      .in('id', students.map(s => s.id))
 
-      if (profilesError) {
-        console.error('Error getting student profiles:', profilesError)
-        return NextResponse.json({ error: 'Failed to get student profiles' }, { status: 500 })
-      }
-      studentProfiles = profiles || []
-    } catch (error) {
-      console.error('Exception getting student profiles:', error)
+    if (profilesError) {
+      console.error('Error getting student profiles:', profilesError)
       return NextResponse.json({ error: 'Failed to get student profiles' }, { status: 500 })
     }
 
@@ -250,65 +249,70 @@ export async function GET(request: NextRequest) {
     console.log('Fetching opportunities...')
     let opportunities: any[] = []
     if (clubIds && clubIds.length > 0) {
-      try {
-        // First get opportunities for supervised clubs
-        const { data: clubOpps, error: clubOppsError } = await supabase
-          .from('volunteer_opportunities')
-          .select(`
-            id,
-            title,
-            description,
-            date,
-            location,
-            created_at,
-            club_id,
-            club_restriction
-          `)
-          .in('club_id', clubIds)
-          .order('date', { ascending: false })
+      // First get opportunities for supervised clubs
+      const { data: clubOpps, error: clubOppsError } = await supabase
+        .from('volunteer_opportunities')
+        .select(`
+          id,
+          title,
+          description,
+          date,
+          location,
+          created_at,
+          club_id,
+          club_restriction
+        `)
+        .in('club_id', clubIds)
+        .order('date', { ascending: false })
 
-        if (clubOppsError) {
-          console.error('Error getting club opportunities:', clubOppsError)
-          return NextResponse.json({ error: 'Failed to get opportunities' }, { status: 500 })
-        }
-
-        // Then get opportunities open to all
-        const { data: openOpps, error: openOppsError } = await supabase
-          .from('volunteer_opportunities')
-          .select(`
-            id,
-            title,
-            description,
-            date,
-            location,
-            created_at,
-            club_id,
-            club_restriction
-          `)
-          .eq('club_restriction', 'anyone')
-          .order('date', { ascending: false })
-
-        if (openOppsError) {
-          console.error('Error getting open opportunities:', openOppsError)
-          return NextResponse.json({ error: 'Failed to get opportunities' }, { status: 500 })
-        }
-
-        // Combine and deduplicate
-        const allOpps = [...(clubOpps || []), ...(openOpps || [])]
-        const uniqueOpps = allOpps.filter((opp, index, self) => 
-          index === self.findIndex(o => o.id === opp.id)
-        )
-        opportunities = uniqueOpps
-        
-        console.log('Opportunities breakdown:', {
-          clubOpportunities: clubOpps?.length || 0,
-          openOpportunities: openOpps?.length || 0,
-          totalUnique: uniqueOpps.length
+      if (clubOppsError) {
+        console.error('Error getting club opportunities:', clubOppsError)
+        console.error('Club opportunities query error details:', {
+          message: clubOppsError.message,
+          details: clubOppsError.details,
+          hint: clubOppsError.hint
         })
-      } catch (error) {
-        console.error('Exception getting opportunities:', error)
         return NextResponse.json({ error: 'Failed to get opportunities' }, { status: 500 })
       }
+
+      // Then get opportunities open to all
+      const { data: openOpps, error: openOppsError } = await supabase
+        .from('volunteer_opportunities')
+        .select(`
+          id,
+          title,
+          description,
+          date,
+          location,
+          created_at,
+          club_id,
+          club_restriction
+        `)
+        .eq('club_restriction', 'anyone')
+        .order('date', { ascending: false })
+
+      if (openOppsError) {
+        console.error('Error getting open opportunities:', openOppsError)
+        console.error('Open opportunities query error details:', {
+          message: openOppsError.message,
+          details: openOppsError.details,
+          hint: openOppsError.hint
+        })
+        return NextResponse.json({ error: 'Failed to get opportunities' }, { status: 500 })
+      }
+
+      // Combine and deduplicate
+      const allOpps = [...(clubOpps || []), ...(openOpps || [])]
+      const uniqueOpps = allOpps.filter((opp, index, self) => 
+        index === self.findIndex(o => o.id === opp.id)
+      )
+      opportunities = uniqueOpps
+      
+      console.log('Opportunities breakdown:', {
+        clubOpportunities: clubOpps?.length || 0,
+        openOpportunities: openOpps?.length || 0,
+        totalUnique: uniqueOpps.length
+      })
     }
 
     console.log('Opportunities found:', opportunities.length)
@@ -316,21 +320,16 @@ export async function GET(request: NextRequest) {
     // Get club names for opportunities separately
     let clubs: any[] = []
     if (clubIds && clubIds.length > 0) {
-      try {
-        const { data: clubData, error: clubsDataError } = await supabase
-          .from('clubs')
-          .select('id, name')
-          .in('id', clubIds)
+      const { data: clubData, error: clubsDataError } = await supabase
+        .from('clubs')
+        .select('id, name')
+        .in('id', clubIds)
 
-        if (clubsDataError) {
-          console.error('Error getting clubs:', clubsDataError)
-          return NextResponse.json({ error: 'Failed to get clubs' }, { status: 500 })
-        }
-        clubs = clubData || []
-      } catch (error) {
-        console.error('Exception getting clubs:', error)
+      if (clubsDataError) {
+        console.error('Error getting clubs:', clubsDataError)
         return NextResponse.json({ error: 'Failed to get clubs' }, { status: 500 })
       }
+      clubs = clubData || []
     }
 
     // Create a map of clubs
@@ -343,54 +342,29 @@ export async function GET(request: NextRequest) {
     console.log('Fetching registrations...')
     let registrations: any[] = []
     if (opportunities && opportunities.length > 0) {
-      try {
-        const opportunityIds = opportunities.map(o => o.id)
-        console.log('Opportunity IDs for registrations query:', opportunityIds)
-        
-        // Fix: Handle the case where there's only one opportunity ID
-        if (opportunityIds.length === 1) {
-          console.log('Using single opportunity query')
-          const { data: regs, error: registrationsError } = await supabase
-            .from('opportunity_registrations')
-            .select(`
-              id,
-              status,
-              created_at,
-              student_id,
-              opportunity_id
-            `)
-            .eq('opportunity_id', opportunityIds[0])
-            .order('created_at', { ascending: false })
+      const { data: regs, error: registrationsError } = await supabase
+        .from('opportunity_registrations')
+        .select(`
+          id,
+          status,
+          registered_at,
+          updated_at,
+          student_id,
+          opportunity_id
+        `)
+        .in('opportunity_id', opportunities.map(o => o.id))
+        .order('registered_at', { ascending: false })
 
-          if (registrationsError) {
-            console.error('Error getting registrations:', registrationsError)
-            return NextResponse.json({ error: 'Failed to get registrations' }, { status: 500 })
-          }
-          registrations = regs || []
-        } else {
-          console.log('Using multiple opportunities query')
-          const { data: regs, error: registrationsError } = await supabase
-            .from('opportunity_registrations')
-            .select(`
-              id,
-              status,
-              created_at,
-              student_id,
-              opportunity_id
-            `)
-            .in('opportunity_id', opportunityIds)
-            .order('created_at', { ascending: false })
-
-          if (registrationsError) {
-            console.error('Error getting registrations:', registrationsError)
-            return NextResponse.json({ error: 'Failed to get registrations' }, { status: 500 })
-          }
-          registrations = regs || []
-        }
-      } catch (error) {
-        console.error('Exception getting registrations:', error)
+      if (registrationsError) {
+        console.error('Error getting registrations:', registrationsError)
+        console.error('Registrations query error details:', {
+          message: registrationsError.message,
+          details: registrationsError.details,
+          hint: registrationsError.hint
+        })
         return NextResponse.json({ error: 'Failed to get registrations' }, { status: 500 })
       }
+      registrations = regs || []
     }
 
     console.log('Registrations found:', registrations.length)
@@ -492,7 +466,20 @@ export async function GET(request: NextRequest) {
             day: '2-digit'
           }) : 'Not verified',
           verifiedBy: hour.verified_by || 'Not verified',
-          notes: hour.verification_notes || 'No notes'
+          notes: hour.verification_notes || 'No notes',
+          adminOverrideEmail: hour.admin_override_email || 'Not provided',
+          adminOverrideBy: hour.admin_override_by || 'Not provided',
+          adminOverrideReason: hour.admin_override_reason || 'No reason provided',
+          adminOverrideDate: hour.admin_override_date ? new Date(hour.admin_override_date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          }) : 'Not overridden',
+          lastVerificationEmailSent: hour.last_verification_email_sent ? new Date(hour.last_verification_email_sent).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          }) : 'Not sent'
         }
       }),
       opportunities: opportunities.map(opp => ({
@@ -527,7 +514,12 @@ export async function GET(request: NextRequest) {
           }) : 'No date',
           club: opportunity?.club_restriction === 'anyone' ? 'Open to All Students' : (clubMap.get(opportunity?.club_id)?.name || 'Unknown Club'),
           status: reg.status || 'Unknown',
-          registeredDate: reg.created_at ? new Date(reg.created_at).toLocaleDateString('en-US', {
+          registeredDate: reg.registered_at ? new Date(reg.registered_at).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          }) : 'Unknown',
+          updatedDate: reg.updated_at ? new Date(reg.updated_at).toLocaleDateString('en-US', {
             year: 'numeric',
             month: '2-digit',
             day: '2-digit'
@@ -546,6 +538,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(csvData)
   } catch (error) {
     console.error('Export data API error:', error)
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : 'Unknown'
+    })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
