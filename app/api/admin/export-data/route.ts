@@ -73,42 +73,87 @@ export async function GET(request: NextRequest) {
     
     const supervisedClubNames = clubNames?.map(c => c.name) || []
 
-    // Build the correct filter based on supervised clubs
-    let studentFilter = ''
-    if (supervisedClubNames.includes('Beta Club')) {
-      studentFilter += 'beta_club.eq.true'
-    }
-    if (supervisedClubNames.includes('NTHS')) {
-      if (studentFilter) studentFilter += ','
-      studentFilter += 'nths.eq.true'
-    }
-    
-    // If no clubs selected, use empty filter
-    if (!studentFilter) {
-      studentFilter = 'id.eq.00000000-0000-0000-0000-000000000000' // Impossible ID
-    }
-
-    console.log('Student filter:', studentFilter)
+    console.log('Supervised club names:', supervisedClubNames)
 
     // Get all students in supervised clubs with their details
     console.log('Fetching students...')
-    const { data: students, error: studentsError } = await supabase
-      .from('profiles')
-      .select(`
-        id,
-        full_name,
-        email,
-        student_id,
-        phone,
-        bio,
-        created_at,
-        updated_at,
-        beta_club,
-        nths
-      `)
-      .eq('role', 'student')
-      .or(studentFilter)
-      .order('full_name')
+    let studentQuery
+    if (supervisedClubNames.includes('Beta Club') && supervisedClubNames.includes('NTHS')) {
+      studentQuery = supabase
+        .from('profiles')
+        .select(`
+          id,
+          full_name,
+          email,
+          student_id,
+          phone,
+          bio,
+          created_at,
+          updated_at,
+          beta_club,
+          nths
+        `)
+        .eq('role', 'student')
+        .or('beta_club.eq.true,nths.eq.true')
+        .order('full_name')
+    } else if (supervisedClubNames.includes('Beta Club')) {
+      studentQuery = supabase
+        .from('profiles')
+        .select(`
+          id,
+          full_name,
+          email,
+          student_id,
+          phone,
+          bio,
+          created_at,
+          updated_at,
+          beta_club,
+          nths
+        `)
+        .eq('role', 'student')
+        .eq('beta_club', true)
+        .order('full_name')
+    } else if (supervisedClubNames.includes('NTHS')) {
+      studentQuery = supabase
+        .from('profiles')
+        .select(`
+          id,
+          full_name,
+          email,
+          student_id,
+          phone,
+          bio,
+          created_at,
+          updated_at,
+          beta_club,
+          nths
+        `)
+        .eq('role', 'student')
+        .eq('nths', true)
+        .order('full_name')
+    } else {
+      // If no clubs selected, return empty result
+      studentQuery = supabase
+        .from('profiles')
+        .select(`
+          id,
+          full_name,
+          email,
+          student_id,
+          phone,
+          bio,
+          created_at,
+          updated_at,
+          beta_club,
+          nths
+        `)
+        .eq('role', 'student')
+        .eq('id', '00000000-0000-0000-0000-000000000000')
+        .order('full_name')
+    }
+    
+    const { data: students, error: studentsError } = await studentQuery
 
     if (studentsError) {
       console.error('Error getting students:', studentsError)
@@ -165,11 +210,12 @@ export async function GET(request: NextRequest) {
       studentProfileMap.set(profile.id, profile)
     })
 
-    // Get all opportunities for supervised clubs
+    // Get all opportunities for supervised clubs (including those open to all)
     console.log('Fetching opportunities...')
     let opportunities: any[] = []
     if (clubIds && clubIds.length > 0) {
-      const { data: opps, error: opportunitiesError } = await supabase
+      // First get opportunities for supervised clubs
+      const { data: clubOpps, error: clubOppsError } = await supabase
         .from('volunteer_opportunities')
         .select(`
           id,
@@ -178,16 +224,50 @@ export async function GET(request: NextRequest) {
           date,
           location,
           created_at,
-          club_id
+          club_id,
+          club_restriction
         `)
         .in('club_id', clubIds)
         .order('date', { ascending: false })
 
-      if (opportunitiesError) {
-        console.error('Error getting opportunities:', opportunitiesError)
+      if (clubOppsError) {
+        console.error('Error getting club opportunities:', clubOppsError)
         return NextResponse.json({ error: 'Failed to get opportunities' }, { status: 500 })
       }
-      opportunities = opps || []
+
+      // Then get opportunities open to all
+      const { data: openOpps, error: openOppsError } = await supabase
+        .from('volunteer_opportunities')
+        .select(`
+          id,
+          title,
+          description,
+          date,
+          location,
+          created_at,
+          club_id,
+          club_restriction
+        `)
+        .eq('club_restriction', 'anyone')
+        .order('date', { ascending: false })
+
+      if (openOppsError) {
+        console.error('Error getting open opportunities:', openOppsError)
+        return NextResponse.json({ error: 'Failed to get opportunities' }, { status: 500 })
+      }
+
+      // Combine and deduplicate
+      const allOpps = [...(clubOpps || []), ...(openOpps || [])]
+      const uniqueOpps = allOpps.filter((opp, index, self) => 
+        index === self.findIndex(o => o.id === opp.id)
+      )
+      opportunities = uniqueOpps
+      
+      console.log('Opportunities breakdown:', {
+        clubOpportunities: clubOpps?.length || 0,
+        openOpportunities: openOpps?.length || 0,
+        totalUnique: uniqueOpps.length
+      })
     }
 
     console.log('Opportunities found:', opportunities.length)
@@ -213,7 +293,7 @@ export async function GET(request: NextRequest) {
       clubMap.set(club.id, club)
     })
 
-    // Get opportunity registrations
+    // Get opportunity registrations (including those for opportunities open to all)
     console.log('Fetching registrations...')
     let registrations: any[] = []
     if (opportunities && opportunities.length > 0) {
@@ -254,7 +334,7 @@ export async function GET(request: NextRequest) {
 
     console.log('Summary stats:', { totalStudents, totalHours, approvedHours, pendingHours, deniedHours })
 
-    // Prepare CSV data
+    // Prepare CSV data with better formatting
     console.log('Preparing CSV data...')
     const csvData = {
       summary: {
@@ -278,14 +358,22 @@ export async function GET(request: NextRequest) {
         }
         
         return {
-          name: student.full_name,
-          email: student.email,
-          studentId: student.student_id,
-          phone: student.phone || '',
-          bio: student.bio || '',
+          name: student.full_name || 'Unknown',
+          email: student.email || 'No email',
+          studentId: student.student_id || 'No ID',
+          phone: student.phone || 'No phone',
+          bio: student.bio || 'No bio',
           club: clubName,
-          joinedDate: new Date(student.created_at).toLocaleDateString(),
-          lastUpdated: new Date(student.updated_at).toLocaleDateString()
+          joinedDate: student.created_at ? new Date(student.created_at).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          }) : 'Unknown',
+          lastUpdated: student.updated_at ? new Date(student.updated_at).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          }) : 'Unknown'
         }
       }),
       volunteerHours: volunteerHours.map(hour => {
@@ -302,43 +390,82 @@ export async function GET(request: NextRequest) {
         }
         
         return {
-          studentName: studentProfile?.full_name || 'Unknown',
-          studentEmail: studentProfile?.email || 'Unknown',
-          studentId: studentProfile?.student_id || 'Unknown',
-          studentPhone: studentProfile?.phone || '',
+          studentName: studentProfile?.full_name || 'Unknown Student',
+          studentEmail: studentProfile?.email || 'No email',
+          studentId: studentProfile?.student_id || 'No ID',
+          studentPhone: studentProfile?.phone || 'No phone',
           club: clubName,
-          hours: hour.hours,
-          date: hour.date,
-          description: hour.description,
-          status: hour.status,
-          verificationEmail: hour.verification_email || '',
-          submittedDate: new Date(hour.created_at).toLocaleDateString(),
-          verifiedDate: hour.verification_date ? new Date(hour.verification_date).toLocaleDateString() : '',
-          verifiedBy: hour.verified_by || '',
-          notes: hour.verification_notes || ''
+          hours: hour.hours || 0,
+          date: hour.date ? new Date(hour.date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          }) : 'Unknown',
+          description: hour.description || 'No description',
+          status: hour.status || 'Unknown',
+          verificationEmail: hour.verification_email || 'Not provided',
+          submittedDate: hour.created_at ? new Date(hour.created_at).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          }) : 'Unknown',
+          verifiedDate: hour.verification_date ? new Date(hour.verification_date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          }) : 'Not verified',
+          verifiedBy: hour.verified_by || 'Not verified',
+          notes: hour.verification_notes || 'No notes'
         }
       }),
       opportunities: opportunities.map(opp => ({
-        title: opp.title,
-        description: opp.description,
-        date: opp.date,
-        location: opp.location,
-        club: clubMap.get(opp.club_id)?.name || 'Unknown',
-        createdDate: new Date(opp.created_at).toLocaleDateString()
+        title: opp.title || 'Untitled Opportunity',
+        description: opp.description || 'No description',
+        date: opp.date ? new Date(opp.date).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }) : 'No date',
+        location: opp.location || 'No location',
+        club: opp.club_restriction === 'anyone' ? 'Open to All Students' : (clubMap.get(opp.club_id)?.name || 'Unknown Club'),
+        createdDate: opp.created_at ? new Date(opp.created_at).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }) : 'Unknown'
       })),
-      registrations: registrations.map(reg => ({
-        studentName: studentProfileMap.get(reg.student_id)?.full_name || 'Unknown',
-        studentEmail: studentProfileMap.get(reg.student_id)?.email || 'Unknown',
-        studentId: studentProfileMap.get(reg.student_id)?.student_id || 'Unknown',
-        opportunity: opportunities.find(o => o.id === reg.opportunity_id)?.title || 'Unknown',
-        opportunityDate: opportunities.find(o => o.id === reg.opportunity_id)?.date || 'Unknown',
-        club: clubMap.get(opportunities.find(o => o.id === reg.opportunity_id)?.club_id)?.name || 'Unknown',
-        status: reg.status,
-        registeredDate: new Date(reg.created_at).toLocaleDateString()
-      }))
+      registrations: registrations.map(reg => {
+        const opportunity = opportunities.find(o => o.id === reg.opportunity_id)
+        const studentProfile = studentProfileMap.get(reg.student_id)
+        
+        return {
+          studentName: studentProfile?.full_name || 'Unknown Student',
+          studentEmail: studentProfile?.email || 'No email',
+          studentId: studentProfile?.student_id || 'No ID',
+          opportunity: opportunity?.title || 'Unknown Opportunity',
+          opportunityDate: opportunity?.date ? new Date(opportunity.date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          }) : 'No date',
+          club: opportunity?.club_restriction === 'anyone' ? 'Open to All Students' : (clubMap.get(opportunity?.club_id)?.name || 'Unknown Club'),
+          status: reg.status || 'Unknown',
+          registeredDate: reg.created_at ? new Date(reg.created_at).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          }) : 'Unknown'
+        }
+      })
     }
 
     console.log('CSV data prepared successfully')
+    console.log('Final data summary:', {
+      studentsCount: csvData.students.length,
+      hoursCount: csvData.volunteerHours.length,
+      opportunitiesCount: csvData.opportunities.length,
+      registrationsCount: csvData.registrations.length
+    })
     return NextResponse.json(csvData)
   } catch (error) {
     console.error('Export data API error:', error)
