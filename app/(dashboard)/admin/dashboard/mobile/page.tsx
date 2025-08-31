@@ -257,7 +257,7 @@ export default function MobileAdminDashboard() {
                 dashboardData.recentHours.slice(0, 3).map((hour) => (
                   <div key={hour.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div>
-                      <p className="font-medium text-gray-900 text-sm">{hour.profiles.full_name}</p>
+                      <p className="font-medium text-gray-900 text-sm">{hour.profiles?.full_name || 'Unknown Student'}</p>
                       <p className="text-xs text-gray-600">{hour.hours} hours</p>
                     </div>
                     <Badge className={

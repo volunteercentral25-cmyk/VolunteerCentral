@@ -389,7 +389,7 @@ export default function AdminDashboard() {
           {dashboardData?.supervisedClubs && dashboardData.supervisedClubs.length > 0 && (
             <div className="flex items-center justify-center gap-2 mt-4">
               <Badge variant="outline" className="text-sm">
-                Supervising: {dashboardData.supervisedClubs.map(sc => sc.clubs.name).join(', ')}
+                Supervising: {dashboardData.supervisedClubs.map(sc => sc.clubs?.name || 'Unknown Club').join(', ')}
               </Badge>
             </div>
           )}
@@ -600,7 +600,7 @@ export default function AdminDashboard() {
                   dashboardData.recentHours.map((hour) => (
                     <div key={hour.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div>
-                        <p className="font-medium text-gray-900">{hour.profiles.full_name}</p>
+                        <p className="font-medium text-gray-900">{hour.profiles?.full_name || 'Unknown Student'}</p>
                         <p className="text-sm text-gray-600">{hour.hours} hours</p>
                       </div>
                       <Badge className={

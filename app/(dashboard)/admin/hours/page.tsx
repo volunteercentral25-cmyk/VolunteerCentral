@@ -203,7 +203,7 @@ export default function AdminHours() {
       setShowReviewModal(false)
       setSelectedHour(null)
       setError(null) // Clear any previous errors
-      setSuccessMessage(`Successfully ${reviewData.status === 'approved' ? 'approved' : 'denied'} hours for ${selectedHour.profiles.full_name}`)
+      setSuccessMessage(`Successfully ${reviewData.status === 'approved' ? 'approved' : 'denied'} hours for ${selectedHour.profiles?.full_name || 'Unknown Student'}`)
       await loadHours()
       
       // Clear success message after 3 seconds

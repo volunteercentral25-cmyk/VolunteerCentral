@@ -301,8 +301,8 @@ export default function MobileAdminHours() {
                       <User className="h-5 w-5 text-blue-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-900 text-base">{hour.profiles.full_name}</h3>
-                      <p className="text-sm text-gray-600 truncate">{hour.profiles.email}</p>
+                      <h3 className="font-semibold text-gray-900 text-base">{hour.profiles?.full_name || 'Unknown Student'}</h3>
+                      <p className="text-sm text-gray-600 truncate">{hour.profiles?.email || 'No email'}</p>
                     </div>
                     <Badge className={
                       hour.status === 'approved' ? 'bg-green-100 text-green-800 text-xs' :
@@ -449,7 +449,7 @@ export default function MobileAdminHours() {
               Review Hour Entry
             </DialogTitle>
             <DialogDescription>
-              Review and update the status for {selectedHour?.profiles.full_name}'s hour entry
+              Review and update the status for {selectedHour?.profiles?.full_name || 'Unknown Student'}'s hour entry
             </DialogDescription>
           </DialogHeader>
           
@@ -460,7 +460,7 @@ export default function MobileAdminHours() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="font-medium">Student:</span>
-                    <span>{selectedHour.profiles.full_name}</span>
+                    <span>{selectedHour.profiles?.full_name || 'Unknown Student'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="font-medium">Activity:</span>

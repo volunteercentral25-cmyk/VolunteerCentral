@@ -38,9 +38,36 @@ export async function GET(request: NextRequest) {
       console.error('Error getting supervised clubs:', clubsError)
     }
 
+    // Get club details separately
+    let clubDetails: Array<{id: string, name: string, description: string}> = []
+    if (supervisedClubs && supervisedClubs.length > 0) {
+      const clubIds = supervisedClubs.map(sc => sc.club_id)
+      const { data: clubs, error: clubsDetailsError } = await supabase
+        .from('clubs')
+        .select('id, name, description')
+        .in('id', clubIds)
+      
+      if (clubsDetailsError) {
+        console.error('Error getting club details:', clubsDetailsError)
+      } else {
+        clubDetails = clubs || []
+      }
+    }
+
+    // Combine the data
+    const supervisedClubsWithDetails = supervisedClubs?.map(sc => ({
+      club_id: sc.club_id,
+      clubs: clubDetails.find(c => c.id === sc.club_id) || { id: sc.club_id, name: 'Unknown Club', description: '' }
+    })) || []
+
+    if (clubsError) {
+      console.error('Error getting supervised clubs:', clubsError)
+    }
+
     console.log('Current user ID:', user.id)
     console.log('Current user email:', user.email)
     console.log('Supervised clubs:', supervisedClubs)
+    console.log('Supervised clubs with details:', supervisedClubsWithDetails)
 
     // Test simple query to verify Supabase is working
     const { data: testQuery, error: testError } = await supabase
@@ -53,7 +80,7 @@ export async function GET(request: NextRequest) {
     console.log('Test query error:', testError)
 
     // If admin hasn't selected clubs yet, return basic data with club selection flag
-    if (!supervisedClubs || supervisedClubs.length === 0) {
+    if (!supervisedClubsWithDetails || supervisedClubsWithDetails.length === 0) {
       console.log('No supervised clubs found - returning club selection flag')
       return NextResponse.json({
         needsClubSelection: true,
@@ -72,7 +99,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get club IDs for filtering
-    const clubIds = supervisedClubs.map(sc => sc.club_id)
+    const clubIds = supervisedClubsWithDetails.map(sc => sc.club_id)
     
     // Get the names of supervised clubs to filter students properly
     const { data: clubNames, error: clubNamesError } = await supabase
@@ -284,7 +311,7 @@ export async function GET(request: NextRequest) {
         profiles!inner(full_name)
       `)
       .in('volunteer_opportunities.club_id', clubIds)
-      .order('created_at', { ascending: false })
+      .order('registered_at', { ascending: false })
       .limit(10)
 
     return NextResponse.json({
@@ -298,7 +325,7 @@ export async function GET(request: NextRequest) {
       recentHours: recentHoursResult.data || [],
       recentOpportunities: recentOpportunitiesResult.data || [],
       recentRegistrations: registrations || [],
-      supervisedClubs: supervisedClubs || [],
+      supervisedClubs: supervisedClubsWithDetails || [],
       profile
     })
   } catch (error) {
