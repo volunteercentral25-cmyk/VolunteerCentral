@@ -3,13 +3,17 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('Export data API called')
     const supabase = createClient()
     
     // Get the current user
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError || !user) {
+      console.log('User not authenticated')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    console.log('User authenticated:', user.id)
 
     // Get user profile and check if admin
     const { data: profile, error: profileError } = await supabase
@@ -19,8 +23,11 @@ export async function GET(request: NextRequest) {
       .single()
 
     if (profileError || !profile || profile.role !== 'admin') {
+      console.log('User not admin:', profile?.role)
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
+
+    console.log('Admin access confirmed')
 
     // Get admin's supervised clubs
     const { data: supervisedClubs, error: clubsError } = await supabase
@@ -33,14 +40,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to get supervised clubs' }, { status: 500 })
     }
 
+    console.log('Supervised clubs:', supervisedClubs)
+
     // If admin hasn't selected clubs, return error
     if (!supervisedClubs || supervisedClubs.length === 0) {
+      console.log('No supervised clubs found')
       return NextResponse.json({ error: 'Please select clubs to supervise first' }, { status: 400 })
     }
 
     const clubIds = supervisedClubs.map(sc => sc.club_id)
+    console.log('Club IDs:', clubIds)
 
     // Get all students in supervised clubs with their details
+    console.log('Fetching students...')
     const { data: students, error: studentsError } = await supabase
       .from('profiles')
       .select(`
@@ -64,29 +76,38 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to get students' }, { status: 500 })
     }
 
-    // Get all volunteer hours for these students
-    const { data: volunteerHours, error: hoursError } = await supabase
-      .from('volunteer_hours')
-      .select(`
-        id,
-        hours,
-        date,
-        description,
-        status,
-        verification_email,
-        created_at,
-        verification_date,
-        verified_by,
-        verification_notes,
-        student_id
-      `)
-      .in('student_id', students.map(s => s.id))
-      .order('created_at', { ascending: false })
+    console.log('Students found:', students?.length || 0)
 
-    if (hoursError) {
-      console.error('Error getting volunteer hours:', hoursError)
-      return NextResponse.json({ error: 'Failed to get volunteer hours' }, { status: 500 })
+    // Get all volunteer hours for these students
+    console.log('Fetching volunteer hours...')
+    let volunteerHours: any[] = []
+    if (students && students.length > 0) {
+      const { data: hours, error: hoursError } = await supabase
+        .from('volunteer_hours')
+        .select(`
+          id,
+          hours,
+          date,
+          description,
+          status,
+          verification_email,
+          created_at,
+          verification_date,
+          verified_by,
+          verification_notes,
+          student_id
+        `)
+        .in('student_id', students.map(s => s.id))
+        .order('created_at', { ascending: false })
+
+      if (hoursError) {
+        console.error('Error getting volunteer hours:', hoursError)
+        return NextResponse.json({ error: 'Failed to get volunteer hours' }, { status: 500 })
+      }
+      volunteerHours = hours || []
     }
+
+    console.log('Volunteer hours found:', volunteerHours.length)
 
     // Get student profiles for volunteer hours separately
     const { data: studentProfiles, error: profilesError } = await supabase
@@ -106,56 +127,80 @@ export async function GET(request: NextRequest) {
     })
 
     // Get all opportunities for supervised clubs
-    const { data: opportunities, error: opportunitiesError } = await supabase
-      .from('volunteer_opportunities')
-      .select(`
-        id,
-        title,
-        description,
-        date,
-        location,
-        created_at,
-        clubs!inner (
-          name
-        )
-      `)
-      .in('club_id', clubIds)
-      .order('date', { ascending: false })
+    console.log('Fetching opportunities...')
+    let opportunities: any[] = []
+    if (clubIds && clubIds.length > 0) {
+      const { data: opps, error: opportunitiesError } = await supabase
+        .from('volunteer_opportunities')
+        .select(`
+          id,
+          title,
+          description,
+          date,
+          location,
+          created_at,
+          club_id
+        `)
+        .in('club_id', clubIds)
+        .order('date', { ascending: false })
 
-    if (opportunitiesError) {
-      console.error('Error getting opportunities:', opportunitiesError)
-      return NextResponse.json({ error: 'Failed to get opportunities' }, { status: 500 })
+      if (opportunitiesError) {
+        console.error('Error getting opportunities:', opportunitiesError)
+        return NextResponse.json({ error: 'Failed to get opportunities' }, { status: 500 })
+      }
+      opportunities = opps || []
     }
+
+    console.log('Opportunities found:', opportunities.length)
+
+    // Get club names for opportunities separately
+    let clubs: any[] = []
+    if (clubIds && clubIds.length > 0) {
+      const { data: clubData, error: clubsDataError } = await supabase
+        .from('clubs')
+        .select('id, name')
+        .in('id', clubIds)
+
+      if (clubsDataError) {
+        console.error('Error getting clubs:', clubsDataError)
+        return NextResponse.json({ error: 'Failed to get clubs' }, { status: 500 })
+      }
+      clubs = clubData || []
+    }
+
+    // Create a map of clubs
+    const clubMap = new Map()
+    clubs?.forEach(club => {
+      clubMap.set(club.id, club)
+    })
 
     // Get opportunity registrations
-    const { data: registrations, error: registrationsError } = await supabase
-      .from('opportunity_registrations')
-      .select(`
-        id,
-        status,
-        created_at,
-        volunteer_opportunities!inner (
-          title,
-          date,
-          clubs!inner (
-            name
-          )
-        ),
-        profiles!inner (
-          full_name,
-          email,
-          student_id
-        )
-      `)
-      .in('volunteer_opportunities.club_id', clubIds)
-      .order('created_at', { ascending: false })
+    console.log('Fetching registrations...')
+    let registrations: any[] = []
+    if (opportunities && opportunities.length > 0) {
+      const { data: regs, error: registrationsError } = await supabase
+        .from('opportunity_registrations')
+        .select(`
+          id,
+          status,
+          created_at,
+          student_id,
+          opportunity_id
+        `)
+        .in('opportunity_id', opportunities.map(o => o.id))
+        .order('created_at', { ascending: false })
 
-    if (registrationsError) {
-      console.error('Error getting registrations:', registrationsError)
-      return NextResponse.json({ error: 'Failed to get registrations' }, { status: 500 })
+      if (registrationsError) {
+        console.error('Error getting registrations:', registrationsError)
+        return NextResponse.json({ error: 'Failed to get registrations' }, { status: 500 })
+      }
+      registrations = regs || []
     }
 
+    console.log('Registrations found:', registrations.length)
+
     // Calculate summary statistics
+    console.log('Calculating summary statistics...')
     const totalStudents = students.length
     const totalHours = volunteerHours.reduce((sum, hour) => sum + (hour.hours || 0), 0)
     const approvedHours = volunteerHours
@@ -168,7 +213,10 @@ export async function GET(request: NextRequest) {
       .filter(hour => hour.status === 'denied')
       .reduce((sum, hour) => sum + (hour.hours || 0), 0)
 
+    console.log('Summary stats:', { totalStudents, totalHours, approvedHours, pendingHours, deniedHours })
+
     // Prepare CSV data
+    console.log('Preparing CSV data...')
     const csvData = {
       summary: {
         totalStudents,
@@ -236,21 +284,22 @@ export async function GET(request: NextRequest) {
         description: opp.description,
         date: opp.date,
         location: opp.location,
-        club: opp.clubs[0]?.name || 'Unknown',
+        club: clubMap.get(opp.club_id)?.name || 'Unknown',
         createdDate: new Date(opp.created_at).toLocaleDateString()
       })),
       registrations: registrations.map(reg => ({
-        studentName: reg.profiles[0]?.full_name || 'Unknown',
-        studentEmail: reg.profiles[0]?.email || 'Unknown',
-        studentId: reg.profiles[0]?.student_id || 'Unknown',
-        opportunity: reg.volunteer_opportunities[0]?.title || 'Unknown',
-        opportunityDate: reg.volunteer_opportunities[0]?.date || 'Unknown',
-        club: reg.volunteer_opportunities[0]?.clubs[0]?.name || 'Unknown',
+        studentName: studentProfileMap.get(reg.student_id)?.full_name || 'Unknown',
+        studentEmail: studentProfileMap.get(reg.student_id)?.email || 'Unknown',
+        studentId: studentProfileMap.get(reg.student_id)?.student_id || 'Unknown',
+        opportunity: opportunities.find(o => o.id === reg.opportunity_id)?.title || 'Unknown',
+        opportunityDate: opportunities.find(o => o.id === reg.opportunity_id)?.date || 'Unknown',
+        club: clubMap.get(opportunities.find(o => o.id === reg.opportunity_id)?.club_id)?.name || 'Unknown',
         status: reg.status,
         registeredDate: new Date(reg.created_at).toLocaleDateString()
       }))
     }
 
+    console.log('CSV data prepared successfully')
     return NextResponse.json(csvData)
   } catch (error) {
     console.error('Export data API error:', error)
