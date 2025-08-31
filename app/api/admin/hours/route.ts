@@ -32,7 +32,14 @@ export async function GET(request: NextRequest) {
     // Get admin's supervised clubs
     const { data: supervisedClubs, error: clubsError } = await supabase
       .from('admin_club_supervision')
-      .select('club_id')
+      .select(`
+        club_id,
+        clubs!inner (
+          id,
+          name,
+          description
+        )
+      `)
       .eq('admin_id', user.id)
 
     if (clubsError) {
@@ -55,6 +62,27 @@ export async function GET(request: NextRequest) {
 
     const clubIds = supervisedClubs.map(sc => sc.club_id)
 
+    // Get the names of supervised clubs to filter students properly
+    const supervisedClubNames = supervisedClubs.map(sc => sc.clubs[0]?.name).filter(Boolean)
+    console.log('Supervised club names:', supervisedClubNames)
+
+    // Build the correct filter based on supervised clubs
+    let studentFilter = ''
+    if (supervisedClubNames.includes('Beta Club')) {
+      studentFilter += 'beta_club.eq.true'
+    }
+    if (supervisedClubNames.includes('NTHS')) {
+      if (studentFilter) studentFilter += ','
+      studentFilter += 'nths.eq.true'
+    }
+    
+    // If no clubs selected, use empty filter
+    if (!studentFilter) {
+      studentFilter = 'id.eq.00000000-0000-0000-0000-000000000000' // Impossible ID
+    }
+
+    console.log('Student filter:', studentFilter)
+
     // Get URL parameters for pagination and search
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
@@ -70,7 +98,7 @@ export async function GET(request: NextRequest) {
       .from('profiles')
       .select('id')
       .eq('role', 'student')
-      .or('beta_club.eq.true,nths.eq.true')
+      .or(studentFilter)
 
     if (studentIdsError) {
       console.error('Error getting student IDs:', studentIdsError)

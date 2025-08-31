@@ -61,13 +61,34 @@ export async function GET(request: NextRequest) {
 
     // Get club IDs for filtering
     const clubIds = supervisedClubs.map(sc => sc.club_id)
+    
+    // Get the names of supervised clubs to filter students properly
+    const supervisedClubNames = supervisedClubs.map(sc => sc.clubs[0]?.name).filter(Boolean)
+    console.log('Supervised club names:', supervisedClubNames)
+
+    // Build the correct filter based on supervised clubs
+    let studentFilter = ''
+    if (supervisedClubNames.includes('Beta Club')) {
+      studentFilter += 'beta_club.eq.true'
+    }
+    if (supervisedClubNames.includes('NTHS')) {
+      if (studentFilter) studentFilter += ','
+      studentFilter += 'nths.eq.true'
+    }
+    
+    // If no clubs selected, use empty filter
+    if (!studentFilter) {
+      studentFilter = 'id.eq.00000000-0000-0000-0000-000000000000' // Impossible ID
+    }
+
+    console.log('Student filter:', studentFilter)
 
     // Get student count for supervised clubs
     const { data: studentCount, error: studentCountError } = await supabase
       .from('profiles')
       .select('id', { count: 'exact' })
       .eq('role', 'student')
-      .or('beta_club.eq.true,nths.eq.true')
+      .or(studentFilter)
     
     if (studentCountError) {
       console.error('Error getting student count:', studentCountError)
@@ -80,7 +101,7 @@ export async function GET(request: NextRequest) {
       .from('profiles')
       .select('id')
       .eq('role', 'student')
-      .or('beta_club.eq.true,nths.eq.true')
+      .or(studentFilter)
 
     if (studentIdsError) {
       console.error('Error getting student IDs:', studentIdsError)
