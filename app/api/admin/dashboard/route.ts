@@ -28,34 +28,48 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
-    // Get admin's supervised clubs
-    const { data: supervisedClubs, error: clubsError } = await supabase
-      .from('admin_club_supervision')
-      .select('club_id')
-      .eq('admin_id', user.id)
+    // Get admin's supervised clubs - handle missing table gracefully
+    let supervisedClubs = null
+    let clubsError = null
+    try {
+      const { data: clubsData, error: clubsErr } = await supabase
+        .from('admin_club_supervision')
+        .select('club_id')
+        .eq('admin_id', user.id)
+      
+      supervisedClubs = clubsData
+      clubsError = clubsErr
+    } catch (error) {
+      console.error('Error accessing admin_club_supervision table:', error)
+      clubsError = error
+    }
 
     if (clubsError) {
       console.error('Error getting supervised clubs:', clubsError)
     }
 
-    // Get club details separately
+    // Get club details separately - handle missing table gracefully
     let clubDetails: Array<{id: string, name: string, description: string}> = []
     if (supervisedClubs && supervisedClubs.length > 0) {
-      const clubIds = supervisedClubs.map(sc => sc.club_id)
-      const { data: clubs, error: clubsDetailsError } = await supabase
-        .from('clubs')
-        .select('id, name, description')
-        .in('id', clubIds)
-      
-      if (clubsDetailsError) {
-        console.error('Error getting club details:', clubsDetailsError)
-      } else {
-        clubDetails = clubs || []
+      try {
+        const clubIds = supervisedClubs.map((sc: any) => sc.club_id)
+        const { data: clubs, error: clubsDetailsError } = await supabase
+          .from('clubs')
+          .select('id, name, description')
+          .in('id', clubIds)
+        
+        if (clubsDetailsError) {
+          console.error('Error getting club details:', clubsDetailsError)
+        } else {
+          clubDetails = clubs || []
+        }
+      } catch (error) {
+        console.error('Error accessing clubs table:', error)
       }
     }
 
     // Combine the data - ensure all objects are properly serializable with string IDs
-    const supervisedClubsWithDetails = supervisedClubs?.map(sc => {
+    const supervisedClubsWithDetails = supervisedClubs?.map((sc: any) => {
       const clubDetail = clubDetails.find(c => c.id === sc.club_id)
       return {
         club_id: String(sc.club_id || ''),
@@ -112,17 +126,27 @@ export async function GET(request: NextRequest) {
     // Get club IDs for filtering
     const clubIds = supervisedClubsWithDetails.map(sc => sc.club_id)
     
-    // Get the names of supervised clubs to filter students properly
-    const { data: clubNames, error: clubNamesError } = await supabase
-      .from('clubs')
-      .select('id, name')
-      .in('id', clubIds)
+    // Get the names of supervised clubs to filter students properly - handle missing table gracefully
+    let clubNames = null
+    let clubNamesError = null
+    try {
+      const { data: namesData, error: namesErr } = await supabase
+        .from('clubs')
+        .select('id, name')
+        .in('id', clubIds)
+      
+      clubNames = namesData
+      clubNamesError = namesErr
+    } catch (error) {
+      console.error('Error accessing clubs table for names:', error)
+      clubNamesError = error
+    }
     
     if (clubNamesError) {
       console.error('Error getting club names:', clubNamesError)
     }
     
-    const supervisedClubNames = clubNames?.map(c => c.name) || []
+    const supervisedClubNames = clubNames?.map((c: any) => c.name) || []
     console.log('Supervised club names:', supervisedClubNames)
 
     // Build the correct filter based on supervised clubs
@@ -223,7 +247,7 @@ export async function GET(request: NextRequest) {
       count: studentIds?.length || 0
     })
 
-    const studentIdArray = studentIds?.map(s => s.id) || []
+    const studentIdArray = studentIds?.map((s: any) => s.id) || []
 
     console.log('Student IDs for filtering:', studentIdArray)
     console.log('Number of students found:', studentIdArray.length)
@@ -310,23 +334,31 @@ export async function GET(request: NextRequest) {
     })
     
     // Calculate total hours
-    const totalHours = totalHoursResult.data?.reduce((sum, hour) => sum + (hour.hours || 0), 0) || 0
+    const totalHours = totalHoursResult.data?.reduce((sum: number, hour: any) => sum + (hour.hours || 0), 0) || 0
 
-    // Get opportunity registrations for supervised clubs
-    const { data: registrations } = await supabase
-      .from('opportunity_registrations')
-      .select(`
-        id,
-        status,
-        volunteer_opportunities!inner(title, club_id),
-        profiles!inner(full_name)
-      `)
-      .in('volunteer_opportunities.club_id', clubIds)
-      .order('registered_at', { ascending: false })
-      .limit(10)
+    // Get opportunity registrations for supervised clubs - handle missing table gracefully
+    let registrations = null
+    try {
+      const { data: regData } = await supabase
+        .from('opportunity_registrations')
+        .select(`
+          id,
+          status,
+          volunteer_opportunities!inner(title, club_id),
+          profiles!inner(full_name)
+        `)
+        .in('volunteer_opportunities.club_id', clubIds)
+        .order('registered_at', { ascending: false })
+        .limit(10)
+      
+      registrations = regData
+    } catch (error) {
+      console.error('Error accessing opportunity_registrations table:', error)
+      registrations = []
+    }
 
     // Ensure all data is properly serializable with string IDs
-    const serializedRecentHours = (recentHoursResult.data || []).map(hour => ({
+    const serializedRecentHours = (recentHoursResult.data || []).map((hour: any) => ({
       id: String(hour.id || ''),
       hours: Number(hour.hours) || 0,
       status: String(hour.status || ''),
@@ -340,14 +372,14 @@ export async function GET(request: NextRequest) {
       }
     }))
 
-    const serializedRecentOpportunities = (recentOpportunitiesResult.data || []).map(opp => ({
+    const serializedRecentOpportunities = (recentOpportunitiesResult.data || []).map((opp: any) => ({
       id: String(opp.id || ''),
       title: String(opp.title || ''),
       date: String(opp.date || ''),
       location: String(opp.location || '')
     }))
 
-    const serializedRegistrations = (registrations || []).map(reg => ({
+    const serializedRegistrations = (registrations || []).map((reg: any) => ({
       id: String(reg.id || ''),
       status: String(reg.status || ''),
       volunteer_opportunities: Array.isArray(reg.volunteer_opportunities) ? {
@@ -369,6 +401,16 @@ export async function GET(request: NextRequest) {
       role: String(profile.role || '')
     } : null
 
+    // Ensure supervisedClubsWithDetails is also properly serialized
+    const serializedSupervisedClubs = supervisedClubsWithDetails.map((sc: any) => ({
+      club_id: String(sc.club_id || ''),
+      clubs: {
+        id: String(sc.clubs?.id || ''),
+        name: String(sc.clubs?.name || 'Unknown Club'),
+        description: String(sc.clubs?.description || '')
+      }
+    }))
+
     const responseData = {
       needsClubSelection: false,
       stats: {
@@ -380,13 +422,14 @@ export async function GET(request: NextRequest) {
       recentHours: serializedRecentHours,
       recentOpportunities: serializedRecentOpportunities,
       recentRegistrations: serializedRegistrations,
-      supervisedClubs: supervisedClubsWithDetails,
+      supervisedClubs: serializedSupervisedClubs,
       profile: serializedProfile
     }
 
     console.log('Final response data structure:', JSON.stringify(responseData, null, 2))
-    console.log('Recent hours IDs:', serializedRecentHours.map(h => ({ id: h.id, type: typeof h.id })))
-    console.log('Recent opportunities IDs:', serializedRecentOpportunities.map(o => ({ id: o.id, type: typeof o.id })))
+    console.log('Recent hours IDs:', serializedRecentHours.map((h: any) => ({ id: h.id, type: typeof h.id })))
+    console.log('Recent opportunities IDs:', serializedRecentOpportunities.map((o: any) => ({ id: o.id, type: typeof o.id })))
+    console.log('Supervised clubs IDs:', serializedSupervisedClubs.map((sc: any) => ({ club_id: sc.club_id, type: typeof sc.club_id })))
 
     return NextResponse.json(responseData)
   } catch (error) {
