@@ -314,11 +314,11 @@ export default function AdminOpportunities() {
       const result = await response.json()
       console.log(`Frontend - ${action} result:`, result)
 
-             // Clear registrations state and reload with a small delay to ensure database updates
-       setRegistrations([])
-       await new Promise(resolve => setTimeout(resolve, 500))
-       await loadRegistrations(selectedOpportunity.id)
-       await loadOpportunities()
+      // Clear registrations state and reload with a small delay to ensure database updates
+      setRegistrations([])
+      await new Promise(resolve => setTimeout(resolve, 500))
+      await loadRegistrations(selectedOpportunity.id)
+      await loadOpportunities()
       
       // Show success message
       console.log(`Successfully ${action}ed registration`)
@@ -372,20 +372,20 @@ export default function AdminOpportunities() {
         <div className="absolute top-40 left-10 h-72 w-72 rounded-full bg-blue-300/60 blur-3xl animate-blob animation-delay-4000" />
       </div>
 
-             {/* Success Message */}
-       {successMessage && (
-         <motion.div
-           initial={{ opacity: 0, y: -20 }}
-           animate={{ opacity: 1, y: 0 }}
-           exit={{ opacity: 0, y: -20 }}
-           className="fixed top-4 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg"
-         >
-           {successMessage}
-         </motion.div>
-       )}
+      {/* Success Message */}
+      {successMessage && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          className="fixed top-4 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg"
+        >
+          {successMessage}
+        </motion.div>
+      )}
 
-       {/* Header */}
-       <motion.header
+      {/* Header */}
+      <motion.header
         initial={{ y: -24, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5 }}
@@ -655,102 +655,108 @@ export default function AdminOpportunities() {
           <div className="grid gap-6">
             {opportunitiesData?.opportunities.length ? (
               opportunitiesData.opportunities.map((opportunity) => {
+                // Ensure we have a valid opportunity with an id
+                if (!opportunity || !opportunity.id) {
+                  console.error('Invalid opportunity:', opportunity);
+                  return null;
+                }
+                
                 try {
-                  // Ensure the key is a string
-                  const key = typeof opportunity.id === 'string' ? opportunity.id : String(opportunity.id || '')
+                  // Ensure the key is a string and unique
+                  const key = `opportunity-${opportunity.id}`;
                   return (
                     <Card key={key} className="glass-effect border-0 shadow-xl">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-start gap-4">
-                          <div className="p-3 bg-green-100 rounded-full">
-                            <Calendar className="h-6 w-6 text-green-600" />
-                          </div>
+                      <CardContent className="p-6">
+                        <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-2">{opportunity.title}</h3>
-                            <p className="text-gray-600 mb-3">{opportunity.description}</p>
-                            
-                            <div className="flex items-center gap-6 text-sm text-gray-600 mb-3">
-                              <span className="flex items-center gap-1">
-                                <MapPin className="h-4 w-4" />
-                                {opportunity.location}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-4 w-4" />
-                                {new Date(opportunity.date).toLocaleDateString()}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Users className="h-4 w-4" />
-                                {opportunity.start_time} - {opportunity.end_time}
-                              </span>
-                              <Badge className={getClubRestrictionColor(opportunity.club_restriction || 'anyone')}>
-                                {getClubRestrictionText(opportunity.club_restriction || 'anyone')}
-                              </Badge>
-                            </div>
+                            <div className="flex items-start gap-4">
+                              <div className="p-3 bg-green-100 rounded-full">
+                                <Calendar className="h-6 w-6 text-green-600" />
+                              </div>
+                              <div className="flex-1">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2">{opportunity.title}</h3>
+                                <p className="text-gray-600 mb-3">{opportunity.description}</p>
+                                
+                                <div className="flex items-center gap-6 text-sm text-gray-600 mb-3">
+                                  <span className="flex items-center gap-1">
+                                    <MapPin className="h-4 w-4" />
+                                    {opportunity.location}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="h-4 w-4" />
+                                    {new Date(opportunity.date).toLocaleDateString()}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <Users className="h-4 w-4" />
+                                    {opportunity.start_time} - {opportunity.end_time}
+                                  </span>
+                                  <Badge className={getClubRestrictionColor(opportunity.club_restriction || 'anyone')}>
+                                    {getClubRestrictionText(opportunity.club_restriction || 'anyone')}
+                                  </Badge>
+                                </div>
 
-                            <div className="flex items-center gap-4 text-sm">
-                              <div className="text-center">
-                                <p className="font-semibold text-green-600">{opportunity.confirmedRegistrations}</p>
-                                <p className="text-gray-500">Confirmed</p>
-                              </div>
-                              <div className="text-center">
-                                <p className="font-semibold text-orange-600">{opportunity.pendingRegistrations}</p>
-                                <p className="text-gray-500">Pending</p>
-                              </div>
-                              <div className="text-center">
-                                <p className="font-semibold text-purple-600">{opportunity.max_volunteers}</p>
-                                <p className="text-gray-500">Max Capacity</p>
+                                <div className="flex items-center gap-4 text-sm">
+                                  <div className="text-center">
+                                    <p className="font-semibold text-green-600">{opportunity.confirmedRegistrations}</p>
+                                    <p className="text-gray-500">Confirmed</p>
+                                  </div>
+                                  <div className="text-center">
+                                    <p className="font-semibold text-orange-600">{opportunity.pendingRegistrations}</p>
+                                    <p className="text-gray-500">Pending</p>
+                                  </div>
+                                  <div className="text-center">
+                                    <p className="font-semibold text-purple-600">{opportunity.max_volunteers}</p>
+                                    <p className="text-gray-500">Max Capacity</p>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 ml-4">
-                        {/* Status Badges */}
-                        <div className="flex flex-col gap-2">
-                          {opportunity.isPast && (
-                            <Badge className="bg-gray-100 text-gray-800">Past</Badge>
-                          )}
-                          {opportunity.isFull && (
-                            <Badge className="bg-red-100 text-red-800">Full</Badge>
-                          )}
-                        </div>
+                          
+                          <div className="flex items-center gap-2 ml-4">
+                            {/* Status Badges */}
+                            <div className="flex flex-col gap-2">
+                              {opportunity.isPast && (
+                                <Badge className="bg-gray-100 text-gray-800">Past</Badge>
+                              )}
+                              {opportunity.isFull && (
+                                <Badge className="bg-red-100 text-red-800">Full</Badge>
+                              )}
+                            </div>
 
-                        {/* Actions */}
-                        <div className="flex items-center gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="btn-secondary"
-                            onClick={() => handleViewRegistrations(opportunity)}
-                          >
-                            <Users className="h-4 w-4 mr-1" />
-                            View ({opportunity.totalRegistrations})
-                          </Button>
-                          <Button variant="outline" size="sm" className="btn-secondary">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="btn-secondary text-red-600 hover:text-red-700"
-                            onClick={() => handleDeleteOpportunity(opportunity.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                            {/* Actions */}
+                            <div className="flex items-center gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="btn-secondary"
+                                onClick={() => handleViewRegistrations(opportunity)}
+                              >
+                                <Users className="h-4 w-4 mr-1" />
+                                View ({opportunity.totalRegistrations})
+                              </Button>
+                              <Button variant="outline" size="sm" className="btn-secondary">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="btn-secondary text-red-600 hover:text-red-700"
+                                onClick={() => handleDeleteOpportunity(opportunity.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            } catch (error) {
-              console.error('Error rendering opportunity:', error, opportunity);
-              return null;
-            }
-          })
+                      </CardContent>
+                    </Card>
+                  );
+                } catch (error) {
+                  console.error('Error rendering opportunity:', error, opportunity);
+                  return null;
+                }
+              })
             ) : (
               <Card className="glass-effect border-0 shadow-xl">
                 <CardContent className="p-12 text-center">
@@ -808,9 +814,9 @@ export default function AdminOpportunities() {
         )}
       </main>
 
-                           {/* Registrations Modal */}
-       {showRegistrations && selectedOpportunity && (
-         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      {/* Registrations Modal */}
+      {showRegistrations && selectedOpportunity && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -842,11 +848,16 @@ export default function AdminOpportunities() {
                 </div>
               ) : registrations.length > 0 ? (
                 <div className="space-y-4">
-
                   {registrations.map((registration) => {
+                    // Ensure we have a valid registration with an id
+                    if (!registration || !registration.id) {
+                      console.error('Invalid registration:', registration);
+                      return null;
+                    }
+                    
                     try {
-                      // Ensure the key is a string
-                      const key = typeof registration.id === 'string' ? registration.id : String(registration.id || '')
+                      // Ensure the key is a string and unique
+                      const key = `registration-${registration.id}`;
                       return (
                         <Card key={key} className="border border-gray-200">
                           <CardContent className="p-4">
