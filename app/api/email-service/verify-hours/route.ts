@@ -39,6 +39,64 @@ function verifyToken(token: string, hoursId: string, action: string, email: stri
   }
 }
 
+// New function for token verification only (no status update, no emails)
+async function verifyTokenOnly(token: string, action: string, hoursId: string, verifierEmail: string) {
+  try {
+    console.log('Token verification request:', { token, action, hoursId, verifierEmail })
+
+    if (!token || !action || !hoursId || !verifierEmail) {
+      return { error: 'Missing required parameters', status: 400 }
+    }
+
+    // Verify token
+    if (!verifyToken(token, hoursId, action, verifierEmail)) {
+      return { error: 'Invalid or expired verification token', status: 400 }
+    }
+
+    // Create Supabase client
+    const supabase = createClient()
+
+    // Get hours data
+    const { data: hoursData, error: hoursError } = await supabase
+      .from('volunteer_hours')
+      .select('*')
+      .eq('id', hoursId)
+      .single()
+
+    if (hoursError || !hoursData) {
+      console.error('Error getting hours:', hoursError)
+      return { error: 'Hours record not found', status: 404 }
+    }
+
+    // Get student profile
+    const { data: studentProfile, error: studentError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', hoursData.student_id)
+      .single()
+
+    if (studentError || !studentProfile) {
+      console.error('Error getting student profile:', studentError)
+      return { error: 'Student profile not found', status: 404 }
+    }
+
+    // Return data for verification page - NO STATUS UPDATE, NO EMAILS
+    return {
+      success: true,
+      message: 'Token verified successfully',
+      hours_data: hoursData,
+      student_profile: studentProfile,
+      action: action,
+      hours_id: hoursId,
+      verifier_email: verifierEmail
+    }
+
+  } catch (error) {
+    console.error('Error verifying token:', error)
+    return { error: 'Internal server error', status: 500 }
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -47,9 +105,20 @@ export async function GET(request: NextRequest) {
     const hoursId = searchParams.get('hours_id')
     const verifierEmail = searchParams.get('email')
     const notes = searchParams.get('notes') || ''
+    const isFinalAction = searchParams.get('final_action') === 'true'
 
-    console.log('Hours verification request:', { token, action, hoursId, verifierEmail })
+    console.log('Hours verification request:', { token, action, hoursId, verifierEmail, isFinalAction })
 
+    // If this is just token verification (not final action), use the verification-only function
+    if (!isFinalAction) {
+      const result = await verifyTokenOnly(token!, action!, hoursId!, verifierEmail!)
+      if (result.error) {
+        return NextResponse.json({ error: result.error }, { status: result.status })
+      }
+      return NextResponse.json(result)
+    }
+
+    // This is the final action - proceed with status update and email sending
     if (!token || !action || !hoursId || !verifierEmail) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 })
     }
@@ -204,7 +273,7 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Hours verification error:', error)
+    console.error('Error in verify-hours endpoint:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

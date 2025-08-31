@@ -73,7 +73,7 @@ function VerifyHoursContent() {
 
   const verifyTokenAndLoadData = async (token: string, action: string, hours_id: string, email: string) => {
     try {
-      // Call Flask API to verify token and get data
+      // Call Next.js API to verify token and get data (NO FINAL ACTION)
       const response = await fetch(`/api/email-service/verify-hours?token=${token}&action=${action}&hours_id=${hours_id}&email=${email}`)
       
       if (!response.ok) {
@@ -83,18 +83,13 @@ function VerifyHoursContent() {
 
       const data = await response.json()
       
-      // Load hours details
-      const hoursResponse = await fetch(`/api/student/hours/${hours_id}`)
-      if (hoursResponse.ok) {
-        const hoursData = await hoursResponse.json()
-        setHoursDetails(hoursData)
-        
-        // Load student profile
-        const profileResponse = await fetch(`/api/student/profile/${hoursData.student_id}`)
-        if (profileResponse.ok) {
-          const profileData = await profileResponse.json()
-          setStudentProfile(profileData)
-        }
+      // Set the data from the API response
+      if (data.hours_data) {
+        setHoursDetails(data.hours_data)
+      }
+      
+      if (data.student_profile) {
+        setStudentProfile(data.student_profile)
       }
 
     } catch (error) {
@@ -110,7 +105,7 @@ function VerifyHoursContent() {
 
     setVerifying(true)
     try {
-      const url = `/api/email-service/verify-hours?token=${verificationData.token}&action=${verificationData.action}&hours_id=${verificationData.hours_id}&email=${verificationData.email}`
+      const url = `/api/email-service/verify-hours?token=${verificationData.token}&action=${verificationData.action}&hours_id=${verificationData.hours_id}&email=${verificationData.email}&final_action=true`
       const finalUrl = notes ? `${url}&notes=${encodeURIComponent(notes)}` : url
 
       const response = await fetch(finalUrl)
