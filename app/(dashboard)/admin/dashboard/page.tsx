@@ -389,7 +389,14 @@ export default function AdminDashboard() {
           {dashboardData?.supervisedClubs && dashboardData.supervisedClubs.length > 0 && (
             <div className="flex items-center justify-center gap-2 mt-4">
               <Badge variant="outline" className="text-sm">
-                Supervising: {dashboardData.supervisedClubs.map(sc => sc.clubs?.name || 'Unknown Club').join(', ')}
+                Supervising: {dashboardData.supervisedClubs.map(sc => {
+                  try {
+                    return sc.clubs?.name || 'Unknown Club';
+                  } catch (error) {
+                    console.error('Error accessing club name:', error, sc);
+                    return 'Unknown Club';
+                  }
+                }).join(', ')}
               </Badge>
             </div>
           )}
@@ -596,22 +603,29 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {dashboardData?.recentHours.length ? (
-                  dashboardData.recentHours.map((hour) => (
-                    <div key={hour.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-gray-900">{hour.profiles?.full_name || 'Unknown Student'}</p>
-                        <p className="text-sm text-gray-600">{hour.hours} hours</p>
-                      </div>
-                      <Badge className={
-                        hour.status === 'approved' ? 'bg-green-100 text-green-800' :
-                        hour.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }>
-                        {hour.status}
-                      </Badge>
-                    </div>
-                  ))
+                {dashboardData?.recentHours && dashboardData.recentHours.length ? (
+                  dashboardData.recentHours.map((hour) => {
+                    try {
+                      return (
+                        <div key={hour.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div>
+                            <p className="font-medium text-gray-900">{hour.profiles?.full_name || 'Unknown Student'}</p>
+                            <p className="text-sm text-gray-600">{hour.hours} hours</p>
+                          </div>
+                          <Badge className={
+                            hour.status === 'approved' ? 'bg-green-100 text-green-800' :
+                            hour.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }>
+                            {hour.status}
+                          </Badge>
+                        </div>
+                      );
+                    } catch (error) {
+                      console.error('Error rendering hour:', error, hour);
+                      return null;
+                    }
+                  })
                 ) : (
                   <p className="text-gray-500 text-center py-4">No recent hours</p>
                 )}
@@ -630,18 +644,25 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {dashboardData?.recentOpportunities.length ? (
-                  dashboardData.recentOpportunities.map((opportunity) => (
-                    <div key={opportunity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-gray-900">{opportunity.title}</p>
-                        <p className="text-sm text-gray-600">{opportunity.location}</p>
-                      </div>
-                      <p className="text-sm text-gray-500">
-                        {new Date(opportunity.date).toLocaleDateString()}
-                      </p>
-        </div>
-                  ))
+                {dashboardData?.recentOpportunities && dashboardData.recentOpportunities.length ? (
+                  dashboardData.recentOpportunities.map((opportunity) => {
+                    try {
+                      return (
+                        <div key={opportunity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div>
+                            <p className="font-medium text-gray-900">{opportunity.title}</p>
+                            <p className="text-sm text-gray-600">{opportunity.location}</p>
+                          </div>
+                          <p className="text-sm text-gray-500">
+                            {new Date(opportunity.date).toLocaleDateString()}
+                          </p>
+                        </div>
+                      );
+                    } catch (error) {
+                      console.error('Error rendering opportunity:', error, opportunity);
+                      return null;
+                    }
+                  })
                 ) : (
                   <p className="text-gray-500 text-center py-4">No upcoming opportunities</p>
                 )}

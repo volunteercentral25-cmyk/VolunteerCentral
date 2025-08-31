@@ -54,11 +54,22 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Combine the data
-    const supervisedClubsWithDetails = supervisedClubs?.map(sc => ({
-      club_id: sc.club_id,
-      clubs: clubDetails.find(c => c.id === sc.club_id) || { id: sc.club_id, name: 'Unknown Club', description: '' }
-    })) || []
+    // Combine the data - ensure all objects are properly serializable
+    const supervisedClubsWithDetails = supervisedClubs?.map(sc => {
+      const clubDetail = clubDetails.find(c => c.id === sc.club_id)
+      return {
+        club_id: sc.club_id,
+        clubs: clubDetail ? {
+          id: clubDetail.id,
+          name: clubDetail.name,
+          description: clubDetail.description
+        } : {
+          id: sc.club_id,
+          name: 'Unknown Club',
+          description: ''
+        }
+      }
+    }) || []
 
     if (clubsError) {
       console.error('Error getting supervised clubs:', clubsError)
@@ -314,7 +325,37 @@ export async function GET(request: NextRequest) {
       .order('registered_at', { ascending: false })
       .limit(10)
 
-    return NextResponse.json({
+    // Ensure all data is properly serializable
+    const serializedRecentHours = (recentHoursResult.data || []).map(hour => ({
+      id: hour.id,
+      hours: hour.hours,
+      status: hour.status,
+      created_at: hour.created_at,
+      profiles: Array.isArray(hour.profiles) ? hour.profiles[0] : hour.profiles
+    }))
+
+    const serializedRecentOpportunities = (recentOpportunitiesResult.data || []).map(opp => ({
+      id: opp.id,
+      title: opp.title,
+      date: opp.date,
+      location: opp.location
+    }))
+
+    const serializedRegistrations = (registrations || []).map(reg => ({
+      id: reg.id,
+      status: reg.status,
+      volunteer_opportunities: Array.isArray(reg.volunteer_opportunities) ? reg.volunteer_opportunities[0] : reg.volunteer_opportunities,
+      profiles: Array.isArray(reg.profiles) ? reg.profiles[0] : reg.profiles
+    }))
+
+    const serializedProfile = profile ? {
+      id: profile.id,
+      full_name: profile.full_name,
+      email: profile.email,
+      role: profile.role
+    } : null
+
+    const responseData = {
       needsClubSelection: false,
       stats: {
         totalStudents: totalStudents,
@@ -322,12 +363,16 @@ export async function GET(request: NextRequest) {
         pendingHours: pendingHours,
         totalHours: totalHours
       },
-      recentHours: recentHoursResult.data || [],
-      recentOpportunities: recentOpportunitiesResult.data || [],
-      recentRegistrations: registrations || [],
-      supervisedClubs: supervisedClubsWithDetails || [],
-      profile
-    })
+      recentHours: serializedRecentHours,
+      recentOpportunities: serializedRecentOpportunities,
+      recentRegistrations: serializedRegistrations,
+      supervisedClubs: supervisedClubsWithDetails,
+      profile: serializedProfile
+    }
+
+    console.log('Final response data structure:', JSON.stringify(responseData, null, 2))
+
+    return NextResponse.json(responseData)
   } catch (error) {
     console.error('Admin dashboard API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

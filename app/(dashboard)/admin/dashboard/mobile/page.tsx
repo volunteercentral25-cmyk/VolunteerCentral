@@ -253,22 +253,29 @@ export default function MobileAdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {dashboardData?.recentHours.length ? (
-                dashboardData.recentHours.slice(0, 3).map((hour) => (
-                  <div key={hour.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900 text-sm">{hour.profiles?.full_name || 'Unknown Student'}</p>
-                      <p className="text-xs text-gray-600">{hour.hours} hours</p>
-                    </div>
-                    <Badge className={
-                      hour.status === 'approved' ? 'bg-green-100 text-green-800' :
-                      hour.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }>
-                      {hour.status}
-                    </Badge>
-                  </div>
-                ))
+              {dashboardData?.recentHours && dashboardData.recentHours.length ? (
+                dashboardData.recentHours.slice(0, 3).map((hour) => {
+                  try {
+                    return (
+                      <div key={hour.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="font-medium text-gray-900 text-sm">{hour.profiles?.full_name || 'Unknown Student'}</p>
+                          <p className="text-xs text-gray-600">{hour.hours} hours</p>
+                        </div>
+                        <Badge className={
+                          hour.status === 'approved' ? 'bg-green-100 text-green-800' :
+                          hour.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }>
+                          {hour.status}
+                        </Badge>
+                      </div>
+                    );
+                  } catch (error) {
+                    console.error('Error rendering hour:', error, hour);
+                    return null;
+                  }
+                })
               ) : (
                 <p className="text-gray-500 text-center py-4 text-sm">No recent hours</p>
               )}
@@ -286,18 +293,25 @@ export default function MobileAdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {dashboardData?.recentOpportunities.length ? (
-                dashboardData.recentOpportunities.slice(0, 3).map((opportunity) => (
-                  <div key={opportunity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900 text-sm">{opportunity.title}</p>
-                      <p className="text-xs text-gray-600">{opportunity.location}</p>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      {new Date(opportunity.date).toLocaleDateString()}
-                    </p>
-                  </div>
-                ))
+              {dashboardData?.recentOpportunities && dashboardData.recentOpportunities.length ? (
+                dashboardData.recentOpportunities.slice(0, 3).map((opportunity) => {
+                  try {
+                    return (
+                      <div key={opportunity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="font-medium text-gray-900 text-sm">{opportunity.title}</p>
+                          <p className="text-xs text-gray-600">{opportunity.location}</p>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          {new Date(opportunity.date).toLocaleDateString()}
+                        </p>
+                      </div>
+                    );
+                  } catch (error) {
+                    console.error('Error rendering opportunity:', error, opportunity);
+                    return null;
+                  }
+                })
               ) : (
                 <p className="text-gray-500 text-center py-4 text-sm">No upcoming opportunities</p>
               )}
