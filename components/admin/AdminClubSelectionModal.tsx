@@ -118,7 +118,7 @@ export default function AdminClubSelectionModal({
                 Select Clubs to Supervise
               </CardTitle>
               <CardDescription>
-                Choose which clubs you will supervise. You can select up to 2 clubs at a time.
+                Choose which clubs you will supervise. Only NTHS and Beta Club are available. You can select up to 2 clubs at a time.
               </CardDescription>
             </CardHeader>
 

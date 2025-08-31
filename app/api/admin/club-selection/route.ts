@@ -22,10 +22,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
-    // Get all available clubs
+    // Get only NTHS and Beta Club from the database
     const { data: clubs, error: clubsError } = await supabase
       .from('clubs')
       .select('*')
+      .in('name', ['NTHS', 'Beta Club'])
       .order('name')
 
     if (clubsError) {
@@ -83,11 +84,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid club IDs' }, { status: 400 })
     }
 
-    // Validate that clubs exist
+    // Validate that only NTHS and Beta Club can be selected
     const { data: existingClubs, error: clubsError } = await supabase
       .from('clubs')
-      .select('id')
+      .select('id, name')
       .in('id', clubIds)
+      .in('name', ['NTHS', 'Beta Club'])
 
     if (clubsError) {
       console.error('Error validating clubs:', clubsError)
@@ -95,7 +97,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (existingClubs.length !== clubIds.length) {
-      return NextResponse.json({ error: 'Some clubs do not exist' }, { status: 400 })
+      return NextResponse.json({ error: 'Only NTHS and Beta Club can be selected' }, { status: 400 })
     }
 
     // Delete existing supervision records
