@@ -32,38 +32,40 @@ export async function GET(request: NextRequest) {
     // Get admin's supervised clubs
     const { data: supervisedClubs, error: clubsError } = await supabase
       .from('admin_club_supervision')
-      .select(`
-        club_id,
-        clubs!inner (
-          id,
-          name,
-          description
-        )
-      `)
+      .select('club_id')
       .eq('admin_id', user.id)
 
     if (clubsError) {
       console.error('Error getting supervised clubs:', clubsError)
-      return NextResponse.json({ error: 'Failed to get supervised clubs' }, { status: 500 })
     }
 
-    // If admin hasn't selected clubs, return empty data
+    // If admin hasn't selected clubs yet, return empty data
     if (!supervisedClubs || supervisedClubs.length === 0) {
       return NextResponse.json({
         students: [],
         pagination: {
-          page: 1,
-          limit: 20,
+          page: parseInt(page),
+          limit: parseInt(limit),
           total: 0,
           totalPages: 0
         }
       })
     }
 
+    // Get club IDs for filtering
     const clubIds = supervisedClubs.map(sc => sc.club_id)
-
+    
     // Get the names of supervised clubs to filter students properly
-    const supervisedClubNames = supervisedClubs.map(sc => sc.clubs[0]?.name).filter(Boolean)
+    const { data: clubNames, error: clubNamesError } = await supabase
+      .from('clubs')
+      .select('id, name')
+      .in('id', clubIds)
+    
+    if (clubNamesError) {
+      console.error('Error getting club names:', clubNamesError)
+    }
+    
+    const supervisedClubNames = clubNames?.map(c => c.name) || []
     console.log('Supervised club names:', supervisedClubNames)
 
     // Build the correct filter based on supervised clubs

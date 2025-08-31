@@ -22,26 +22,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
-    // Get only NTHS and Beta Club from the database
+    // Get only NTHS and Beta Club
     const { data: clubs, error: clubsError } = await supabase
       .from('clubs')
-      .select('*')
+      .select('id, name, description')
       .in('name', ['NTHS', 'Beta Club'])
-      .order('name')
+      .eq('is_active', true)
 
     if (clubsError) {
       console.error('Error getting clubs:', clubsError)
-      return NextResponse.json({ error: 'Failed to get clubs' }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to load clubs' }, { status: 500 })
     }
 
-    // Get admin's current supervised clubs
-    const { data: supervisedClubs, error: supervisedError } = await supabase
+    // Get admin's currently supervised clubs
+    const { data: supervisedClubs, error: supervisionError } = await supabase
       .from('admin_club_supervision')
       .select('club_id')
       .eq('admin_id', user.id)
 
-    if (supervisedError) {
-      console.error('Error getting supervised clubs:', supervisedError)
+    if (supervisionError) {
+      console.error('Error getting supervised clubs:', supervisionError)
     }
 
     const supervisedClubIds = supervisedClubs?.map(sc => sc.club_id) || []
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
       supervisedClubIds: supervisedClubIds
     })
   } catch (error) {
-    console.error('Admin club selection API error:', error)
+    console.error('Club selection API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -77,27 +77,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
-    const body = await request.json()
-    const { clubIds } = body
+    const { clubIds } = await request.json()
 
-    if (!clubIds || !Array.isArray(clubIds)) {
+    if (!Array.isArray(clubIds)) {
       return NextResponse.json({ error: 'Invalid club IDs' }, { status: 400 })
     }
 
-    // Validate that only NTHS and Beta Club can be selected
-    const { data: existingClubs, error: clubsError } = await supabase
+    // Validate that the club IDs correspond to NTHS or Beta Club
+    const { data: validClubs, error: validationError } = await supabase
       .from('clubs')
       .select('id, name')
       .in('id', clubIds)
       .in('name', ['NTHS', 'Beta Club'])
 
-    if (clubsError) {
-      console.error('Error validating clubs:', clubsError)
+    if (validationError) {
+      console.error('Error validating clubs:', validationError)
       return NextResponse.json({ error: 'Failed to validate clubs' }, { status: 500 })
     }
 
-    if (existingClubs.length !== clubIds.length) {
-      return NextResponse.json({ error: 'Only NTHS and Beta Club can be selected' }, { status: 400 })
+    if (validClubs.length !== clubIds.length) {
+      return NextResponse.json({ error: 'Invalid club selection' }, { status: 400 })
     }
 
     // Delete existing supervision records
@@ -108,30 +107,33 @@ export async function POST(request: NextRequest) {
 
     if (deleteError) {
       console.error('Error deleting existing supervision:', deleteError)
-      return NextResponse.json({ error: 'Failed to update club supervision' }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to update supervision' }, { status: 500 })
     }
 
     // Insert new supervision records
-    const supervisionRecords = clubIds.map(clubId => ({
-      admin_id: user.id,
-      club_id: clubId
-    }))
+    if (clubIds.length > 0) {
+      const supervisionRecords = clubIds.map(clubId => ({
+        admin_id: user.id,
+        club_id: clubId
+      }))
 
-    const { error: insertError } = await supabase
-      .from('admin_club_supervision')
-      .insert(supervisionRecords)
+      const { error: insertError } = await supabase
+        .from('admin_club_supervision')
+        .insert(supervisionRecords)
 
-    if (insertError) {
-      console.error('Error inserting supervision records:', insertError)
-      return NextResponse.json({ error: 'Failed to save club supervision' }, { status: 500 })
+      if (insertError) {
+        console.error('Error inserting supervision records:', insertError)
+        return NextResponse.json({ error: 'Failed to save supervision' }, { status: 500 })
+      }
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Club supervision updated successfully'
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Club supervision updated successfully',
+      supervisedClubs: validClubs
     })
   } catch (error) {
-    console.error('Admin club selection API error:', error)
+    console.error('Club selection API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
