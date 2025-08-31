@@ -75,6 +75,19 @@ export async function GET(request: NextRequest) {
 
     console.log('Student count result:', studentCount)
 
+    // Get student IDs for supervised clubs first
+    const { data: studentIds, error: studentIdsError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('role', 'student')
+      .in('club_id', clubIds)
+
+    if (studentIdsError) {
+      console.error('Error getting student IDs:', studentIdsError)
+    }
+
+    const studentIdArray = studentIds?.map(s => s.id) || []
+
     // Fetch other statistics filtered by supervised clubs
     const [
       opportunitiesResult,
@@ -94,26 +107,14 @@ export async function GET(request: NextRequest) {
         .from('volunteer_hours')
         .select('id')
         .eq('status', 'pending')
-        .in('student_id', 
-          supabase
-            .from('profiles')
-            .select('id')
-            .eq('role', 'student')
-            .in('club_id', clubIds)
-        ),
+        .in('student_id', studentIdArray),
       
       // Total approved hours for students in supervised clubs
       supabase
         .from('volunteer_hours')
         .select('hours')
         .eq('status', 'approved')
-        .in('student_id', 
-          supabase
-            .from('profiles')
-            .select('id')
-            .eq('role', 'student')
-            .in('club_id', clubIds)
-        ),
+        .in('student_id', studentIdArray),
       
       // Recent hours (last 7 days) for supervised clubs
       supabase
@@ -126,13 +127,7 @@ export async function GET(request: NextRequest) {
           profiles!inner(full_name, email)
         `)
         .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-        .in('student_id', 
-          supabase
-            .from('profiles')
-            .select('id')
-            .eq('role', 'student')
-            .in('club_id', clubIds)
-        )
+        .in('student_id', studentIdArray)
         .order('created_at', { ascending: false })
         .limit(10),
       
