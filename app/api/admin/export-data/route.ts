@@ -174,10 +174,10 @@ export async function GET(request: NextRequest) {
         joinedDate: new Date(student.created_at).toLocaleDateString()
       })),
       volunteerHours: volunteerHours.map(hour => ({
-        studentName: hour.profiles.full_name,
-        studentEmail: hour.profiles.email,
-        studentId: hour.profiles.student_id,
-        club: hour.profiles.clubs[0]?.name || 'Unknown',
+        studentName: hour.profiles[0]?.full_name || 'Unknown',
+        studentEmail: hour.profiles[0]?.email || 'Unknown',
+        studentId: hour.profiles[0]?.student_id || 'Unknown',
+        club: hour.profiles[0]?.clubs[0]?.name || 'Unknown',
         hours: hour.hours,
         date: hour.date,
         description: hour.description,
@@ -196,12 +196,12 @@ export async function GET(request: NextRequest) {
         createdDate: new Date(opp.created_at).toLocaleDateString()
       })),
       registrations: registrations.map(reg => ({
-        studentName: reg.profiles.full_name,
-        studentEmail: reg.profiles.email,
-        studentId: reg.profiles.student_id,
-        opportunity: reg.volunteer_opportunities.title,
-        opportunityDate: reg.volunteer_opportunities.date,
-        club: reg.volunteer_opportunities.clubs[0]?.name || 'Unknown',
+        studentName: reg.profiles[0]?.full_name || 'Unknown',
+        studentEmail: reg.profiles[0]?.email || 'Unknown',
+        studentId: reg.profiles[0]?.student_id || 'Unknown',
+        opportunity: reg.volunteer_opportunities[0]?.title || 'Unknown',
+        opportunityDate: reg.volunteer_opportunities[0]?.date || 'Unknown',
+        club: reg.volunteer_opportunities[0]?.clubs[0]?.name || 'Unknown',
         status: reg.status,
         registeredDate: new Date(reg.created_at).toLocaleDateString()
       }))
