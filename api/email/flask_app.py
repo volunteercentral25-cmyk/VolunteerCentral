@@ -390,7 +390,7 @@ def send_verification_email():
 
 @app.route('/api/email/verify-hours', methods=['GET'])
 def verify_hours():
-    """Handle hours verification (approve/deny) from email link"""
+    """Handle hours verification (approve/deny) from email link - TOKEN VERIFICATION ONLY"""
     try:
         token = request.args.get('token')
         action = request.args.get('action')
@@ -413,82 +413,19 @@ def verify_hours():
         if not student_profile:
             return jsonify({'error': 'Student profile not found'}), 404
 
-        # Update status
-        status = 'approved' if action == 'approve' else 'denied'
-        notes = request.args.get('notes', '')
-        updated = supabase_service.update_hours_status(hours_id, status, verifier_email, notes)
-        if not updated:
-            return jsonify({'error': 'Failed to update hours status'}), 500
-
-        # Optionally send confirmation email to verifier (non-blocking best-effort)
-        try:
-            if status == 'approved':
-                subject = f"Hours Approved — {student_profile.get('full_name','Student')}"
-                html_conf = render_email(
-                    'approval.html',
-                    subject=subject,
-                    preheader=f"Thanks for reviewing. Hours approved for {student_profile.get('full_name','Student')}",
-                    student_name=student_profile.get('full_name','Unknown'),
-                    activity=hours_data.get('description',''),
-                    hours=hours_data.get('hours',0),
-                    date=hours_data.get('date',''),
-                    verifier_email=verifier_email,
-                    approval_date=datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
-                )
-            else:
-                subject = f"Hours Denied — {student_profile.get('full_name','Student')}"
-                html_conf = render_email(
-                    'denial.html',
-                    subject=subject,
-                    preheader=f"Hours were denied for {student_profile.get('full_name','Student')}",
-                    student_name=student_profile.get('full_name','Unknown'),
-                    activity=hours_data.get('description',''),
-                    hours=hours_data.get('hours',0),
-                    date=hours_data.get('date',''),
-                    verifier_email=verifier_email,
-                    denial_date=datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'),
-                    notes=notes
-                )
-
-            msg = Message(subject, sender=app.config['MAIL_USERNAME'], recipients=[verifier_email])
-            msg.html = html_conf
-            mail.send(msg)
-        except Exception as e:
-            logger.warning(f"Failed to send confirmation email: {str(e)}")
-
-        # Notify student (best-effort)
-        try:
-            student_email = student_profile.get('email')
-            if student_email:
-                subject_s = f"Your Volunteer Hours Were {status.title()}"
-                html_s = render_email(
-                    'student_notification.html',
-                    subject=subject_s,
-                    preheader=f"Your hours have been {status}",
-                    student_name=student_profile.get('full_name','Student'),
-                    activity=hours_data.get('description',''),
-                    hours=hours_data.get('hours',0),
-                    date=hours_data.get('date',''),
-                    status=status,
-                    verifier_email=verifier_email,
-                    notes=notes
-                )
-                msg_s = Message(subject_s, sender=app.config['MAIL_USERNAME'], recipients=[student_email])
-                msg_s.html = html_s
-                mail.send(msg_s)
-        except Exception as e:
-            logger.warning(f"Failed to notify student: {str(e)}")
-
+        # Return data for verification page - NO EMAILS SENT HERE
         return jsonify({
             'success': True,
-            'message': f"Hours {status} successfully",
+            'message': 'Token verified successfully',
+            'hours_data': hours_data,
+            'student_profile': student_profile,
+            'action': action,
             'hours_id': hours_id,
-            'status': status,
             'verifier_email': verifier_email
-        }), 200
-
+        })
+        
     except Exception as e:
-        logger.error(f"Error verifying hours: {str(e)}")
+        logger.error(f"Error verifying hours token: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/api/email/test', methods=['GET'])
