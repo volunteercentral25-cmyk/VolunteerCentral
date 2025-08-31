@@ -3,6 +3,12 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('=== DASHBOARD API DEBUG START ===')
+    console.log('Environment variables check:', {
+      SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'SET' : 'NOT SET',
+      SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'SET' : 'NOT SET'
+    })
+    
     const supabase = createClient()
     
     // Get the current user
@@ -42,6 +48,16 @@ export async function GET(request: NextRequest) {
     console.log('Current user ID:', user.id)
     console.log('Current user email:', user.email)
     console.log('Supervised clubs:', supervisedClubs)
+
+    // Test simple query to verify Supabase is working
+    const { data: testQuery, error: testError } = await supabase
+      .from('profiles')
+      .select('id, full_name, email')
+      .eq('role', 'student')
+      .limit(1)
+    
+    console.log('Test query result:', testQuery)
+    console.log('Test query error:', testError)
 
     // If admin hasn't selected clubs yet, return basic data with club selection flag
     if (!supervisedClubs || supervisedClubs.length === 0) {
@@ -87,34 +103,85 @@ export async function GET(request: NextRequest) {
     console.log('Student filter:', studentFilter)
     console.log('Club IDs for opportunities:', clubIds)
 
+    // Test the filter manually
+    let testFilterQuery
+    if (supervisedClubNames.includes('NTHS')) {
+      testFilterQuery = supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .eq('role', 'student')
+        .eq('nths', true)
+    } else {
+      testFilterQuery = supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .eq('role', 'student')
+        .eq('id', '00000000-0000-0000-0000-000000000000')
+    }
+    
+    const { data: testFilterResult, error: testFilterError } = await testFilterQuery
+    console.log('Test filter result:', testFilterResult)
+    console.log('Test filter error:', testFilterError)
+
     // Get student count for supervised clubs
-    const { data: studentCount, error: studentCountError } = await supabase
-      .from('profiles')
-      .select('id', { count: 'exact' })
-      .eq('role', 'student')
-      .or(studentFilter)
+    let studentCountQuery
+    if (supervisedClubNames.includes('NTHS')) {
+      studentCountQuery = supabase
+        .from('profiles')
+        .select('id', { count: 'exact' })
+        .eq('role', 'student')
+        .eq('nths', true)
+    } else {
+      studentCountQuery = supabase
+        .from('profiles')
+        .select('id', { count: 'exact' })
+        .eq('role', 'student')
+        .eq('id', '00000000-0000-0000-0000-000000000000')
+    }
+    
+    const { data: studentCount, error: studentCountError } = await studentCountQuery
     
     if (studentCountError) {
       console.error('Error getting student count:', studentCountError)
     }
 
     console.log('Student count result:', studentCount)
+    console.log('Student count error:', studentCountError)
     console.log('Student count query details:', {
       role: 'student',
-      filter: studentFilter,
-      count: studentCount?.length || 0
+      filter: supervisedClubNames,
+      count: studentCount || 0
     })
 
     // Get student IDs for supervised clubs first
-    const { data: studentIds, error: studentIdsError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('role', 'student')
-      .or(studentFilter)
+    let studentIdsQuery
+    if (supervisedClubNames.includes('NTHS')) {
+      studentIdsQuery = supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'student')
+        .eq('nths', true)
+    } else {
+      studentIdsQuery = supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'student')
+        .eq('id', '00000000-0000-0000-0000-000000000000')
+    }
+    
+    const { data: studentIds, error: studentIdsError } = await studentIdsQuery
 
     if (studentIdsError) {
       console.error('Error getting student IDs:', studentIdsError)
     }
+
+    console.log('Student IDs result:', studentIds)
+    console.log('Student IDs error:', studentIdsError)
+    console.log('Student IDs query details:', {
+      role: 'student',
+      filter: supervisedClubNames,
+      count: studentIds?.length || 0
+    })
 
     const studentIdArray = studentIds?.map(s => s.id) || []
 
@@ -174,6 +241,22 @@ export async function GET(request: NextRequest) {
         .limit(5)
     ])
 
+    console.log('Query results:', {
+      opportunities: opportunitiesResult.data?.length || 0,
+      pendingHours: pendingHoursResult.data?.length || 0,
+      totalHours: totalHoursResult.data?.length || 0,
+      recentHours: recentHoursResult.data?.length || 0,
+      recentOpportunities: recentOpportunitiesResult.data?.length || 0
+    })
+
+    console.log('Query errors:', {
+      opportunities: opportunitiesResult.error,
+      pendingHours: pendingHoursResult.error,
+      totalHours: totalHoursResult.error,
+      recentHours: recentHoursResult.error,
+      recentOpportunities: recentOpportunitiesResult.error
+    })
+
     // Calculate counts manually
     const totalStudents = studentCount || 0
     const totalOpportunities = opportunitiesResult.data?.length || 0
@@ -219,5 +302,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Admin dashboard API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  } finally {
+    console.log('=== DASHBOARD API DEBUG END ===')
   }
 }
