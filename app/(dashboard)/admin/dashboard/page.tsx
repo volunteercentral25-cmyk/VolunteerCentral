@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ClubSelectionModal } from '@/components/profile'
+import AdminClubSelectionModal from '@/components/admin/AdminClubSelectionModal'
 import { isMobileDevice, isMobileViewport } from '@/lib/utils/mobileDetection'
 import { 
   Users,
@@ -24,10 +25,13 @@ import {
   CheckCircle,
   AlertCircle,
   Star,
-  Shield
+  Shield,
+  Download,
+  Settings
 } from 'lucide-react'
 
 interface DashboardData {
+  needsClubSelection: boolean
   stats: {
     totalStudents: number
     totalOpportunities: number
@@ -60,6 +64,14 @@ interface DashboardData {
       full_name: string
     }
   }>
+  supervisedClubs: Array<{
+    club_id: string
+    clubs: {
+      id: string
+      name: string
+      description: string
+    }
+  }>
   profile: any
 }
 
@@ -69,7 +81,9 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showClubModal, setShowClubModal] = useState(false)
+  const [showAdminClubModal, setShowAdminClubModal] = useState(false)
   const [clubModalChecked, setClubModalChecked] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -121,17 +135,21 @@ export default function AdminDashboard() {
       
       // Check if admin needs to complete club selection
       if (!clubModalChecked) {
-        try {
-          const clubResponse = await fetch('/api/student/clubs')
-          if (clubResponse.ok) {
-            const clubData = await clubResponse.json()
-            // Show modal if clubs_completed is false or null
-            if (!clubData.clubs_completed) {
-              setShowClubModal(true)
+        if (data.needsClubSelection) {
+          setShowAdminClubModal(true)
+        } else {
+          try {
+            const clubResponse = await fetch('/api/student/clubs')
+            if (clubResponse.ok) {
+              const clubData = await clubResponse.json()
+              // Show modal if clubs_completed is false or null
+              if (!clubData.clubs_completed) {
+                setShowClubModal(true)
+              }
             }
+          } catch (error) {
+            console.error('Error checking club status:', error)
           }
-        } catch (error) {
-          console.error('Error checking club status:', error)
         }
         setClubModalChecked(true)
       }
@@ -145,6 +163,85 @@ export default function AdminDashboard() {
     setShowClubModal(false)
     // Refresh dashboard data to get updated club information
     loadDashboardData()
+  }
+
+  const handleAdminClubModalComplete = () => {
+    setShowAdminClubModal(false)
+    // Refresh dashboard data to get updated club information
+    loadDashboardData()
+  }
+
+  const handleExportData = async () => {
+    setExporting(true)
+    try {
+      const response = await fetch('/api/admin/export-data')
+      if (!response.ok) {
+        throw new Error('Failed to export data')
+      }
+      
+      const data = await response.json()
+      
+      // Create CSV content
+      const csvContent = generateCSV(data)
+      
+      // Download the file
+      const blob = new Blob([csvContent], { type: 'text/csv' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `volunteer-data-${new Date().toISOString().split('T')[0]}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Error exporting data:', error)
+      setError('Failed to export data')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const generateCSV = (data: any) => {
+    let csv = ''
+
+    // Summary section
+    csv += 'SUMMARY\n'
+    csv += 'Total Students,Total Hours,Approved Hours,Pending Hours,Denied Hours,Total Opportunities,Total Registrations\n'
+    csv += `${data.summary.totalStudents},${data.summary.totalHours},${data.summary.approvedHours},${data.summary.pendingHours},${data.summary.deniedHours},${data.summary.totalOpportunities},${data.summary.totalRegistrations}\n\n`
+
+    // Students section
+    csv += 'STUDENTS\n'
+    csv += 'Name,Email,Student ID,Club,Joined Date\n'
+    data.students.forEach((student: any) => {
+      csv += `"${student.name}","${student.email}","${student.studentId}","${student.club}","${student.joinedDate}"\n`
+    })
+    csv += '\n'
+
+    // Volunteer Hours section
+    csv += 'VOLUNTEER HOURS\n'
+    csv += 'Student Name,Student Email,Student ID,Club,Hours,Date,Description,Status,Submitted Date,Verified Date,Verified By,Notes\n'
+    data.volunteerHours.forEach((hour: any) => {
+      csv += `"${hour.studentName}","${hour.studentEmail}","${hour.studentId}","${hour.club}",${hour.hours},"${hour.date}","${hour.description}","${hour.status}","${hour.submittedDate}","${hour.verifiedDate}","${hour.verifiedBy}","${hour.notes}"\n`
+    })
+    csv += '\n'
+
+    // Opportunities section
+    csv += 'OPPORTUNITIES\n'
+    csv += 'Title,Description,Date,Location,Club,Created Date\n'
+    data.opportunities.forEach((opp: any) => {
+      csv += `"${opp.title}","${opp.description}","${opp.date}","${opp.location}","${opp.club}","${opp.createdDate}"\n`
+    })
+    csv += '\n'
+
+    // Registrations section
+    csv += 'REGISTRATIONS\n'
+    csv += 'Student Name,Student Email,Student ID,Opportunity,Opportunity Date,Club,Status,Registered Date\n'
+    data.registrations.forEach((reg: any) => {
+      csv += `"${reg.studentName}","${reg.studentEmail}","${reg.studentId}","${reg.opportunity}","${reg.opportunityDate}","${reg.club}","${reg.status}","${reg.registeredDate}"\n`
+    })
+
+    return csv
   }
 
   const handleSignOut = async () => {
@@ -245,6 +342,13 @@ export default function AdminDashboard() {
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             Manage the volunteer system. Monitor students, opportunities, and volunteer hours.
           </p>
+          {dashboardData?.supervisedClubs && dashboardData.supervisedClubs.length > 0 && (
+            <div className="flex items-center justify-center gap-2 mt-4">
+              <Badge variant="outline" className="text-sm">
+                Supervising: {dashboardData.supervisedClubs.map(sc => sc.clubs.name).join(', ')}
+              </Badge>
+            </div>
+          )}
         </motion.div>
 
         {/* Stats Cards */}
@@ -300,7 +404,7 @@ export default function AdminDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Hours</p>
+                  <p className="text-sm font-medium text-gray-600">Total Approved Hours</p>
                   <p className="text-3xl font-bold text-purple-600">{dashboardData?.stats.totalHours || 0}</p>
                 </div>
                 <div className="p-3 bg-purple-100 rounded-full">
@@ -389,6 +493,45 @@ export default function AdminDashboard() {
               </Link>
             </CardContent>
           </Card>
+
+          <Card className="glass-effect border-0 shadow-xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Download className="h-5 w-5 text-green-600" />
+                Export Data
+              </CardTitle>
+              <CardDescription>Generate comprehensive spreadsheet with all student and volunteer data.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                onClick={handleExportData}
+                disabled={exporting}
+                className="w-full btn-primary"
+              >
+                {exporting ? 'Generating...' : 'Generate Spreadsheet'}
+                <Download className="h-4 w-4 ml-2" />
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-effect border-0 shadow-xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5 text-purple-600" />
+                Club Supervision
+              </CardTitle>
+              <CardDescription>Manage which clubs you supervise.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                onClick={() => setShowAdminClubModal(true)}
+                className="w-full btn-primary"
+              >
+                Manage Clubs
+                <Settings className="h-4 w-4 ml-2" />
+              </Button>
+            </CardContent>
+          </Card>
           </motion.div>
 
         {/* Recent Activity */}
@@ -470,6 +613,13 @@ export default function AdminDashboard() {
         onClose={() => setShowClubModal(false)}
         onComplete={handleClubModalComplete}
         userRole="admin"
+      />
+
+      {/* Admin Club Selection Modal */}
+      <AdminClubSelectionModal
+        isOpen={showAdminClubModal}
+        onClose={() => setShowAdminClubModal(false)}
+        onComplete={handleAdminClubModalComplete}
       />
     </div>
   )

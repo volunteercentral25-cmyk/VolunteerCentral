@@ -29,6 +29,32 @@ export async function GET(request: NextRequest) {
 
     console.log('Admin access confirmed')
 
+    // Get admin's supervised clubs
+    const { data: supervisedClubs, error: clubsError } = await supabase
+      .from('admin_club_supervision')
+      .select('club_id')
+      .eq('admin_id', user.id)
+
+    if (clubsError) {
+      console.error('Error getting supervised clubs:', clubsError)
+      return NextResponse.json({ error: 'Failed to get supervised clubs' }, { status: 500 })
+    }
+
+    // If admin hasn't selected clubs, return empty data
+    if (!supervisedClubs || supervisedClubs.length === 0) {
+      return NextResponse.json({
+        students: [],
+        pagination: {
+          page: 1,
+          limit: 20,
+          total: 0,
+          totalPages: 0
+        }
+      })
+    }
+
+    const clubIds = supervisedClubs.map(sc => sc.club_id)
+
     // Get URL parameters for pagination and search
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
@@ -38,79 +64,127 @@ export async function GET(request: NextRequest) {
 
     console.log('Parameters:', { page, limit, search, status })
 
-    // Use RPC functions to bypass RLS (these functions don't accept parameters)
-    const [hoursResult, countResult] = await Promise.all([
-      // Get hours with details
-      supabase.rpc('get_admin_hours_with_details'),
-      // Get total count
-      supabase.rpc('get_admin_hours_count')
-    ])
+    // Get hours for students in supervised clubs
+    let hoursQuery = supabase
+      .from('volunteer_hours')
+      .select(`
+        id,
+        hours,
+        date,
+        description,
+        status,
+        location,
+        verification_email,
+        verified_by,
+        verification_date,
+        verification_notes,
+        created_at,
+        student_id,
+        profiles!inner (
+          full_name,
+          email,
+          student_id,
+          clubs!inner (
+            id,
+            name
+          )
+        )
+      `)
+      .in('profiles.clubs.id', clubIds)
 
-    console.log('Hours result:', hoursResult)
-    console.log('Count result:', countResult)
-
-    if (hoursResult.error) {
-      console.error('Error getting hours:', hoursResult.error)
-      throw hoursResult.error
-    }
-
-    if (countResult.error) {
-      console.error('Error getting count:', countResult.error)
-      throw countResult.error
-    }
-
-    let hours = hoursResult.data || []
-    let totalCount = countResult.data || 0
-
-    // Apply client-side filtering
-    if (search) {
-      const searchLower = search.toLowerCase()
-      hours = hours.filter((hour: any) => 
-        hour.student_name?.toLowerCase().includes(searchLower) ||
-        hour.student_email?.toLowerCase().includes(searchLower) ||
-        hour.description?.toLowerCase().includes(searchLower) ||
-        hour.opportunity_title?.toLowerCase().includes(searchLower)
-      )
-    }
-
+    // Apply status filter
     if (status) {
-      hours = hours.filter((hour: any) => hour.status === status)
+      hoursQuery = hoursQuery.eq('status', status)
     }
 
-    // Apply pagination
-    const startIndex = (page - 1) * limit
-    const endIndex = startIndex + limit
-    const paginatedHours = hours.slice(startIndex, endIndex)
-    const filteredTotalCount = hours.length
+    // Apply search filter
+    if (search) {
+      hoursQuery = hoursQuery.or(`profiles.full_name.ilike.%${search}%,profiles.email.ilike.%${search}%,description.ilike.%${search}%`)
+    }
 
-    console.log('Filtered hours data:', paginatedHours)
-    console.log('Filtered total count:', filteredTotalCount)
+    const { data: hours, error: hoursError } = await hoursQuery
+
+    if (hoursError) {
+      console.error('Error getting hours:', hoursError)
+      return NextResponse.json({ error: 'Failed to get hours' }, { status: 500 })
+    }
+
+    console.log('Hours result:', hours)
 
     // Transform the data to match the expected interface
-    const transformedHours = paginatedHours.map((hour: any) => ({
+    const transformedHours = (hours || []).map((hour: any) => ({
       id: hour.id,
       hours: hour.hours,
       activity: hour.description || 'No description provided',
-      date: hour.created_at,
+      date: hour.date || hour.created_at,
       description: hour.description,
       status: hour.status,
-      location: 'N/A', // Add location field for frontend compatibility
+      location: hour.location || 'N/A',
       verification_email: hour.verification_email,
       verified_by: hour.verified_by,
       verification_date: hour.verification_date,
       verification_notes: hour.verification_notes,
       created_at: hour.created_at,
+      student_id: hour.student_id,
       profiles: {
-        full_name: hour.full_name,
-        email: hour.email,
-        student_id: hour.student_id_text
+        full_name: hour.profiles.full_name,
+        email: hour.profiles.email,
+        student_id: hour.profiles.student_id
       }
     }))
 
-    console.log('Transformed hours data:', transformedHours)
+    // Group hours by student
+    const studentsMap = new Map()
+    
+    transformedHours.forEach((hour) => {
+      const studentId = hour.student_id
+      const studentName = hour.profiles.full_name
+      const studentEmail = hour.profiles.email
+      const studentIdText = hour.profiles.student_id
+      
+      if (!studentsMap.has(studentId)) {
+        studentsMap.set(studentId, {
+          id: studentId,
+          full_name: studentName,
+          email: studentEmail,
+          student_id: studentIdText,
+          hours: [],
+          total_hours: 0,
+          pending_hours: 0,
+          approved_hours: 0,
+          denied_hours: 0
+        })
+      }
+      
+      const student = studentsMap.get(studentId)
+      student.hours.push(hour)
+      student.total_hours += hour.hours
+      
+      if (hour.status === 'pending') {
+        student.pending_hours += hour.hours
+      } else if (hour.status === 'approved') {
+        student.approved_hours += hour.hours
+      } else if (hour.status === 'denied') {
+        student.denied_hours += hour.hours
+      }
+    })
+
+    // Convert map to array and sort by student name
+    const students = Array.from(studentsMap.values()).sort((a, b) => 
+      a.full_name.localeCompare(b.full_name)
+    )
+
+    // Apply pagination to students
+    const startIndex = (page - 1) * limit
+    const endIndex = startIndex + limit
+    const paginatedStudents = students.slice(startIndex, endIndex)
+    const filteredTotalCount = students.length
+
+    console.log('Grouped students data:', paginatedStudents)
+    console.log('Filtered total count:', filteredTotalCount)
 
     const response = {
-      hours: transformedHours,
+      students: paginatedStudents,
       pagination: {
         page,
         limit,

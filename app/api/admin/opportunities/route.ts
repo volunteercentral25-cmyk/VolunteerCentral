@@ -22,6 +22,32 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
+    // Get admin's supervised clubs
+    const { data: supervisedClubs, error: clubsError } = await supabase
+      .from('admin_club_supervision')
+      .select('club_id')
+      .eq('admin_id', user.id)
+
+    if (clubsError) {
+      console.error('Error getting supervised clubs:', clubsError)
+      return NextResponse.json({ error: 'Failed to get supervised clubs' }, { status: 500 })
+    }
+
+    // If admin hasn't selected clubs, return empty data
+    if (!supervisedClubs || supervisedClubs.length === 0) {
+      return NextResponse.json({
+        opportunities: [],
+        pagination: {
+          page: 1,
+          limit: 20,
+          total: 0,
+          totalPages: 0
+        }
+      })
+    }
+
+    const clubIds = supervisedClubs.map(sc => sc.club_id)
+
     // Get URL parameters for pagination and search
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
@@ -44,6 +70,7 @@ export async function GET(request: NextRequest) {
           student_id
         )
       `, { count: 'exact' })
+      .in('club_id', clubIds)
 
     // Add search filter
     if (search) {

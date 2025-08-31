@@ -29,6 +29,32 @@ export async function GET(request: NextRequest) {
 
     console.log('Admin access confirmed')
 
+    // Get admin's supervised clubs
+    const { data: supervisedClubs, error: clubsError } = await supabase
+      .from('admin_club_supervision')
+      .select('club_id')
+      .eq('admin_id', user.id)
+
+    if (clubsError) {
+      console.error('Error getting supervised clubs:', clubsError)
+      return NextResponse.json({ error: 'Failed to get supervised clubs' }, { status: 500 })
+    }
+
+    // If admin hasn't selected clubs, return empty data
+    if (!supervisedClubs || supervisedClubs.length === 0) {
+      return NextResponse.json({
+        students: [],
+        pagination: {
+          page: 1,
+          limit: 20,
+          total: 0,
+          totalPages: 0
+        }
+      })
+    }
+
+    const clubIds = supervisedClubs.map(sc => sc.club_id)
+
     // Get URL parameters for pagination and search
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
@@ -39,88 +65,98 @@ export async function GET(request: NextRequest) {
 
     console.log('Parameters:', { page, limit, search, status, club })
 
-    // Use RPC functions to bypass RLS (these functions don't accept parameters)
-    console.log('Calling RPC functions...')
-    const [studentsResult, countResult] = await Promise.all([
-      // Get students with stats
-      supabase.rpc('get_admin_students_with_stats'),
-      // Get total count
-      supabase.rpc('get_admin_students_count')
-    ])
-    
-    console.log('RPC calls completed')
+    // Get students in supervised clubs with stats
+    let studentsQuery = supabase
+      .from('profiles')
+      .select(`
+        id,
+        full_name,
+        email,
+        student_id,
+        phone,
+        bio,
+        role,
+        created_at,
+        updated_at,
+        clubs!inner (
+          id,
+          name
+        )
+      `)
+      .eq('role', 'student')
+      .in('club_id', clubIds)
 
-    console.log('Students result:', studentsResult)
-    console.log('Count result:', countResult)
-
-    if (studentsResult.error) {
-      console.error('Error getting students:', studentsResult.error)
-      throw studentsResult.error
-    }
-
-    if (countResult.error) {
-      console.error('Error getting count:', countResult.error)
-      throw countResult.error
-    }
-
-    let students = studentsResult.data || []
-    let totalCount = countResult.data || 0
-
-    // Apply client-side filtering
+    // Apply search filter
     if (search) {
-      const searchLower = search.toLowerCase()
-      students = students.filter((student: any) => 
-        student.full_name?.toLowerCase().includes(searchLower) ||
-        student.email?.toLowerCase().includes(searchLower) ||
-        student.student_id?.toLowerCase().includes(searchLower)
-      )
+      studentsQuery = studentsQuery.or(`full_name.ilike.%${search}%,email.ilike.%${search}%,student_id.ilike.%${search}%`)
     }
 
+    // Apply club filter
     if (club) {
-      const clubLower = club.toLowerCase()
-      students = students.filter((student: any) => 
-        student.beta_club?.toLowerCase().includes(clubLower) ||
-        student.nths?.toLowerCase().includes(clubLower)
-      )
+      studentsQuery = studentsQuery.eq('clubs.name', club)
     }
+
+    const { data: students, error: studentsError } = await studentsQuery
+
+    if (studentsError) {
+      console.error('Error getting students:', studentsError)
+      return NextResponse.json({ error: 'Failed to get students' }, { status: 500 })
+    }
+
+    // Get volunteer hours for these students
+    const studentIds = students?.map(s => s.id) || []
+    const { data: volunteerHours, error: hoursError } = await supabase
+      .from('volunteer_hours')
+      .select('student_id, hours, status')
+      .in('student_id', studentIds)
+
+    if (hoursError) {
+      console.error('Error getting volunteer hours:', hoursError)
+    }
+
+    // Calculate stats for each student
+    const studentsWithStats = (students || []).map((student: any) => {
+      const studentHours = volunteerHours?.filter(h => h.student_id === student.id) || []
+      const totalHours = studentHours.reduce((sum, h) => sum + (h.hours || 0), 0)
+      const approvedHours = studentHours.filter(h => h.status === 'approved').reduce((sum, h) => sum + (h.hours || 0), 0)
+      const pendingHours = studentHours.filter(h => h.status === 'pending').reduce((sum, h) => sum + (h.hours || 0), 0)
+
+      return {
+        id: student.id,
+        full_name: student.full_name,
+        email: student.email,
+        student_id: student.student_id,
+        phone: student.phone,
+        bio: student.bio,
+        role: student.role,
+        created_at: student.created_at,
+        updated_at: student.updated_at,
+        club: student.clubs.name,
+        totalHours,
+        approvedHours,
+        pendingHours,
+        totalRegistrations: 0, // Will be calculated separately if needed
+        activeRegistrations: 0,
+        status: 'active'
+      }
+    })
 
     // Apply pagination
     const startIndex = (page - 1) * limit
     const endIndex = startIndex + limit
-    const paginatedStudents = students.slice(startIndex, endIndex)
-    const filteredTotalCount = students.length
-
-    console.log('Filtered students data:', paginatedStudents)
-    console.log('Filtered total count:', filteredTotalCount)
-
-    // Transform the data to match the expected interface
-    const studentsWithStats = paginatedStudents.map((student: any) => ({
-      id: student.id,
-      full_name: student.full_name,
-      email: student.email,
-      student_id: student.student_id,
-      phone: student.phone,
-      bio: student.bio,
-      role: student.role,
-      created_at: student.created_at,
-      updated_at: student.updated_at,
-      totalHours: student.total_hours || 0,
-      approvedHours: student.total_hours || 0, // All hours in the RPC are approved
-      pendingHours: 0, // We'll need to calculate this separately if needed
-      totalRegistrations: student.total_opportunities || 0,
-      activeRegistrations: student.total_opportunities || 0,
-      status: student.status || 'active'
-    }))
-
-    console.log('Transformed students data:', studentsWithStats)
+    const paginatedStudents = studentsWithStats.slice(startIndex, endIndex)
+    const totalCount = studentsWithStats.length
+    
+    console.log('Students data:', paginatedStudents)
+    console.log('Total count:', totalCount)
 
     const response = {
-      students: studentsWithStats,
+      students: paginatedStudents,
       pagination: {
         page,
         limit,
-        total: filteredTotalCount,
-        totalPages: Math.ceil(filteredTotalCount / limit)
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit)
       }
     }
 

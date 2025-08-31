@@ -22,8 +22,52 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
-    // Get student count using the proper function
-    const { data: studentCount, error: studentCountError } = await supabase.rpc('get_student_count')
+    // Get admin's supervised clubs
+    const { data: supervisedClubs, error: clubsError } = await supabase
+      .from('admin_club_supervision')
+      .select(`
+        club_id,
+        clubs!inner (
+          id,
+          name,
+          description
+        )
+      `)
+      .eq('admin_id', user.id)
+
+    if (clubsError) {
+      console.error('Error getting supervised clubs:', clubsError)
+    }
+
+    console.log('Supervised clubs:', supervisedClubs)
+
+    // If admin hasn't selected clubs yet, return basic data with club selection flag
+    if (!supervisedClubs || supervisedClubs.length === 0) {
+      return NextResponse.json({
+        needsClubSelection: true,
+        profile,
+        stats: {
+          totalStudents: 0,
+          totalOpportunities: 0,
+          pendingHours: 0,
+          totalHours: 0
+        },
+        recentHours: [],
+        recentOpportunities: [],
+        recentRegistrations: [],
+        supervisedClubs: []
+      })
+    }
+
+    // Get club IDs for filtering
+    const clubIds = supervisedClubs.map(sc => sc.club_id)
+
+    // Get student count for supervised clubs
+    const { data: studentCount, error: studentCountError } = await supabase
+      .from('profiles')
+      .select('id', { count: 'exact' })
+      .eq('role', 'student')
+      .in('club_id', clubIds)
     
     if (studentCountError) {
       console.error('Error getting student count:', studentCountError)
@@ -31,7 +75,7 @@ export async function GET(request: NextRequest) {
 
     console.log('Student count result:', studentCount)
 
-    // Fetch other statistics
+    // Fetch other statistics filtered by supervised clubs
     const [
       opportunitiesResult,
       pendingHoursResult,
@@ -39,24 +83,39 @@ export async function GET(request: NextRequest) {
       recentHoursResult,
       recentOpportunitiesResult
     ] = await Promise.all([
-      // Total opportunities
+      // Total opportunities for supervised clubs
       supabase
         .from('volunteer_opportunities')
-        .select('id'),
+        .select('id')
+        .in('club_id', clubIds),
       
-      // Pending hours
+      // Pending hours for students in supervised clubs
       supabase
         .from('volunteer_hours')
         .select('id')
-        .eq('status', 'pending'),
+        .eq('status', 'pending')
+        .in('student_id', 
+          supabase
+            .from('profiles')
+            .select('id')
+            .eq('role', 'student')
+            .in('club_id', clubIds)
+        ),
       
-      // Total approved hours
+      // Total approved hours for students in supervised clubs
       supabase
         .from('volunteer_hours')
         .select('hours')
-        .eq('status', 'approved'),
+        .eq('status', 'approved')
+        .in('student_id', 
+          supabase
+            .from('profiles')
+            .select('id')
+            .eq('role', 'student')
+            .in('club_id', clubIds)
+        ),
       
-      // Recent hours (last 7 days)
+      // Recent hours (last 7 days) for supervised clubs
       supabase
         .from('volunteer_hours')
         .select(`
@@ -67,20 +126,28 @@ export async function GET(request: NextRequest) {
           profiles!inner(full_name, email)
         `)
         .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+        .in('student_id', 
+          supabase
+            .from('profiles')
+            .select('id')
+            .eq('role', 'student')
+            .in('club_id', clubIds)
+        )
         .order('created_at', { ascending: false })
         .limit(10),
       
-      // Recent opportunities
+      // Recent opportunities for supervised clubs
       supabase
         .from('volunteer_opportunities')
         .select('*')
+        .in('club_id', clubIds)
         .gte('date', new Date().toISOString().split('T')[0])
         .order('date', { ascending: true })
         .limit(5)
     ])
 
     // Calculate counts manually
-    const totalStudents = studentCount?.[0]?.total_students || 0
+    const totalStudents = studentCount?.length || 0
     const totalOpportunities = opportunitiesResult.data?.length || 0
     const pendingHours = pendingHoursResult.data?.length || 0
     
@@ -93,19 +160,21 @@ export async function GET(request: NextRequest) {
     // Calculate total hours
     const totalHours = totalHoursResult.data?.reduce((sum, hour) => sum + (hour.hours || 0), 0) || 0
 
-    // Get opportunity registrations
+    // Get opportunity registrations for supervised clubs
     const { data: registrations } = await supabase
       .from('opportunity_registrations')
       .select(`
         id,
         status,
-        volunteer_opportunities!inner(title),
+        volunteer_opportunities!inner(title, club_id),
         profiles!inner(full_name)
       `)
+      .in('volunteer_opportunities.club_id', clubIds)
       .order('created_at', { ascending: false })
       .limit(10)
 
     return NextResponse.json({
+      needsClubSelection: false,
       stats: {
         totalStudents: totalStudents,
         totalOpportunities: totalOpportunities,
@@ -115,6 +184,7 @@ export async function GET(request: NextRequest) {
       recentHours: recentHoursResult.data || [],
       recentOpportunities: recentOpportunitiesResult.data || [],
       recentRegistrations: registrations || [],
+      supervisedClubs: supervisedClubs || [],
       profile
     })
   } catch (error) {

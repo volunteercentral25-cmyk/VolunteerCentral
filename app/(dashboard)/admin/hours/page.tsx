@@ -29,7 +29,9 @@ import {
   Activity,
   MapPin,
   Mail,
-  X
+  X,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 
 interface HourEntry {
@@ -45,6 +47,7 @@ interface HourEntry {
   verification_date?: string
   verification_notes?: string
   created_at: string
+  student_id: string
   profiles: {
     full_name: string
     email: string
@@ -52,8 +55,20 @@ interface HourEntry {
   }
 }
 
-interface HoursData {
+interface StudentData {
+  id: string
+  full_name: string
+  email: string
+  student_id: string
   hours: HourEntry[]
+  total_hours: number
+  pending_hours: number
+  approved_hours: number
+  denied_hours: number
+}
+
+interface HoursData {
+  students: StudentData[]
   pagination: {
     page: number
     limit: number
@@ -78,6 +93,7 @@ export default function AdminHours() {
     status: '',
     notes: ''
   })
+  const [expandedStudents, setExpandedStudents] = useState<Set<string>>(new Set())
   const router = useRouter()
   const supabase = createClient()
 
@@ -120,6 +136,10 @@ export default function AdminHours() {
       }
       const data = await response.json()
       setHoursData(data)
+      
+              // Expand all students by default
+        const studentIds = new Set<string>(data.students.map((student: StudentData) => student.id))
+        setExpandedStudents(studentIds)
     } catch (error) {
       console.error('Error loading hours:', error)
       setError('Failed to load hours')
@@ -194,6 +214,42 @@ export default function AdminHours() {
       setError(error instanceof Error ? error.message : 'Failed to update hours')
     } finally {
       setReviewing(false)
+    }
+  }
+
+  const toggleStudentExpansion = (studentId: string) => {
+    const newExpanded = new Set(expandedStudents)
+    if (newExpanded.has(studentId)) {
+      newExpanded.delete(studentId)
+    } else {
+      newExpanded.add(studentId)
+    }
+    setExpandedStudents(newExpanded)
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return <CheckCircle className="h-4 w-4 text-green-600" />
+      case 'pending':
+        return <Clock className="h-4 w-4 text-yellow-600" />
+      case 'denied':
+        return <XCircle className="h-4 w-4 text-red-600" />
+      default:
+        return <Activity className="h-4 w-4 text-gray-600" />
+    }
+  }
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return 'bg-green-100 text-green-800'
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'denied':
+        return 'bg-red-100 text-red-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
     }
   }
 
@@ -293,7 +349,7 @@ export default function AdminHours() {
             Review <span className="text-gradient">Volunteer Hours</span>
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Review and approve volunteer hours submitted by students. Ensure accuracy and maintain the integrity of the volunteer tracking system.
+            Review and approve volunteer hours submitted by students. Students are grouped with their hours listed below each name.
           </p>
         </motion.div>
 
@@ -351,7 +407,7 @@ export default function AdminHours() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
-                    placeholder="Search hours..."
+                    placeholder="Search students or activities..."
                     value={search}
                     onChange={(e) => handleSearch(e.target.value)}
                     className="pl-10"
@@ -370,113 +426,179 @@ export default function AdminHours() {
                   </select>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Clock className="h-4 w-4" />
-                  <span>{hoursData?.pagination.total || 0} hours</span>
+                  <User className="h-4 w-4" />
+                  <span>{hoursData?.pagination.total || 0} total requests</span>
                 </div>
               </div>
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Hours List */}
+        {/* Students List */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
         >
           <div className="grid gap-6">
-            {hoursData?.hours.length ? (
-              hoursData.hours.map((hour) => (
-                <Card key={hour.id} className="glass-effect border-0 shadow-xl">
+            {hoursData?.students.length ? (
+              hoursData.students.map((student) => (
+                <Card key={student.id} className="glass-effect border-0 shadow-xl">
                   <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-4">
-                        <div className={`p-3 rounded-full ${
-                          hour.status === 'approved' ? 'bg-green-100' :
-                          hour.status === 'pending' ? 'bg-yellow-100' :
-                          'bg-red-100'
-                        }`}>
-                          {hour.status === 'approved' ? (
-                            <CheckCircle className="h-6 w-6 text-green-600" />
-                          ) : hour.status === 'pending' ? (
-                            <Clock className="h-6 w-6 text-yellow-600" />
-                          ) : (
-                            <XCircle className="h-6 w-6 text-red-600" />
-                          )}
+                    {/* Student Header */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 rounded-full bg-blue-100">
+                          <User className="h-6 w-6 text-blue-600" />
                         </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-4 mb-2">
-                            <h3 className="text-lg font-semibold text-gray-900">{hour.activity}</h3>
-                            <Badge className={
-                              hour.status === 'approved' ? 'bg-green-100 text-green-800' :
-                              hour.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
-                            }>
-                              {hour.status}
-                            </Badge>
-                          </div>
-                          
-                          <p className="text-gray-600 mb-3">{hour.description}</p>
-                          
-                          <div className="flex items-center gap-6 text-sm text-gray-600 mb-3">
-                            <span className="flex items-center gap-1">
-                              <User className="h-4 w-4" />
-                              {hour.profiles.full_name}
-                            </span>
+                        <div>
+                          <h3 className="text-xl font-semibold text-gray-900">{student.full_name}</h3>
+                          <div className="flex items-center gap-4 text-sm text-gray-600">
                             <span className="flex items-center gap-1">
                               <Mail className="h-4 w-4" />
-                              {hour.profiles.email}
+                              {student.email}
                             </span>
                             <span className="flex items-center gap-1">
                               <Award className="h-4 w-4" />
-                              {hour.hours} hours
+                              {student.student_id}
                             </span>
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-4 w-4" />
-                              {new Date(hour.date).toLocaleDateString()}
-                            </span>
-                            {hour.location !== 'N/A' && (
-                              <span className="flex items-center gap-1">
-                                <MapPin className="h-4 w-4" />
-                                {hour.location}
-                              </span>
-                            )}
                           </div>
-
-                          {hour.verification_email && (
-                            <div className="text-sm text-gray-500 mb-2">
-                              <span className="font-medium">Verification Email:</span> {hour.verification_email}
-                            </div>
-                          )}
-
-                          {hour.verified_by && (
-                            <div className="text-sm text-gray-500">
-                              <span className="font-medium">Reviewed by:</span> {hour.verified_by} on {new Date(hour.verification_date!).toLocaleDateString()}
-                            </div>
-                          )}
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-2 ml-4">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <div className="text-sm text-gray-600">Total Hours</div>
+                          <div className="text-lg font-semibold text-gray-900">{student.total_hours}</div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => toggleStudentExpansion(student.id)}
                           className="btn-secondary"
-                          onClick={() => handleReviewHour(hour)}
                         >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Review
+                          {expandedStudents.has(student.id) ? (
+                            <ChevronUp className="h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4" />
+                          )}
                         </Button>
                       </div>
                     </div>
+
+                    {/* Hours Summary */}
+                    <div className="grid grid-cols-3 gap-4 mb-4">
+                      <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                        <div className="text-sm text-yellow-600 font-medium">Pending</div>
+                        <div className="text-lg font-semibold text-yellow-800">{student.pending_hours}</div>
+                      </div>
+                      <div className="text-center p-3 bg-green-50 rounded-lg">
+                        <div className="text-sm text-green-600 font-medium">Approved</div>
+                        <div className="text-lg font-semibold text-green-800">{student.approved_hours}</div>
+                      </div>
+                      <div className="text-center p-3 bg-red-50 rounded-lg">
+                        <div className="text-sm text-red-600 font-medium">Denied</div>
+                        <div className="text-lg font-semibold text-red-800">{student.denied_hours}</div>
+                      </div>
+                    </div>
+
+                    {/* Hours List */}
+                    {expandedStudents.has(student.id) && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="border-t pt-4"
+                      >
+                        <h4 className="text-lg font-semibold text-gray-900 mb-4">Volunteer Hours</h4>
+                        <div className="space-y-4">
+                          {student.hours.length ? (
+                            student.hours.map((hour) => (
+                              <Card key={hour.id} className="border border-gray-200">
+                                <CardContent className="p-4">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex items-start gap-3">
+                                      <div className={`p-2 rounded-full ${
+                                        hour.status === 'approved' ? 'bg-green-100' :
+                                        hour.status === 'pending' ? 'bg-yellow-100' :
+                                        'bg-red-100'
+                                      }`}>
+                                        {getStatusIcon(hour.status)}
+                                      </div>
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-3 mb-2">
+                                          <h5 className="font-semibold text-gray-900">{hour.activity}</h5>
+                                          <Badge className={getStatusBadgeColor(hour.status)}>
+                                            {hour.status}
+                                          </Badge>
+                                        </div>
+                                        
+                                        <p className="text-gray-600 mb-2">{hour.description}</p>
+                                        
+                                        <div className="flex items-center gap-4 text-sm text-gray-600">
+                                          <span className="flex items-center gap-1">
+                                            <Award className="h-4 w-4" />
+                                            {hour.hours} hours
+                                          </span>
+                                          <span className="flex items-center gap-1">
+                                            <Calendar className="h-4 w-4" />
+                                            {new Date(hour.date).toLocaleDateString()}
+                                          </span>
+                                          {hour.location !== 'N/A' && (
+                                            <span className="flex items-center gap-1">
+                                              <MapPin className="h-4 w-4" />
+                                              {hour.location}
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        {hour.verification_email && (
+                                          <div className="text-sm text-gray-500 mt-2">
+                                            <span className="font-medium">Verification Email:</span> {hour.verification_email}
+                                          </div>
+                                        )}
+
+                                        {hour.verified_by && (
+                                          <div className="text-sm text-gray-500">
+                                            <span className="font-medium">Reviewed by:</span> {hour.verified_by} on {new Date(hour.verification_date!).toLocaleDateString()}
+                                          </div>
+                                        )}
+                                      </div>
+                                      
+                                      <div className="flex items-center gap-2 ml-4">
+                                        <Button 
+                                          variant="outline" 
+                                          size="sm" 
+                                          className="btn-secondary"
+                                          onClick={() => handleReviewHour(hour)}
+                                        >
+                                          <Eye className="h-4 w-4 mr-1" />
+                                          Review
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))
+                          ) : (
+                            <div className="text-center py-8 text-gray-500">
+                              <Activity className="h-8 w-8 mx-auto mb-2" />
+                              <p>No volunteer hours found for this student.</p>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
                   </CardContent>
                 </Card>
               ))
             ) : (
               <Card className="glass-effect border-0 shadow-xl">
                 <CardContent className="p-12 text-center">
-                  <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No hours found</h3>
+                  <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No students found</h3>
                   <p className="text-gray-600">Try adjusting your search or filters.</p>
                 </CardContent>
               </Card>
