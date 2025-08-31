@@ -141,6 +141,29 @@ export default function AdminOpportunities() {
         throw new Error('Failed to load opportunities')
       }
       const data = await response.json()
+      
+      // Ensure data has the expected structure
+      if (!data || typeof data !== 'object') {
+        console.error('Invalid data structure received:', data)
+        setError('Invalid data structure received')
+        return
+      }
+      
+      // Ensure opportunities array exists
+      if (!Array.isArray(data.opportunities)) {
+        console.error('Opportunities array missing:', data)
+        setOpportunitiesData({
+          opportunities: [],
+          pagination: {
+            page: 1,
+            limit: 50,
+            total: 0,
+            totalPages: 0
+          }
+        })
+        return
+      }
+      
       setOpportunitiesData(data)
     } catch (error) {
       console.error('Error loading opportunities:', error)
@@ -488,7 +511,7 @@ export default function AdminOpportunities() {
                 </div>
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <Calendar className="h-4 w-4" />
-                  <span>{opportunitiesData?.pagination.total || 0} opportunities</span>
+                  <span>{opportunitiesData?.pagination?.total || 0} opportunities</span>
                 </div>
                 <Button 
                   onClick={() => setShowCreateForm(true)}
@@ -653,7 +676,7 @@ export default function AdminOpportunities() {
           transition={{ duration: 0.8, delay: 0.4 }}
         >
           <div className="grid gap-6">
-            {opportunitiesData?.opportunities.length ? (
+            {opportunitiesData && opportunitiesData.opportunities && opportunitiesData.opportunities.length > 0 ? (
               opportunitiesData.opportunities.map((opportunity) => {
                 // Ensure we have a valid opportunity with an id
                 if (!opportunity || !opportunity.id) {
@@ -674,21 +697,21 @@ export default function AdminOpportunities() {
                                 <Calendar className="h-6 w-6 text-green-600" />
                               </div>
                               <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-2">{opportunity.title}</h3>
-                                <p className="text-gray-600 mb-3">{opportunity.description}</p>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2">{opportunity.title || 'Untitled Opportunity'}</h3>
+                                <p className="text-gray-600 mb-3">{opportunity.description || 'No description available'}</p>
                                 
                                 <div className="flex items-center gap-6 text-sm text-gray-600 mb-3">
                                   <span className="flex items-center gap-1">
                                     <MapPin className="h-4 w-4" />
-                                    {opportunity.location}
+                                    {opportunity.location || 'Location not specified'}
                                   </span>
                                   <span className="flex items-center gap-1">
                                     <Clock className="h-4 w-4" />
-                                    {new Date(opportunity.date).toLocaleDateString()}
+                                    {opportunity.date ? new Date(opportunity.date).toLocaleDateString() : 'Date not specified'}
                                   </span>
                                   <span className="flex items-center gap-1">
                                     <Users className="h-4 w-4" />
-                                    {opportunity.start_time} - {opportunity.end_time}
+                                    {opportunity.start_time || 'TBD'} - {opportunity.end_time || 'TBD'}
                                   </span>
                                   <Badge className={getClubRestrictionColor(opportunity.club_restriction || 'anyone')}>
                                     {getClubRestrictionText(opportunity.club_restriction || 'anyone')}
@@ -697,15 +720,15 @@ export default function AdminOpportunities() {
 
                                 <div className="flex items-center gap-4 text-sm">
                                   <div className="text-center">
-                                    <p className="font-semibold text-green-600">{opportunity.confirmedRegistrations}</p>
+                                    <p className="font-semibold text-green-600">{opportunity.confirmedRegistrations || 0}</p>
                                     <p className="text-gray-500">Confirmed</p>
                                   </div>
                                   <div className="text-center">
-                                    <p className="font-semibold text-orange-600">{opportunity.pendingRegistrations}</p>
+                                    <p className="font-semibold text-orange-600">{opportunity.pendingRegistrations || 0}</p>
                                     <p className="text-gray-500">Pending</p>
                                   </div>
                                   <div className="text-center">
-                                    <p className="font-semibold text-purple-600">{opportunity.max_volunteers}</p>
+                                    <p className="font-semibold text-purple-600">{opportunity.max_volunteers || 10}</p>
                                     <p className="text-gray-500">Max Capacity</p>
                                   </div>
                                 </div>
@@ -733,7 +756,7 @@ export default function AdminOpportunities() {
                                 onClick={() => handleViewRegistrations(opportunity)}
                               >
                                 <Users className="h-4 w-4 mr-1" />
-                                View ({opportunity.totalRegistrations})
+                                View ({opportunity.totalRegistrations || 0})
                               </Button>
                               <Button variant="outline" size="sm" className="btn-secondary">
                                 <Edit className="h-4 w-4" />
@@ -770,7 +793,7 @@ export default function AdminOpportunities() {
         </motion.div>
 
         {/* Pagination */}
-        {opportunitiesData && opportunitiesData.pagination.totalPages > 1 && (
+        {opportunitiesData && opportunitiesData.pagination && opportunitiesData.pagination.totalPages > 1 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

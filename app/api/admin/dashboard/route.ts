@@ -357,73 +357,160 @@ export async function GET(request: NextRequest) {
       registrations = []
     }
 
-    // Ensure all data is properly serializable with string IDs
-    const serializedRecentHours = (recentHoursResult.data || []).map((hour: any) => ({
-      id: String(hour.id || ''),
-      hours: Number(hour.hours) || 0,
-      status: String(hour.status || ''),
-      created_at: String(hour.created_at || ''),
-      profiles: Array.isArray(hour.profiles) ? {
-        full_name: String((hour.profiles[0] as any)?.full_name || ''),
-        email: String((hour.profiles[0] as any)?.email || '')
-      } : {
-        full_name: String((hour.profiles as any)?.full_name || ''),
-        email: String((hour.profiles as any)?.email || '')
+    // Ensure all data is properly serializable with string IDs and safe defaults
+    const serializedRecentHours = (recentHoursResult.data || []).map((hour: any, index: number) => {
+      try {
+        return {
+          id: hour && hour.id ? String(hour.id) : `hour-${index}`,
+          hours: hour && typeof hour.hours === 'number' ? hour.hours : 0,
+          status: hour && hour.status ? String(hour.status) : 'unknown',
+          created_at: hour && hour.created_at ? String(hour.created_at) : '',
+          profiles: {
+            full_name: hour && hour.profiles && typeof hour.profiles === 'object' 
+              ? String(hour.profiles.full_name || 'Unknown Student')
+              : 'Unknown Student',
+            email: hour && hour.profiles && typeof hour.profiles === 'object'
+              ? String(hour.profiles.email || '')
+              : ''
+          }
+        };
+      } catch (error) {
+        console.error('Error serializing hour:', error, hour);
+        return {
+          id: `hour-${index}`,
+          hours: 0,
+          status: 'unknown',
+          created_at: '',
+          profiles: {
+            full_name: 'Unknown Student',
+            email: ''
+          }
+        };
       }
-    }))
+    });
 
-    const serializedRecentOpportunities = (recentOpportunitiesResult.data || []).map((opp: any) => ({
-      id: String(opp.id || ''),
-      title: String(opp.title || ''),
-      date: String(opp.date || ''),
-      location: String(opp.location || '')
-    }))
-
-    const serializedRegistrations = (registrations || []).map((reg: any) => ({
-      id: String(reg.id || ''),
-      status: String(reg.status || ''),
-      volunteer_opportunities: Array.isArray(reg.volunteer_opportunities) ? {
-        title: String((reg.volunteer_opportunities[0] as any)?.title || '')
-      } : {
-        title: String((reg.volunteer_opportunities as any)?.title || '')
-      },
-      profiles: Array.isArray(reg.profiles) ? {
-        full_name: String((reg.profiles[0] as any)?.full_name || '')
-      } : {
-        full_name: String((reg.profiles as any)?.full_name || '')
+    const serializedRecentOpportunities = (recentOpportunitiesResult.data || []).map((opp: any, index: number) => {
+      try {
+        return {
+          id: opp && opp.id ? String(opp.id) : `opp-${index}`,
+          title: opp && opp.title ? String(opp.title) : 'Unknown Opportunity',
+          date: opp && opp.date ? String(opp.date) : '',
+          location: opp && opp.location ? String(opp.location) : 'Unknown Location'
+        };
+      } catch (error) {
+        console.error('Error serializing opportunity:', error, opp);
+        return {
+          id: `opp-${index}`,
+          title: 'Unknown Opportunity',
+          date: '',
+          location: 'Unknown Location'
+        };
       }
-    }))
+    });
+
+    const serializedRegistrations = (registrations || []).map((reg: any, index: number) => {
+      try {
+        return {
+          id: reg && reg.id ? String(reg.id) : `reg-${index}`,
+          status: reg && reg.status ? String(reg.status) : 'unknown',
+          volunteer_opportunities: {
+            title: reg && reg.volunteer_opportunities && typeof reg.volunteer_opportunities === 'object'
+              ? String(reg.volunteer_opportunities.title || 'Unknown Opportunity')
+              : 'Unknown Opportunity'
+          },
+          profiles: {
+            full_name: reg && reg.profiles && typeof reg.profiles === 'object'
+              ? String(reg.profiles.full_name || 'Unknown Student')
+              : 'Unknown Student'
+          }
+        };
+      } catch (error) {
+        console.error('Error serializing registration:', error, reg);
+        return {
+          id: `reg-${index}`,
+          status: 'unknown',
+          volunteer_opportunities: {
+            title: 'Unknown Opportunity'
+          },
+          profiles: {
+            full_name: 'Unknown Student'
+          }
+        };
+      }
+    });
 
     const serializedProfile = profile ? {
       id: String(profile.id || ''),
       full_name: String(profile.full_name || ''),
       email: String(profile.email || ''),
       role: String(profile.role || '')
-    } : null
+    } : null;
 
-    // Ensure supervisedClubsWithDetails is also properly serialized
-    const serializedSupervisedClubs = supervisedClubsWithDetails.map((sc: any) => ({
-      club_id: String(sc.club_id || ''),
-      clubs: {
-        id: String(sc.clubs?.id || ''),
-        name: String(sc.clubs?.name || 'Unknown Club'),
-        description: String(sc.clubs?.description || '')
+    // Ensure supervisedClubsWithDetails is also properly serialized with safe defaults
+    const serializedSupervisedClubs = (supervisedClubsWithDetails || []).map((sc: any, index: number) => {
+      try {
+        return {
+          club_id: sc && sc.club_id ? String(sc.club_id) : `club-${index}`,
+          clubs: {
+            id: sc && sc.clubs && typeof sc.clubs === 'object' && sc.clubs.id 
+              ? String(sc.clubs.id) 
+              : String(sc.club_id || `club-${index}`),
+            name: sc && sc.clubs && typeof sc.clubs === 'object' && sc.clubs.name
+              ? String(sc.clubs.name)
+              : 'Unknown Club',
+            description: sc && sc.clubs && typeof sc.clubs === 'object' && sc.clubs.description
+              ? String(sc.clubs.description)
+              : ''
+          }
+        };
+      } catch (error) {
+        console.error('Error serializing supervised club:', error, sc);
+        return {
+          club_id: `club-${index}`,
+          clubs: {
+            id: `club-${index}`,
+            name: 'Unknown Club',
+            description: ''
+          }
+        };
       }
-    }))
+    });
 
     const responseData = {
       needsClubSelection: false,
       stats: {
-        totalStudents: totalStudents,
-        totalOpportunities: totalOpportunities,
-        pendingHours: pendingHours,
-        totalHours: totalHours
+        totalStudents: Number(totalStudents) || 0,
+        totalOpportunities: Number(totalOpportunities) || 0,
+        pendingHours: Number(pendingHours) || 0,
+        totalHours: Number(totalHours) || 0
       },
       recentHours: serializedRecentHours,
       recentOpportunities: serializedRecentOpportunities,
       recentRegistrations: serializedRegistrations,
       supervisedClubs: serializedSupervisedClubs,
       profile: serializedProfile
+    }
+
+    // Final safety check - ensure the entire response is serializable
+    try {
+      JSON.stringify(responseData);
+    } catch (error) {
+      console.error('Response data is not serializable:', error);
+      // Return a safe fallback response
+      return NextResponse.json({
+        needsClubSelection: false,
+        stats: {
+          totalStudents: 0,
+          totalOpportunities: 0,
+          pendingHours: 0,
+          totalHours: 0
+        },
+        recentHours: [],
+        recentOpportunities: [],
+        recentRegistrations: [],
+        supervisedClubs: [],
+        profile: serializedProfile
+      });
     }
 
     console.log('Final response data structure:', JSON.stringify(responseData, null, 2))

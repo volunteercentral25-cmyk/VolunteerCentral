@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Component, ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import MobileAdminLayout from '@/components/layout/mobile-admin-layout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,6 +17,51 @@ import {
   Activity
 } from 'lucide-react'
 import Link from 'next/link'
+
+// Error Boundary Component
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props)
+    this.state = { hasError: false }
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error('Error caught by boundary:', error, errorInfo)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <MobileAdminLayout currentPage="dashboard">
+          <Card className="border-0 shadow-lg">
+            <CardContent className="p-6 text-center">
+              <div className="text-red-500 mb-4">
+                <Activity className="h-8 w-8 mx-auto" />
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">Something went wrong</h2>
+              <p className="text-gray-600 mb-4">Please refresh the page and try again.</p>
+              <Button 
+                onClick={() => window.location.reload()} 
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Refresh Page
+              </Button>
+            </CardContent>
+          </Card>
+        </MobileAdminLayout>
+      )
+    }
+
+    return this.props.children
+  }
+}
 
 interface DashboardData {
   stats: {
@@ -113,7 +158,8 @@ export default function MobileAdminDashboard() {
   }
 
   return (
-    <MobileAdminLayout currentPage="dashboard">
+    <ErrorBoundary>
+      <MobileAdminLayout currentPage="dashboard">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -253,23 +299,35 @@ export default function MobileAdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-                             {dashboardData?.recentHours && dashboardData.recentHours.length ? (
-                 dashboardData.recentHours.slice(0, 3).map((hour) => {
-                   try {
-                     // Ensure the key is a string
-                     const key = typeof hour.id === 'string' ? hour.id : String(hour.id || '')
-                     return (
-                       <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              {dashboardData?.recentHours && dashboardData.recentHours.length ? (
+                dashboardData.recentHours.slice(0, 3).map((hour, index) => {
+                  try {
+                    // Ensure we're working with safe object structures
+                    const hourId = hour && typeof hour === 'object' && hour.id 
+                      ? String(hour.id) 
+                      : `hour-${index}`;
+                    const profileName = hour && typeof hour === 'object' && hour.profiles && typeof hour.profiles === 'object'
+                      ? hour.profiles.full_name || 'Unknown Student'
+                      : 'Unknown Student';
+                    const hoursValue = hour && typeof hour === 'object' && typeof hour.hours === 'number'
+                      ? hour.hours
+                      : 0;
+                    const status = hour && typeof hour === 'object' && hour.status
+                      ? String(hour.status)
+                      : 'unknown';
+                    
+                    return (
+                      <div key={hourId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div>
-                          <p className="font-medium text-gray-900 text-sm">{hour.profiles?.full_name || 'Unknown Student'}</p>
-                          <p className="text-xs text-gray-600">{hour.hours} hours</p>
+                          <p className="font-medium text-gray-900 text-sm">{profileName}</p>
+                          <p className="text-xs text-gray-600">{hoursValue} hours</p>
                         </div>
                         <Badge className={
-                          hour.status === 'approved' ? 'bg-green-100 text-green-800' :
-                          hour.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          status === 'approved' ? 'bg-green-100 text-green-800' :
+                          status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                           'bg-red-100 text-red-800'
                         }>
-                          {hour.status}
+                          {status}
                         </Badge>
                       </div>
                     );
@@ -295,19 +353,31 @@ export default function MobileAdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-                             {dashboardData?.recentOpportunities && dashboardData.recentOpportunities.length ? (
-                 dashboardData.recentOpportunities.slice(0, 3).map((opportunity) => {
-                   try {
-                     // Ensure the key is a string
-                     const key = typeof opportunity.id === 'string' ? opportunity.id : String(opportunity.id || '')
-                     return (
-                       <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              {dashboardData?.recentOpportunities && dashboardData.recentOpportunities.length ? (
+                dashboardData.recentOpportunities.slice(0, 3).map((opportunity, index) => {
+                  try {
+                    // Ensure we're working with safe object structures
+                    const oppId = opportunity && typeof opportunity === 'object' && opportunity.id 
+                      ? String(opportunity.id) 
+                      : `opportunity-${index}`;
+                    const title = opportunity && typeof opportunity === 'object' && opportunity.title
+                      ? String(opportunity.title)
+                      : 'Unknown Opportunity';
+                    const location = opportunity && typeof opportunity === 'object' && opportunity.location
+                      ? String(opportunity.location)
+                      : 'Unknown Location';
+                    const date = opportunity && typeof opportunity === 'object' && opportunity.date
+                      ? String(opportunity.date)
+                      : '';
+                    
+                    return (
+                      <div key={oppId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div>
-                          <p className="font-medium text-gray-900 text-sm">{opportunity.title}</p>
-                          <p className="text-xs text-gray-600">{opportunity.location}</p>
+                          <p className="font-medium text-gray-900 text-sm">{title}</p>
+                          <p className="text-xs text-gray-600">{location}</p>
                         </div>
                         <p className="text-xs text-gray-500">
-                          {new Date(opportunity.date).toLocaleDateString()}
+                          {date ? new Date(date).toLocaleDateString() : 'No date'}
                         </p>
                       </div>
                     );
@@ -324,5 +394,6 @@ export default function MobileAdminDashboard() {
         </Card>
       </motion.div>
     </MobileAdminLayout>
+  </ErrorBoundary>
   )
 }

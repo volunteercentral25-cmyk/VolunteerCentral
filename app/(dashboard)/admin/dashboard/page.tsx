@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Component, ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -29,6 +29,51 @@ import {
   Download,
   Settings
 } from 'lucide-react'
+
+// Error Boundary Component
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props)
+    this.state = { hasError: false }
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error('Error caught by boundary:', error, errorInfo)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen gradient-bg flex items-center justify-center">
+          <Card className="glass-effect border-0 shadow-xl">
+            <CardContent className="p-8 text-center">
+              <div className="text-red-500 mb-4">
+                <Activity className="h-12 w-12 mx-auto" />
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Something went wrong</h2>
+              <p className="text-gray-600 mb-4">Please refresh the page and try again.</p>
+              <Button 
+                onClick={() => window.location.reload()} 
+                className="btn-primary"
+              >
+                Refresh Page
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
+}
 
 interface DashboardData {
   needsClubSelection: boolean
@@ -325,73 +370,78 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen gradient-bg overflow-hidden">
-      {/* Decorative blobs */}
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute -top-32 -right-16 h-72 w-72 rounded-full bg-purple-300/70 blur-3xl animate-blob" />
-        <div className="absolute bottom-0 left-0 h-72 w-72 rounded-full bg-pink-300/60 blur-3xl animate-blob animation-delay-2000" />
-        <div className="absolute top-40 left-10 h-72 w-72 rounded-full bg-blue-300/60 blur-3xl animate-blob animation-delay-4000" />
-      </div>
+    <ErrorBoundary>
+      <div className="min-h-screen gradient-bg overflow-hidden">
+        {/* Decorative blobs */}
+        <div className="pointer-events-none absolute inset-0 -z-10">
+          <div className="absolute -top-32 -right-16 h-72 w-72 rounded-full bg-purple-300/70 blur-3xl animate-blob" />
+          <div className="absolute bottom-0 left-0 h-72 w-72 rounded-full bg-pink-300/60 blur-3xl animate-blob animation-delay-2000" />
+          <div className="absolute top-40 left-10 h-72 w-72 rounded-full bg-blue-300/60 blur-3xl animate-blob animation-delay-4000" />
+        </div>
 
-      {/* Header */}
-      <motion.header
-        initial={{ y: -24, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        className="sticky top-0 z-40 border-b border-white/30 bg-white/70 backdrop-blur-md"
-      >
-        <div className="mx-auto max-w-7xl px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/" className="flex items-center gap-3">
-                <Image src="/logo.png" alt="Volunteer Central Logo" width={32} height={32} className="rounded-lg shadow-glow" />
-                <div>
-                  <p className="text-sm font-semibold text-gradient">Volunteer Central</p>
-                  <p className="text-xs text-gray-600">Admin Dashboard</p>
-                </div>
-              </Link>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="hidden md:flex items-center gap-2 text-sm text-gray-600">
-                <User className="h-4 w-4" />
-                <span>{dashboardData?.profile?.full_name || 'Admin'}</span>
+        {/* Header */}
+        <motion.header
+          initial={{ y: -24, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.5 }}
+          className="sticky top-0 z-40 border-b border-white/30 bg-white/70 backdrop-blur-md"
+        >
+          <div className="mx-auto max-w-7xl px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Link href="/" className="flex items-center gap-3">
+                  <Image src="/logo.png" alt="Volunteer Central Logo" width={32} height={32} className="rounded-lg shadow-glow" />
+                  <div>
+                    <p className="text-sm font-semibold text-gradient">Volunteer Central</p>
+                    <p className="text-xs text-gray-600">Admin Dashboard</p>
+                  </div>
+                </Link>
               </div>
-              <Button 
-                onClick={handleSignOut}
-                variant="outline" 
-                className="btn-secondary btn-hover-effect"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </Button>
+              <div className="flex items-center gap-3">
+                <div className="hidden md:flex items-center gap-2 text-sm text-gray-600">
+                  <User className="h-4 w-4" />
+                  <span>{dashboardData?.profile?.full_name || 'Admin'}</span>
+                </div>
+                <Button 
+                  onClick={handleSignOut}
+                  variant="outline" 
+                  className="btn-secondary btn-hover-effect"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      </motion.header>
+        </motion.header>
 
-      <main className="mx-auto max-w-7xl px-4 py-8">
-        {/* Header Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="text-center mb-12"
-        >
-          <Badge className="mb-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white">
-            Admin Control Center
-          </Badge>
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            Admin <span className="text-gradient">Dashboard</span>
-          </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Manage the volunteer system. Monitor students, opportunities, and volunteer hours.
-          </p>
-          {dashboardData?.supervisedClubs && dashboardData.supervisedClubs.length > 0 && (
-            <div className="flex items-center justify-center gap-2 mt-4">
-              <Badge variant="outline" className="text-sm">
-                Supervising: {dashboardData.supervisedClubs.map(sc => {
-                  try {
-                    return sc.clubs?.name || 'Unknown Club';
+        <main className="mx-auto max-w-7xl px-4 py-8">
+          {/* Header Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="text-center mb-12"
+          >
+            <Badge className="mb-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white">
+              Admin Control Center
+            </Badge>
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+              Admin <span className="text-gradient">Dashboard</span>
+            </h1>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Manage the volunteer system. Monitor students, opportunities, and volunteer hours.
+            </p>
+            {dashboardData?.supervisedClubs && dashboardData.supervisedClubs.length > 0 && (
+              <div className="flex items-center justify-center gap-2 mt-4">
+                <Badge variant="outline" className="text-sm">
+                  Supervising: {dashboardData.supervisedClubs.map((sc, index) => {
+                    try {
+                      // Ensure we're working with a safe object structure
+                      const clubName = sc && typeof sc === 'object' && sc.clubs && typeof sc.clubs === 'object' 
+                        ? sc.clubs.name || 'Unknown Club'
+                        : 'Unknown Club';
+                    return clubName;
                   } catch (error) {
                     console.error('Error accessing club name:', error, sc);
                     return 'Unknown Club';
@@ -604,22 +654,34 @@ export default function AdminDashboard() {
             <CardContent>
               <div className="space-y-4">
                 {dashboardData?.recentHours && dashboardData.recentHours.length ? (
-                  dashboardData.recentHours.map((hour) => {
+                  dashboardData.recentHours.map((hour, index) => {
                     try {
-                      // Ensure the key is a string
-                      const key = typeof hour.id === 'string' ? hour.id : String(hour.id || '')
+                      // Ensure we're working with safe object structures
+                      const hourId = hour && typeof hour === 'object' && hour.id 
+                        ? String(hour.id) 
+                        : `hour-${index}`;
+                      const profileName = hour && typeof hour === 'object' && hour.profiles && typeof hour.profiles === 'object'
+                        ? hour.profiles.full_name || 'Unknown Student'
+                        : 'Unknown Student';
+                      const hoursValue = hour && typeof hour === 'object' && typeof hour.hours === 'number'
+                        ? hour.hours
+                        : 0;
+                      const status = hour && typeof hour === 'object' && hour.status
+                        ? String(hour.status)
+                        : 'unknown';
+                      
                       return (
-                        <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div key={hourId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                           <div>
-                            <p className="font-medium text-gray-900">{hour.profiles?.full_name || 'Unknown Student'}</p>
-                            <p className="text-sm text-gray-600">{hour.hours} hours</p>
+                            <p className="font-medium text-gray-900">{profileName}</p>
+                            <p className="text-sm text-gray-600">{hoursValue} hours</p>
                           </div>
                           <Badge className={
-                            hour.status === 'approved' ? 'bg-green-100 text-green-800' :
-                            hour.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            status === 'approved' ? 'bg-green-100 text-green-800' :
+                            status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                             'bg-red-100 text-red-800'
                           }>
-                            {hour.status}
+                            {status}
                           </Badge>
                         </div>
                       );
@@ -647,18 +709,30 @@ export default function AdminDashboard() {
             <CardContent>
               <div className="space-y-4">
                 {dashboardData?.recentOpportunities && dashboardData.recentOpportunities.length ? (
-                  dashboardData.recentOpportunities.map((opportunity) => {
+                  dashboardData.recentOpportunities.map((opportunity, index) => {
                     try {
-                      // Ensure the key is a string
-                      const key = typeof opportunity.id === 'string' ? opportunity.id : String(opportunity.id || '')
+                      // Ensure we're working with safe object structures
+                      const oppId = opportunity && typeof opportunity === 'object' && opportunity.id 
+                        ? String(opportunity.id) 
+                        : `opportunity-${index}`;
+                      const title = opportunity && typeof opportunity === 'object' && opportunity.title
+                        ? String(opportunity.title)
+                        : 'Unknown Opportunity';
+                      const location = opportunity && typeof opportunity === 'object' && opportunity.location
+                        ? String(opportunity.location)
+                        : 'Unknown Location';
+                      const date = opportunity && typeof opportunity === 'object' && opportunity.date
+                        ? String(opportunity.date)
+                        : '';
+                      
                       return (
-                        <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div key={oppId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                           <div>
-                            <p className="font-medium text-gray-900">{opportunity.title}</p>
-                            <p className="text-sm text-gray-600">{opportunity.location}</p>
+                            <p className="font-medium text-gray-900">{title}</p>
+                            <p className="text-sm text-gray-600">{location}</p>
                           </div>
                           <p className="text-sm text-gray-500">
-                            {new Date(opportunity.date).toLocaleDateString()}
+                            {date ? new Date(date).toLocaleDateString() : 'No date'}
                           </p>
                         </div>
                       );
@@ -691,5 +765,6 @@ export default function AdminDashboard() {
         onComplete={handleAdminClubModalComplete}
       />
     </div>
+    </ErrorBoundary>
   )
 }
