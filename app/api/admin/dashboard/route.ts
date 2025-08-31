@@ -374,9 +374,10 @@ export async function GET(request: NextRequest) {
     const totalHours = totalHoursResult.data?.reduce((sum: number, hour: any) => sum + (hour.hours || 0), 0) || 0
 
     // Get opportunity registrations for supervised clubs - handle missing table gracefully
-    let registrations = null
+    let registrations: any[] = []
     try {
-      const { data: regData } = await supabase
+      // First get registrations for club-specific opportunities
+      const { data: clubRegs } = await supabase
         .from('opportunity_registrations')
         .select(`
           id,
@@ -384,11 +385,29 @@ export async function GET(request: NextRequest) {
           volunteer_opportunities!inner(title, club_id, club_restriction),
           profiles!inner(full_name)
         `)
-        .or(`volunteer_opportunities.club_id.in.(${clubIds.map(id => `"${id}"`).join(',')}),volunteer_opportunities.club_restriction.eq.anyone`)
+        .in('volunteer_opportunities.club_id', clubIds)
         .order('registered_at', { ascending: false })
         .limit(10)
+
+      // Then get registrations for opportunities open to all
+      const { data: openRegs } = await supabase
+        .from('opportunity_registrations')
+        .select(`
+          id,
+          status,
+          volunteer_opportunities!inner(title, club_id, club_restriction),
+          profiles!inner(full_name)
+        `)
+        .eq('volunteer_opportunities.club_restriction', 'anyone')
+        .order('registered_at', { ascending: false })
+        .limit(10)
+
+      // Combine and deduplicate
+      const allRegs = [...(clubRegs || []), ...(openRegs || [])]
+      registrations = allRegs.filter((reg, index, self) => 
+        index === self.findIndex(r => r.id === reg.id)
+      ).slice(0, 10) // Keep only the first 10
       
-      registrations = regData
     } catch (error) {
       console.error('Error accessing opportunity_registrations table:', error)
       registrations = []
@@ -445,7 +464,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    const serializedRegistrations = (registrations || []).map((reg: any, index: number) => {
+    const serializedRegistrations = registrations.map((reg: any, index: number) => {
       try {
         return {
           id: reg && reg.id ? String(reg.id) : `reg-${index}`,

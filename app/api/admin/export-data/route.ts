@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     // Get the current user
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError || !user) {
-      console.log('User not authenticated')
+      console.log('User not authenticated:', userError)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       .single()
 
     if (profileError || !profile || profile.role !== 'admin') {
-      console.log('User not admin:', profile?.role)
+      console.log('User not admin:', profile?.role, 'Error:', profileError)
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
@@ -37,7 +37,10 @@ export async function GET(request: NextRequest) {
 
     if (clubsError) {
       console.error('Error getting supervised clubs:', clubsError)
+      return NextResponse.json({ error: 'Failed to get supervised clubs' }, { status: 500 })
     }
+
+    console.log('Supervised clubs found:', supervisedClubs?.length || 0)
 
     // If admin hasn't selected clubs yet, return empty data
     if (!supervisedClubs || supervisedClubs.length === 0) {
@@ -69,11 +72,13 @@ export async function GET(request: NextRequest) {
     
     if (clubNamesError) {
       console.error('Error getting club names:', clubNamesError)
+      return NextResponse.json({ error: 'Failed to get club names' }, { status: 500 })
     }
     
     const supervisedClubNames = clubNames?.map(c => c.name) || []
-
     console.log('Supervised club names:', supervisedClubNames)
+
+    // Get all students in supervised clubs with their details
 
     // Get all students in supervised clubs with their details
     console.log('Fetching students...')
