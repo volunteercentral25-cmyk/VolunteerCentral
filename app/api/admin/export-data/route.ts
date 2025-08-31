@@ -170,14 +170,14 @@ export async function GET(request: NextRequest) {
         name: student.full_name,
         email: student.email,
         studentId: student.student_id,
-        club: student.clubs.name,
+        club: student.clubs[0]?.name || 'Unknown',
         joinedDate: new Date(student.created_at).toLocaleDateString()
       })),
       volunteerHours: volunteerHours.map(hour => ({
         studentName: hour.profiles.full_name,
         studentEmail: hour.profiles.email,
         studentId: hour.profiles.student_id,
-        club: hour.profiles.clubs.name,
+        club: hour.profiles.clubs[0]?.name || 'Unknown',
         hours: hour.hours,
         date: hour.date,
         description: hour.description,
@@ -192,7 +192,7 @@ export async function GET(request: NextRequest) {
         description: opp.description,
         date: opp.date,
         location: opp.location,
-        club: opp.clubs.name,
+        club: opp.clubs[0]?.name || 'Unknown',
         createdDate: new Date(opp.created_at).toLocaleDateString()
       })),
       registrations: registrations.map(reg => ({
@@ -201,7 +201,7 @@ export async function GET(request: NextRequest) {
         studentId: reg.profiles.student_id,
         opportunity: reg.volunteer_opportunities.title,
         opportunityDate: reg.volunteer_opportunities.date,
-        club: reg.volunteer_opportunities.clubs.name,
+        club: reg.volunteer_opportunities.clubs[0]?.name || 'Unknown',
         status: reg.status,
         registeredDate: new Date(reg.created_at).toLocaleDateString()
       }))
