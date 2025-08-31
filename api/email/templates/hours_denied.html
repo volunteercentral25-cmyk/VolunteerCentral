@@ -1,178 +1,60 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Volunteer Hours Denied</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f8f9fa;
-        }
-        .container {
-            background-color: white;
-            border-radius: 10px;
-            padding: 30px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .logo {
-            width: 80px;
-            height: 80px;
-            margin-bottom: 20px;
-        }
-        .title {
-            color: #dc2626;
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        .subtitle {
-            color: #6b7280;
-            font-size: 16px;
-        }
-        .content {
-            margin-bottom: 30px;
-        }
-        .hours-details {
-            background-color: #fef2f2;
-            border: 2px solid #fecaca;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-        }
-        .detail-label {
-            font-weight: 600;
-            color: #374151;
-        }
-        .detail-value {
-            color: #6b7280;
-        }
-        .denied-badge {
-            background-color: #fee2e2;
-            color: #991b1b;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 600;
-            display: inline-block;
-            margin: 10px 0;
-        }
-        .footer {
-            text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #e5e7eb;
-            color: #6b7280;
-            font-size: 14px;
-        }
-        .button {
-            display: inline-block;
-            background-color: #dc2626;
-            color: white;
-            padding: 12px 24px;
-            text-decoration: none;
-            border-radius: 6px;
-            margin: 20px 0;
-            font-weight: 600;
-        }
-        .reason-box {
-            background-color: #fef3c7;
-            border: 2px solid #fbbf24;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-        .next-steps {
-            background-color: #eff6ff;
-            border: 1px solid #dbeafe;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <img src="{{logo_url}}" alt="Volunteer Central Logo" class="logo">
-            <div class="title">Hours Denied</div>
-            <div class="subtitle">Your volunteer hours submission was not approved</div>
-        </div>
+{% extends "base.html" %}
 
-        <div class="content">
-            <p>Hello {{student_name}},</p>
-            
-            <p>We regret to inform you that your volunteer hours submission has been denied. Please review the details below.</p>
+{% block content %}
+<div class="card">
+    <h2 style="color: #dc2626; margin-top: 0;">Hours Denied</h2>
+    <p>Hello {{student_name}},</p>
+    
+    <p>We regret to inform you that your volunteer hours have been denied. Please review the details below.</p>
 
-            <div class="denied-badge">❌ DENIED</div>
-
-            <div class="hours-details">
-                <div class="detail-row">
-                    <span class="detail-label">Activity:</span>
-                    <span class="detail-value">{{activity}}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Date:</span>
-                    <span class="detail-value">{{date}}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Hours:</span>
-                    <span class="detail-value">{{hours}} hours</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Description:</span>
-                    <span class="detail-value">{{description}}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Denied by:</span>
-                    <span class="detail-value">{{admin_name}}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Denied on:</span>
-                    <span class="detail-value">{{verification_date}}</span>
-                </div>
-            </div>
-
-            <div class="reason-box">
-                <p><strong>Reason for Denial:</strong></p>
-                <p>{{notes}}</p>
-            </div>
-
-            <div class="next-steps">
-                <p><strong>What you can do:</strong></p>
-                <ul>
-                    <li>Review the reason for denial</li>
-                    <li>Contact your administrator if you believe this is an error</li>
-                    <li>Submit new hours with corrected information</li>
-                    <li>Ensure all required documentation is included</li>
-                </ul>
-            </div>
-
-            <p>If you have any questions about this decision, please contact your administrator for clarification.</p>
-
-            <div style="text-align: center;">
-                <a href="{{dashboard_url}}" class="button">View Dashboard</a>
-            </div>
-        </div>
-
-        <div class="footer">
-            <p>This email was sent from Volunteer Central</p>
-            <p>If you have any questions, please contact your administrator</p>
-        </div>
+    <div style="background-color: #fee2e2; color: #991b1b; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; display: inline-block; margin: 10px 0;">
+        ❌ DENIED
     </div>
-</body>
-</html>
+
+    <table class="data">
+        <tr>
+            <td class="key">Activity:</td>
+            <td>{{activity}}</td>
+        </tr>
+        <tr>
+            <td class="key">Date:</td>
+            <td>{{date}}</td>
+        </tr>
+        <tr>
+            <td class="key">Hours:</td>
+            <td>{{hours}} hours</td>
+        </tr>
+        <tr>
+            <td class="key">Description:</td>
+            <td>{{description}}</td>
+        </tr>
+        <tr>
+            <td class="key">Denied by:</td>
+            <td>{{admin_name}}</td>
+        </tr>
+        <tr>
+            <td class="key">Denied on:</td>
+            <td>{{verification_date}}</td>
+        </tr>
+    </table>
+
+    <div style="background-color: #fef3c7; border: 2px solid #fbbf24; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <h3 style="margin-top: 0; color: #92400e;">Reason for Denial:</h3>
+        <p style="margin-bottom: 0;">{{notes}}</p>
+    </div>
+
+    <div style="background-color: #eff6ff; border: 2px solid #dbeafe; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <h3 style="margin-top: 0; color: #1d4ed8;">Next Steps:</h3>
+        <ul style="margin-bottom: 0;">
+            <li>Review the reason for denial</li>
+            <li>Gather additional documentation if needed</li>
+            <li>Resubmit your hours with proper documentation</li>
+            <li>Contact your administrator if you have questions</li>
+        </ul>
+    </div>
+
+    <div class="btn-row">
+        <a href="{{dashboard_url}}" class="btn">View Dashboard</a>
+    </div>
+</div>
+{% endblock %}

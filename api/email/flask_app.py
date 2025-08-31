@@ -16,7 +16,7 @@ from premailer import transform
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../../public', static_url_path='')
 CORS(app)
 
 # Configuration - Properly access Vercel environment variables
@@ -34,8 +34,8 @@ SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
 FRONTEND_URL = os.getenv('NEXT_PUBLIC_APP_URL', 'http://localhost:3000')
 SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')
 
-# Logo URL for email templates
-LOGO_URL = os.getenv('LOGO_URL', 'https://volunteer-central-flax.vercel.app/cata-logo.png')
+# Logo URL for email templates - needs to be an absolute URL for email compatibility
+LOGO_URL = os.getenv('LOGO_URL', f'{FRONTEND_URL}/logo.png')
 
 # Log environment variable status for debugging
 logger.info(f"Environment variables status:")
@@ -48,14 +48,13 @@ logger.info(f"  NEXT_PUBLIC_SUPABASE_URL: {'set' if os.getenv('NEXT_PUBLIC_SUPAB
 logger.info(f"  SUPABASE_URL: {'set' if SUPABASE_URL else 'not set'}")
 logger.info(f"  SUPABASE_SERVICE_ROLE_KEY: {'set' if SUPABASE_SERVICE_KEY else 'not set'}")
 logger.info(f"  NEXT_PUBLIC_APP_URL: {'set' if os.getenv('NEXT_PUBLIC_APP_URL') else 'not set'}")
-logger.info(f"  LOGO_URL: {'set' if os.getenv('LOGO_URL') else 'not set (using default)'}")
+logger.info(f"  LOGO_URL: {'set' if os.getenv('LOGO_URL') else f'not set (using {FRONTEND_URL}/logo.png)'}")
 
 mail = Mail(app)
 
 # Template rendering with CSS inlining
 def render_email(template_name: str, **context) -> str:
-    # Add logo URL to all templates
-    context['logo_url'] = LOGO_URL
+    # Add dashboard URL to all templates
     context['dashboard_url'] = FRONTEND_URL
     
     try:
@@ -1022,7 +1021,9 @@ def health_check():
             'NEXT_PUBLIC_APP_URL': 'set' if os.getenv('NEXT_PUBLIC_APP_URL') else 'not set',
             'LOGO_URL': 'set' if os.getenv('LOGO_URL') else 'not set',
             'SECRET_KEY': 'set' if os.getenv('SECRET_KEY') else 'not set'
-        }
+        },
+        'logo_url': LOGO_URL,
+        'logo_url_is_absolute': LOGO_URL.startswith('http')
     }), 200
 
 @app.route('/', methods=['GET'])

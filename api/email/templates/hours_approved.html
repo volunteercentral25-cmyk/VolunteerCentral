@@ -1,174 +1,59 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Volunteer Hours Approved</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f8f9fa;
-        }
-        .container {
-            background-color: white;
-            border-radius: 10px;
-            padding: 30px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .logo {
-            width: 80px;
-            height: 80px;
-            margin-bottom: 20px;
-        }
-        .title {
-            color: #059669;
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        .subtitle {
-            color: #6b7280;
-            font-size: 16px;
-        }
-        .content {
-            margin-bottom: 30px;
-        }
-        .hours-details {
-            background-color: #f0fdf4;
-            border: 2px solid #bbf7d0;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-        }
-        .detail-label {
-            font-weight: 600;
-            color: #374151;
-        }
-        .detail-value {
-            color: #6b7280;
-        }
-        .approved-badge {
-            background-color: #d1fae5;
-            color: #065f46;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 600;
-            display: inline-block;
-            margin: 10px 0;
-        }
-        .footer {
-            text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #e5e7eb;
-            color: #6b7280;
-            font-size: 14px;
-        }
-        .button {
-            display: inline-block;
-            background-color: #059669;
-            color: white;
-            padding: 12px 24px;
-            text-decoration: none;
-            border-radius: 6px;
-            margin: 20px 0;
-            font-weight: 600;
-        }
-        .total-hours {
-            background-color: #eff6ff;
-            border: 2px solid #dbeafe;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-            text-align: center;
-        }
-        .total-hours-number {
-            font-size: 32px;
-            font-weight: bold;
-            color: #1d4ed8;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <img src="{{logo_url}}" alt="Volunteer Central Logo" class="logo">
-            <div class="title">Hours Approved!</div>
-            <div class="subtitle">Your volunteer hours have been approved</div>
-        </div>
+{% extends "base.html" %}
 
-        <div class="content">
-            <p>Hello {{student_name}},</p>
-            
-            <p>Great news! Your volunteer hours have been approved. Thank you for your service to the community!</p>
+{% block content %}
+<div class="card">
+    <h2 style="color: #059669; margin-top: 0;">Hours Approved!</h2>
+    <p>Hello {{student_name}},</p>
+    
+    <p>Great news! Your volunteer hours have been approved. Thank you for your service to the community!</p>
 
-            <div class="approved-badge">✅ APPROVED</div>
-
-            <div class="hours-details">
-                <div class="detail-row">
-                    <span class="detail-label">Activity:</span>
-                    <span class="detail-value">{{activity}}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Date:</span>
-                    <span class="detail-value">{{date}}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Hours:</span>
-                    <span class="detail-value">{{hours}} hours</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Description:</span>
-                    <span class="detail-value">{{description}}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Approved by:</span>
-                    <span class="detail-value">{{admin_name}}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Approved on:</span>
-                    <span class="detail-value">{{verification_date}}</span>
-                </div>
-            </div>
-
-            <div class="total-hours">
-                <p><strong>Your Total Volunteer Hours:</strong></p>
-                <div class="total-hours-number">{{total_hours}}</div>
-                <p>hours</p>
-            </div>
-
-            <p><strong>What this means:</strong></p>
-            <ul>
-                <li>Your hours have been officially recorded</li>
-                <li>They count toward your volunteer service requirements</li>
-                <li>You can view them in your dashboard</li>
-                <li>Keep up the great work!</li>
-            </ul>
-
-            <div style="text-align: center;">
-                <a href="{{dashboard_url}}" class="button">View Dashboard</a>
-            </div>
-        </div>
-
-        <div class="footer">
-            <p>This email was sent from Volunteer Central</p>
-            <p>If you have any questions, please contact your administrator</p>
-        </div>
+    <div style="background-color: #d1fae5; color: #065f46; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; display: inline-block; margin: 10px 0;">
+        ✅ APPROVED
     </div>
-</body>
-</html>
+
+    <table class="data">
+        <tr>
+            <td class="key">Activity:</td>
+            <td>{{activity}}</td>
+        </tr>
+        <tr>
+            <td class="key">Date:</td>
+            <td>{{date}}</td>
+        </tr>
+        <tr>
+            <td class="key">Hours:</td>
+            <td>{{hours}} hours</td>
+        </tr>
+        <tr>
+            <td class="key">Description:</td>
+            <td>{{description}}</td>
+        </tr>
+        <tr>
+            <td class="key">Approved by:</td>
+            <td>{{admin_name}}</td>
+        </tr>
+        <tr>
+            <td class="key">Approved on:</td>
+            <td>{{verification_date}}</td>
+        </tr>
+    </table>
+
+    <div style="background-color: #eff6ff; border: 2px solid #dbeafe; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
+        <p><strong>Your Total Volunteer Hours:</strong></p>
+        <div style="font-size: 32px; font-weight: bold; color: #1d4ed8;">{{total_hours}}</div>
+        <p>hours</p>
+    </div>
+
+    <p><strong>What this means:</strong></p>
+    <ul>
+        <li>Your hours have been officially recorded</li>
+        <li>They count toward your volunteer service requirements</li>
+        <li>You can view them in your dashboard</li>
+        <li>Keep up the great work!</li>
+    </ul>
+
+    <div class="btn-row">
+        <a href="{{dashboard_url}}" class="btn">View Dashboard</a>
+    </div>
+</div>
+{% endblock %}
