@@ -253,11 +253,13 @@ export default function MobileAdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {dashboardData?.recentHours && dashboardData.recentHours.length ? (
-                dashboardData.recentHours.slice(0, 3).map((hour) => {
-                  try {
-                    return (
-                      <div key={hour.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                             {dashboardData?.recentHours && dashboardData.recentHours.length ? (
+                 dashboardData.recentHours.slice(0, 3).map((hour) => {
+                   try {
+                     // Ensure the key is a string
+                     const key = typeof hour.id === 'string' ? hour.id : String(hour.id || '')
+                     return (
+                       <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div>
                           <p className="font-medium text-gray-900 text-sm">{hour.profiles?.full_name || 'Unknown Student'}</p>
                           <p className="text-xs text-gray-600">{hour.hours} hours</p>
@@ -293,11 +295,13 @@ export default function MobileAdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {dashboardData?.recentOpportunities && dashboardData.recentOpportunities.length ? (
-                dashboardData.recentOpportunities.slice(0, 3).map((opportunity) => {
-                  try {
-                    return (
-                      <div key={opportunity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                             {dashboardData?.recentOpportunities && dashboardData.recentOpportunities.length ? (
+                 dashboardData.recentOpportunities.slice(0, 3).map((opportunity) => {
+                   try {
+                     // Ensure the key is a string
+                     const key = typeof opportunity.id === 'string' ? opportunity.id : String(opportunity.id || '')
+                     return (
+                       <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div>
                           <p className="font-medium text-gray-900 text-sm">{opportunity.title}</p>
                           <p className="text-xs text-gray-600">{opportunity.location}</p>

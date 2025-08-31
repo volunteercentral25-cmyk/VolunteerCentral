@@ -606,8 +606,10 @@ export default function AdminDashboard() {
                 {dashboardData?.recentHours && dashboardData.recentHours.length ? (
                   dashboardData.recentHours.map((hour) => {
                     try {
+                      // Ensure the key is a string
+                      const key = typeof hour.id === 'string' ? hour.id : String(hour.id || '')
                       return (
-                        <div key={hour.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                           <div>
                             <p className="font-medium text-gray-900">{hour.profiles?.full_name || 'Unknown Student'}</p>
                             <p className="text-sm text-gray-600">{hour.hours} hours</p>
@@ -647,8 +649,10 @@ export default function AdminDashboard() {
                 {dashboardData?.recentOpportunities && dashboardData.recentOpportunities.length ? (
                   dashboardData.recentOpportunities.map((opportunity) => {
                     try {
+                      // Ensure the key is a string
+                      const key = typeof opportunity.id === 'string' ? opportunity.id : String(opportunity.id || '')
                       return (
-                        <div key={opportunity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                           <div>
                             <p className="font-medium text-gray-900">{opportunity.title}</p>
                             <p className="text-sm text-gray-600">{opportunity.location}</p>

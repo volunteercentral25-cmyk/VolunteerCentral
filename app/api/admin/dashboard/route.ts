@@ -54,17 +54,17 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Combine the data - ensure all objects are properly serializable
+    // Combine the data - ensure all objects are properly serializable with string IDs
     const supervisedClubsWithDetails = supervisedClubs?.map(sc => {
       const clubDetail = clubDetails.find(c => c.id === sc.club_id)
       return {
-        club_id: sc.club_id,
+        club_id: String(sc.club_id || ''),
         clubs: clubDetail ? {
-          id: clubDetail.id,
-          name: clubDetail.name,
-          description: clubDetail.description
+          id: String(clubDetail.id || ''),
+          name: String(clubDetail.name || ''),
+          description: String(clubDetail.description || '')
         } : {
-          id: sc.club_id,
+          id: String(sc.club_id || ''),
           name: 'Unknown Club',
           description: ''
         }
@@ -325,34 +325,48 @@ export async function GET(request: NextRequest) {
       .order('registered_at', { ascending: false })
       .limit(10)
 
-    // Ensure all data is properly serializable
+    // Ensure all data is properly serializable with string IDs
     const serializedRecentHours = (recentHoursResult.data || []).map(hour => ({
-      id: hour.id,
-      hours: hour.hours,
-      status: hour.status,
-      created_at: hour.created_at,
-      profiles: Array.isArray(hour.profiles) ? hour.profiles[0] : hour.profiles
+      id: String(hour.id || ''),
+      hours: Number(hour.hours) || 0,
+      status: String(hour.status || ''),
+      created_at: String(hour.created_at || ''),
+      profiles: Array.isArray(hour.profiles) ? {
+        full_name: String((hour.profiles[0] as any)?.full_name || ''),
+        email: String((hour.profiles[0] as any)?.email || '')
+      } : {
+        full_name: String((hour.profiles as any)?.full_name || ''),
+        email: String((hour.profiles as any)?.email || '')
+      }
     }))
 
     const serializedRecentOpportunities = (recentOpportunitiesResult.data || []).map(opp => ({
-      id: opp.id,
-      title: opp.title,
-      date: opp.date,
-      location: opp.location
+      id: String(opp.id || ''),
+      title: String(opp.title || ''),
+      date: String(opp.date || ''),
+      location: String(opp.location || '')
     }))
 
     const serializedRegistrations = (registrations || []).map(reg => ({
-      id: reg.id,
-      status: reg.status,
-      volunteer_opportunities: Array.isArray(reg.volunteer_opportunities) ? reg.volunteer_opportunities[0] : reg.volunteer_opportunities,
-      profiles: Array.isArray(reg.profiles) ? reg.profiles[0] : reg.profiles
+      id: String(reg.id || ''),
+      status: String(reg.status || ''),
+      volunteer_opportunities: Array.isArray(reg.volunteer_opportunities) ? {
+        title: String((reg.volunteer_opportunities[0] as any)?.title || '')
+      } : {
+        title: String((reg.volunteer_opportunities as any)?.title || '')
+      },
+      profiles: Array.isArray(reg.profiles) ? {
+        full_name: String((reg.profiles[0] as any)?.full_name || '')
+      } : {
+        full_name: String((reg.profiles as any)?.full_name || '')
+      }
     }))
 
     const serializedProfile = profile ? {
-      id: profile.id,
-      full_name: profile.full_name,
-      email: profile.email,
-      role: profile.role
+      id: String(profile.id || ''),
+      full_name: String(profile.full_name || ''),
+      email: String(profile.email || ''),
+      role: String(profile.role || '')
     } : null
 
     const responseData = {
@@ -371,6 +385,8 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('Final response data structure:', JSON.stringify(responseData, null, 2))
+    console.log('Recent hours IDs:', serializedRecentHours.map(h => ({ id: h.id, type: typeof h.id })))
+    console.log('Recent opportunities IDs:', serializedRecentOpportunities.map(o => ({ id: o.id, type: typeof o.id })))
 
     return NextResponse.json(responseData)
   } catch (error) {
