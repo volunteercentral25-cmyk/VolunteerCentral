@@ -65,6 +65,33 @@ export async function GET(request: NextRequest) {
     console.log('Parameters:', { page, limit, search, status })
 
     // Get hours for students in supervised clubs
+    // First, get the student IDs that are in supervised clubs
+    const { data: studentIds, error: studentIdsError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('role', 'student')
+      .or('beta_club.eq.true,nths.eq.true')
+
+    if (studentIdsError) {
+      console.error('Error getting student IDs:', studentIdsError)
+      return NextResponse.json({ error: 'Failed to get student IDs' }, { status: 500 })
+    }
+
+    if (!studentIds || studentIds.length === 0) {
+      return NextResponse.json({
+        students: [],
+        pagination: {
+          page: 1,
+          limit: 20,
+          total: 0,
+          totalPages: 0
+        }
+      })
+    }
+
+    const studentIdArray = studentIds.map(s => s.id)
+
+    // Now get hours for these students
     let hoursQuery = supabase
       .from('volunteer_hours')
       .select(`
@@ -78,16 +105,9 @@ export async function GET(request: NextRequest) {
         verification_date,
         verification_notes,
         created_at,
-        student_id,
-        profiles!inner (
-          full_name,
-          email,
-          student_id,
-          beta_club,
-          nths
-        )
+        student_id
       `)
-      .or('profiles.beta_club.eq.true,profiles.nths.eq.true')
+      .in('student_id', studentIdArray)
 
     // Apply status filter
     if (status) {
@@ -96,7 +116,7 @@ export async function GET(request: NextRequest) {
 
     // Apply search filter
     if (search) {
-      hoursQuery = hoursQuery.or(`profiles.full_name.ilike.%${search}%,profiles.email.ilike.%${search}%,description.ilike.%${search}%`)
+      hoursQuery = hoursQuery.ilike('description', `%${search}%`)
     }
 
     const { data: hours, error: hoursError } = await hoursQuery
@@ -108,26 +128,46 @@ export async function GET(request: NextRequest) {
 
     console.log('Hours result:', hours)
 
+    // Get student profiles separately
+    const { data: studentProfiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, student_id')
+      .in('id', studentIdArray)
+
+    if (profilesError) {
+      console.error('Error getting student profiles:', profilesError)
+      return NextResponse.json({ error: 'Failed to get student profiles' }, { status: 500 })
+    }
+
+    // Create a map of student profiles
+    const studentProfileMap = new Map()
+    studentProfiles?.forEach(profile => {
+      studentProfileMap.set(profile.id, profile)
+    })
+
     // Transform the data to match the expected interface
-    const transformedHours = (hours || []).map((hour: any) => ({
-      id: hour.id,
-      hours: hour.hours,
-      activity: hour.description || 'No description provided',
-      date: hour.date || hour.created_at,
-      description: hour.description,
-      status: hour.status,
-      verification_email: hour.verification_email,
-      verified_by: hour.verified_by,
-      verification_date: hour.verification_date,
-      verification_notes: hour.verification_notes,
-      created_at: hour.created_at,
-      student_id: hour.student_id,
-      profiles: {
-        full_name: hour.profiles.full_name,
-        email: hour.profiles.email,
-        student_id: hour.profiles.student_id
+    const transformedHours = (hours || []).map((hour: any) => {
+      const studentProfile = studentProfileMap.get(hour.student_id)
+      return {
+        id: hour.id,
+        hours: hour.hours,
+        activity: hour.description || 'No description provided',
+        date: hour.date || hour.created_at,
+        description: hour.description,
+        status: hour.status,
+        verification_email: hour.verification_email,
+        verified_by: hour.verified_by,
+        verification_date: hour.verification_date,
+        verification_notes: hour.verification_notes,
+        created_at: hour.created_at,
+        student_id: hour.student_id,
+        profiles: {
+          full_name: studentProfile?.full_name || 'Unknown',
+          email: studentProfile?.email || 'Unknown',
+          student_id: studentProfile?.student_id || 'Unknown'
+        }
       }
-    }))
+    })
 
     // Group hours by student
     const studentsMap = new Map()
