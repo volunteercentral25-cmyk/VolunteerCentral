@@ -469,8 +469,12 @@ export default function AdminStudents() {
         >
           <div className="grid gap-6">
             {studentsData?.students.length ? (
-              studentsData.students.map((student) => (
-                <Card key={student.id} className="glass-effect border-0 shadow-xl hover:shadow-2xl transition-shadow">
+              studentsData.students.map((student) => {
+                try {
+                  // Ensure the key is a string
+                  const key = typeof student.id === 'string' ? student.id : String(student.id || '')
+                  return (
+                    <Card key={key} className="glass-effect border-0 shadow-xl hover:shadow-2xl transition-shadow">
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-4 flex-1">
@@ -566,7 +570,12 @@ export default function AdminStudents() {
                     </div>
                   </CardContent>
                 </Card>
-              ))
+              );
+            } catch (error) {
+              console.error('Error rendering student:', error, student);
+              return null;
+            }
+          })
             ) : (
               <Card className="glass-effect border-0 shadow-xl">
                 <CardContent className="p-12 text-center">

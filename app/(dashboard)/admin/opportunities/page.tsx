@@ -654,8 +654,12 @@ export default function AdminOpportunities() {
         >
           <div className="grid gap-6">
             {opportunitiesData?.opportunities.length ? (
-              opportunitiesData.opportunities.map((opportunity) => (
-                <Card key={opportunity.id} className="glass-effect border-0 shadow-xl">
+              opportunitiesData.opportunities.map((opportunity) => {
+                try {
+                  // Ensure the key is a string
+                  const key = typeof opportunity.id === 'string' ? opportunity.id : String(opportunity.id || '')
+                  return (
+                    <Card key={key} className="glass-effect border-0 shadow-xl">
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -741,7 +745,12 @@ export default function AdminOpportunities() {
                     </div>
                   </CardContent>
                 </Card>
-              ))
+              );
+            } catch (error) {
+              console.error('Error rendering opportunity:', error, opportunity);
+              return null;
+            }
+          })
             ) : (
               <Card className="glass-effect border-0 shadow-xl">
                 <CardContent className="p-12 text-center">
@@ -834,8 +843,12 @@ export default function AdminOpportunities() {
               ) : registrations.length > 0 ? (
                 <div className="space-y-4">
 
-                  {registrations.map((registration) => (
-                    <Card key={registration.id} className="border border-gray-200">
+                  {registrations.map((registration) => {
+                    try {
+                      // Ensure the key is a string
+                      const key = typeof registration.id === 'string' ? registration.id : String(registration.id || '')
+                      return (
+                        <Card key={key} className="border border-gray-200">
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
@@ -893,7 +906,12 @@ export default function AdminOpportunities() {
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
+                  );
+                } catch (error) {
+                  console.error('Error rendering registration:', error, registration);
+                  return null;
+                }
+              })
                 </div>
               ) : (
                 <div className="text-center py-12">

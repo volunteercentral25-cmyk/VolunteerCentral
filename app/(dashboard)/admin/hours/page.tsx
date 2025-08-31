@@ -441,8 +441,12 @@ export default function AdminHours() {
         >
           <div className="grid gap-6">
             {hoursData?.students.length ? (
-              hoursData.students.map((student) => (
-                <Card key={student.id} className="glass-effect border-0 shadow-xl">
+              hoursData.students.map((student) => {
+                try {
+                  // Ensure the key is a string
+                  const key = typeof student.id === 'string' ? student.id : String(student.id || '')
+                  return (
+                    <Card key={key} className="glass-effect border-0 shadow-xl">
                   <CardContent className="p-6">
                     {/* Student Header */}
                     <div className="flex items-center justify-between mb-4">
@@ -513,8 +517,12 @@ export default function AdminHours() {
                         <h4 className="text-lg font-semibold text-gray-900 mb-4">Volunteer Hours</h4>
                         <div className="space-y-4">
                           {student.hours.length ? (
-                            student.hours.map((hour) => (
-                              <Card key={hour.id} className="border border-gray-200">
+                            student.hours.map((hour) => {
+                              try {
+                                // Ensure the key is a string
+                                const hourKey = typeof hour.id === 'string' ? hour.id : String(hour.id || '')
+                                return (
+                                  <Card key={hourKey} className="border border-gray-200">
                                 <CardContent className="p-4">
                                   <div className="flex items-start justify-between">
                                     <div className="flex items-start gap-3">
@@ -574,7 +582,12 @@ export default function AdminHours() {
                                   </div>
                                 </CardContent>
                               </Card>
-                            ))
+                            );
+                          } catch (error) {
+                            console.error('Error rendering hour:', error, hour);
+                            return null;
+                          }
+                        })
                           ) : (
                             <div className="text-center py-8 text-gray-500">
                               <Activity className="h-8 w-8 mx-auto mb-2" />
@@ -586,7 +599,12 @@ export default function AdminHours() {
                     )}
                   </CardContent>
                 </Card>
-              ))
+              );
+            } catch (error) {
+              console.error('Error rendering student:', error, student);
+              return null;
+            }
+          })
             ) : (
               <Card className="glass-effect border-0 shadow-xl">
                 <CardContent className="p-12 text-center">

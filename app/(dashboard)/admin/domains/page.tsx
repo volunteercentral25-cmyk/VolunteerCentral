@@ -412,8 +412,12 @@ export default function AdminDomains() {
         >
           <div className="grid gap-6">
             {domainsData?.domains.length ? (
-              domainsData.domains.map((domain) => (
-                <Card key={domain.id} className="glass-effect border-0 shadow-xl">
+              domainsData.domains.map((domain) => {
+                try {
+                  // Ensure the key is a string
+                  const key = typeof domain.id === 'string' ? domain.id : String(domain.id || '')
+                  return (
+                    <Card key={key} className="glass-effect border-0 shadow-xl">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
@@ -473,7 +477,12 @@ export default function AdminDomains() {
                     </div>
                   </CardContent>
                 </Card>
-              ))
+              );
+            } catch (error) {
+              console.error('Error rendering domain:', error, domain);
+              return null;
+            }
+          })
             ) : (
               <Card className="glass-effect border-0 shadow-xl">
                 <CardContent className="p-12 text-center">
