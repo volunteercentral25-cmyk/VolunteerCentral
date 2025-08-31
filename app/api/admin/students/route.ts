@@ -3,11 +3,14 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('=== STUDENTS API DEBUG START ===')
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const search = searchParams.get('search') || ''
     const club = searchParams.get('club') || ''
+
+    console.log('Request parameters:', { page, limit, search, club })
 
     const supabase = createClient()
     
@@ -34,18 +37,29 @@ export async function GET(request: NextRequest) {
 
     console.log('Admin access confirmed')
 
-    // Get admin's supervised clubs
-    const { data: supervisedClubs, error: clubsError } = await supabase
-      .from('admin_club_supervision')
-      .select('club_id')
-      .eq('admin_id', user.id)
+    // Get admin's supervised clubs - handle missing table gracefully
+    let supervisedClubs = null
+    let clubsError = null
+    try {
+      const { data: clubsData, error: clubsErr } = await supabase
+        .from('admin_club_supervision')
+        .select('club_id')
+        .eq('admin_id', user.id)
+      
+      supervisedClubs = clubsData
+      clubsError = clubsErr
+    } catch (error) {
+      console.error('Error accessing admin_club_supervision table:', error)
+      clubsError = error
+    }
 
     if (clubsError) {
       console.error('Error getting supervised clubs:', clubsError)
     }
 
-    // If admin hasn't selected clubs yet, return empty data
+    // If admin hasn't selected clubs yet or table doesn't exist, return empty data
     if (!supervisedClubs || supervisedClubs.length === 0) {
+      console.log('No supervised clubs found, returning empty data')
       return NextResponse.json({
         students: [],
         pagination: {
@@ -59,12 +73,23 @@ export async function GET(request: NextRequest) {
 
     // Get club IDs for filtering
     const clubIds = supervisedClubs.map(sc => sc.club_id)
+    console.log('Club IDs:', clubIds)
     
-    // Get the names of supervised clubs to filter students properly
-    const { data: clubNames, error: clubNamesError } = await supabase
-      .from('clubs')
-      .select('id, name')
-      .in('id', clubIds)
+    // Get the names of supervised clubs to filter students properly - handle missing table gracefully
+    let clubNames = null
+    let clubNamesError = null
+    try {
+      const { data: namesData, error: namesErr } = await supabase
+        .from('clubs')
+        .select('id, name')
+        .in('id', clubIds)
+      
+      clubNames = namesData
+      clubNamesError = namesErr
+    } catch (error) {
+      console.error('Error accessing clubs table:', error)
+      clubNamesError = error
+    }
     
     if (clubNamesError) {
       console.error('Error getting club names:', clubNamesError)
@@ -73,32 +98,21 @@ export async function GET(request: NextRequest) {
     const supervisedClubNames = clubNames?.map(c => c.name) || []
     console.log('Supervised club names:', supervisedClubNames)
 
-    // Build the correct filter based on supervised clubs
-    let studentFilter = ''
-    if (supervisedClubNames.includes('Beta Club')) {
-      studentFilter += 'beta_club.eq.true'
-    }
-    if (supervisedClubNames.includes('NTHS')) {
-      if (studentFilter) studentFilter += ','
-      studentFilter += 'nths.eq.true'
-    }
-    
-    // If no clubs selected, use empty filter
-    if (!studentFilter) {
-      studentFilter = 'id.eq.00000000-0000-0000-0000-000000000000' // Impossible ID
+    // Safety check - if no club names found, return empty data
+    if (supervisedClubNames.length === 0) {
+      console.log('No club names found, returning empty data')
+      return NextResponse.json({
+        students: [],
+        pagination: {
+          page: page,
+          limit: limit,
+          total: 0,
+          totalPages: 0
+        }
+      })
     }
 
-    console.log('Student filter:', studentFilter)
-
-    // Get URL parameters for pagination and search
-    // const { searchParams } = new URL(request.url)
-    // const page = parseInt(searchParams.get('page') || '1')
-    // const limit = parseInt(searchParams.get('limit') || '20')
-    // const search = searchParams.get('search') || ''
-    // const status = searchParams.get('status') || ''
-    // const club = searchParams.get('club') || ''
-
-    console.log('Parameters:', { page, limit, search, status, club })
+    console.log('Parameters:', { page, limit, search, club })
 
     // Get students in supervised clubs with stats
     let studentsQuery = supabase
@@ -117,22 +131,21 @@ export async function GET(request: NextRequest) {
         nths
       `)
       .eq('role', 'student')
-      .or(studentFilter)
 
-    // Apply search filter
-    if (search) {
-      studentsQuery = studentsQuery.or(`full_name.ilike.%${search}%,email.ilike.%${search}%,student_id.ilike.%${search}%`)
+    // Apply club filter based on supervised clubs
+    if (supervisedClubNames.includes('Beta Club') && supervisedClubNames.includes('NTHS')) {
+      studentsQuery = studentsQuery.or('beta_club.eq.true,nths.eq.true')
+    } else if (supervisedClubNames.includes('Beta Club')) {
+      studentsQuery = studentsQuery.eq('beta_club', true)
+    } else if (supervisedClubNames.includes('NTHS')) {
+      studentsQuery = studentsQuery.eq('nths', true)
+    } else {
+      // If no clubs selected, return empty result
+      studentsQuery = studentsQuery.eq('id', '00000000-0000-0000-0000-000000000000')
     }
 
-    // Apply club filter
-    if (club) {
-      if (club === 'Beta Club') {
-        studentsQuery = studentsQuery.eq('beta_club', true)
-      } else if (club === 'NTHS') {
-        studentsQuery = studentsQuery.eq('nths', true)
-      }
-    }
-
+    console.log('Executing students query...')
+    // Execute the base query first
     const { data: students, error: studentsError } = await studentsQuery
 
     if (studentsError) {
@@ -140,8 +153,33 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to get students' }, { status: 500 })
     }
 
+    console.log('Students found:', students?.length || 0)
+
+    // Apply search filter in memory if needed
+    let filteredStudents = students || []
+    if (search) {
+      filteredStudents = filteredStudents.filter((student: any) => 
+        student.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+        student.email?.toLowerCase().includes(search.toLowerCase()) ||
+        student.student_id?.toLowerCase().includes(search.toLowerCase())
+      )
+    }
+
+    // Apply additional club filter if specified
+    if (club) {
+      if (club === 'Beta Club') {
+        filteredStudents = filteredStudents.filter((student: any) => student.beta_club === true)
+      } else if (club === 'NTHS') {
+        filteredStudents = filteredStudents.filter((student: any) => student.nths === true)
+      }
+    }
+
+    console.log('Filtered students:', filteredStudents.length)
+
     // Get volunteer hours for these students
-    const studentIds = students?.map(s => s.id) || []
+    const studentIds = filteredStudents.map(s => s.id) || []
+    console.log('Student IDs for hours query:', studentIds.length)
+    
     const { data: volunteerHours, error: hoursError } = await supabase
       .from('volunteer_hours')
       .select('student_id, hours, status')
@@ -151,8 +189,10 @@ export async function GET(request: NextRequest) {
       console.error('Error getting volunteer hours:', hoursError)
     }
 
+    console.log('Volunteer hours found:', volunteerHours?.length || 0)
+
     // Calculate stats for each student
-    const studentsWithStats = (students || []).map((student: any) => {
+    const studentsWithStats = filteredStudents.map((student: any) => {
       const studentHours = volunteerHours?.filter(h => h.student_id === student.id) || []
       const totalHours = studentHours.reduce((sum, h) => sum + (h.hours || 0), 0)
       const approvedHours = studentHours.filter(h => h.status === 'approved').reduce((sum, h) => sum + (h.hours || 0), 0)
@@ -194,7 +234,7 @@ export async function GET(request: NextRequest) {
     const paginatedStudents = studentsWithStats.slice(startIndex, endIndex)
     const totalCount = studentsWithStats.length
     
-    console.log('Students data:', paginatedStudents)
+    console.log('Students data:', paginatedStudents.length)
     console.log('Total count:', totalCount)
 
     const response = {
@@ -208,9 +248,11 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('Final response:', response)
+    console.log('=== STUDENTS API DEBUG END ===')
     return NextResponse.json(response)
   } catch (error) {
     console.error('Admin students API error:', error)
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
