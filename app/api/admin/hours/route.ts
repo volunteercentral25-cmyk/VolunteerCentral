@@ -3,7 +3,13 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('Admin hours API called')
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '20')
+    const search = searchParams.get('search') || ''
+    const club = searchParams.get('club') || ''
+    const status = searchParams.get('status') || ''
+
     const supabase = createClient()
     
     // Get the current user
@@ -44,8 +50,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         students: [],
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page: page,
+          limit: limit,
           total: 0,
           totalPages: 0
         }
@@ -86,11 +92,11 @@ export async function GET(request: NextRequest) {
     console.log('Student filter:', studentFilter)
 
     // Get URL parameters for pagination and search
-    const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
-    const search = searchParams.get('search') || ''
-    const status = searchParams.get('status') || ''
+    // const { searchParams } = new URL(request.url)
+    // const page = parseInt(searchParams.get('page') || '1')
+    // const limit = parseInt(searchParams.get('limit') || '20')
+    // const search = searchParams.get('search') || ''
+    // const status = searchParams.get('status') || ''
 
     console.log('Parameters:', { page, limit, search, status })
 
