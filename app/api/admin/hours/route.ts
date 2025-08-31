@@ -84,13 +84,11 @@ export async function GET(request: NextRequest) {
           full_name,
           email,
           student_id,
-          clubs!inner (
-            id,
-            name
-          )
+          beta_club,
+          nths
         )
       `)
-      .in('profiles.clubs.id', clubIds)
+      .or('profiles.beta_club.eq.true,profiles.nths.eq.true')
 
     // Apply status filter
     if (status) {

@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       .from('profiles')
       .select('id', { count: 'exact' })
       .eq('role', 'student')
-      .in('club_id', clubIds)
+      .or('beta_club.eq.true,nths.eq.true')
     
     if (studentCountError) {
       console.error('Error getting student count:', studentCountError)
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
       .from('profiles')
       .select('id')
       .eq('role', 'student')
-      .in('club_id', clubIds)
+      .or('beta_club.eq.true,nths.eq.true')
 
     if (studentIdsError) {
       console.error('Error getting student IDs:', studentIdsError)

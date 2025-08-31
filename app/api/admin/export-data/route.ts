@@ -49,12 +49,11 @@ export async function GET(request: NextRequest) {
         email,
         student_id,
         created_at,
-        clubs!inner (
-          name
-        )
+        beta_club,
+        nths
       `)
       .eq('role', 'student')
-      .in('club_id', clubIds)
+      .or('beta_club.eq.true,nths.eq.true')
       .order('full_name')
 
     if (studentsError) {
@@ -79,9 +78,8 @@ export async function GET(request: NextRequest) {
           full_name,
           email,
           student_id,
-          clubs!inner (
-            name
-          )
+          beta_club,
+          nths
         )
       `)
       .in('student_id', students.map(s => s.id))
@@ -166,27 +164,51 @@ export async function GET(request: NextRequest) {
         totalOpportunities: opportunities.length,
         totalRegistrations: registrations.length
       },
-      students: students.map(student => ({
-        name: student.full_name,
-        email: student.email,
-        studentId: student.student_id,
-        club: student.clubs[0]?.name || 'Unknown',
-        joinedDate: new Date(student.created_at).toLocaleDateString()
-      })),
-      volunteerHours: volunteerHours.map(hour => ({
-        studentName: hour.profiles[0]?.full_name || 'Unknown',
-        studentEmail: hour.profiles[0]?.email || 'Unknown',
-        studentId: hour.profiles[0]?.student_id || 'Unknown',
-        club: hour.profiles[0]?.clubs[0]?.name || 'Unknown',
-        hours: hour.hours,
-        date: hour.date,
-        description: hour.description,
-        status: hour.status,
-        submittedDate: new Date(hour.created_at).toLocaleDateString(),
-        verifiedDate: hour.verification_date ? new Date(hour.verification_date).toLocaleDateString() : '',
-        verifiedBy: hour.verified_by || '',
-        notes: hour.verification_notes || ''
-      })),
+      students: students.map(student => {
+        // Determine club name based on boolean values
+        let clubName = 'None'
+        if (student.beta_club && student.nths) {
+          clubName = 'Beta Club, NTHS'
+        } else if (student.beta_club) {
+          clubName = 'Beta Club'
+        } else if (student.nths) {
+          clubName = 'NTHS'
+        }
+        
+        return {
+          name: student.full_name,
+          email: student.email,
+          studentId: student.student_id,
+          club: clubName,
+          joinedDate: new Date(student.created_at).toLocaleDateString()
+        }
+      }),
+      volunteerHours: volunteerHours.map(hour => {
+        // Determine club name based on boolean values
+        let clubName = 'None'
+        if (hour.profiles[0]?.beta_club && hour.profiles[0]?.nths) {
+          clubName = 'Beta Club, NTHS'
+        } else if (hour.profiles[0]?.beta_club) {
+          clubName = 'Beta Club'
+        } else if (hour.profiles[0]?.nths) {
+          clubName = 'NTHS'
+        }
+        
+        return {
+          studentName: hour.profiles[0]?.full_name || 'Unknown',
+          studentEmail: hour.profiles[0]?.email || 'Unknown',
+          studentId: hour.profiles[0]?.student_id || 'Unknown',
+          club: clubName,
+          hours: hour.hours,
+          date: hour.date,
+          description: hour.description,
+          status: hour.status,
+          submittedDate: new Date(hour.created_at).toLocaleDateString(),
+          verifiedDate: hour.verification_date ? new Date(hour.verification_date).toLocaleDateString() : '',
+          verifiedBy: hour.verified_by || '',
+          notes: hour.verification_notes || ''
+        }
+      }),
       opportunities: opportunities.map(opp => ({
         title: opp.title,
         description: opp.description,

@@ -78,13 +78,11 @@ export async function GET(request: NextRequest) {
         role,
         created_at,
         updated_at,
-        clubs!inner (
-          id,
-          name
-        )
+        beta_club,
+        nths
       `)
       .eq('role', 'student')
-      .in('club_id', clubIds)
+      .or('beta_club.eq.true,nths.eq.true')
 
     // Apply search filter
     if (search) {
@@ -93,7 +91,11 @@ export async function GET(request: NextRequest) {
 
     // Apply club filter
     if (club) {
-      studentsQuery = studentsQuery.eq('clubs.name', club)
+      if (club === 'Beta Club') {
+        studentsQuery = studentsQuery.eq('beta_club', true)
+      } else if (club === 'NTHS') {
+        studentsQuery = studentsQuery.eq('nths', true)
+      }
     }
 
     const { data: students, error: studentsError } = await studentsQuery
@@ -121,6 +123,16 @@ export async function GET(request: NextRequest) {
       const approvedHours = studentHours.filter(h => h.status === 'approved').reduce((sum, h) => sum + (h.hours || 0), 0)
       const pendingHours = studentHours.filter(h => h.status === 'pending').reduce((sum, h) => sum + (h.hours || 0), 0)
 
+      // Determine club name based on boolean values
+      let clubName = 'None'
+      if (student.beta_club && student.nths) {
+        clubName = 'Beta Club, NTHS'
+      } else if (student.beta_club) {
+        clubName = 'Beta Club'
+      } else if (student.nths) {
+        clubName = 'NTHS'
+      }
+
       return {
         id: student.id,
         full_name: student.full_name,
@@ -131,7 +143,7 @@ export async function GET(request: NextRequest) {
         role: student.role,
         created_at: student.created_at,
         updated_at: student.updated_at,
-        club: student.clubs.name,
+        club: clubName,
         totalHours,
         approvedHours,
         pendingHours,
