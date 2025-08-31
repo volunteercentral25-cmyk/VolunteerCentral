@@ -849,69 +849,69 @@ export default function AdminOpportunities() {
                       const key = typeof registration.id === 'string' ? registration.id : String(registration.id || '')
                       return (
                         <Card key={key} className="border border-gray-200">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                                                         <div className="flex items-center gap-3 mb-2">
-                               <h3 className="font-semibold text-gray-900">
-                                 {registration.student_name || 'Unknown Student'}
-                               </h3>
-                               <Badge className={
-                                 registration.status === 'approved' ? 'bg-green-100 text-green-800' :
-                                 registration.status === 'denied' ? 'bg-red-100 text-red-800' :
-                                 'bg-orange-100 text-orange-800'
-                               }>
-                                 {registration.status}
-                               </Badge>
-                             </div>
-                             <div className="text-sm text-gray-600 space-y-1">
-                               <p>Email: {registration.student_email || 'No email available'}</p>
-                               <p>Student ID: {registration.student_id || 'No student ID'}</p>
-                               <p>Registered: {new Date(registration.registered_at).toLocaleDateString()}</p>
-                             </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            {registration.status === 'pending' && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  className="btn-primary"
-                                  onClick={() => handleManageRegistration(registration.id, 'approve')}
-                                  disabled={managingRegistration === registration.id}
-                                >
-                                  {managingRegistration === registration.id ? 'Approving...' : 'Approve'}
-                                </Button>
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <h3 className="font-semibold text-gray-900">
+                                    {registration.student_name || 'Unknown Student'}
+                                  </h3>
+                                  <Badge className={
+                                    registration.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                    registration.status === 'denied' ? 'bg-red-100 text-red-800' :
+                                    'bg-orange-100 text-orange-800'
+                                  }>
+                                    {registration.status}
+                                  </Badge>
+                                </div>
+                                <div className="text-sm text-gray-600 space-y-1">
+                                  <p>Email: {registration.student_email || 'No email available'}</p>
+                                  <p>Student ID: {registration.student_id || 'No student ID'}</p>
+                                  <p>Registered: {new Date(registration.registered_at).toLocaleDateString()}</p>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center gap-2">
+                                {registration.status === 'pending' && (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      className="btn-primary"
+                                      onClick={() => handleManageRegistration(registration.id, 'approve')}
+                                      disabled={managingRegistration === registration.id}
+                                    >
+                                      {managingRegistration === registration.id ? 'Approving...' : 'Approve'}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="btn-secondary"
+                                      onClick={() => handleManageRegistration(registration.id, 'decline')}
+                                      disabled={managingRegistration === registration.id}
+                                    >
+                                      {managingRegistration === registration.id ? 'Declining...' : 'Decline'}
+                                    </Button>
+                                  </>
+                                )}
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="btn-secondary"
-                                  onClick={() => handleManageRegistration(registration.id, 'decline')}
+                                  className="btn-secondary text-red-600 hover:text-red-700"
+                                  onClick={() => handleManageRegistration(registration.id, 'kick')}
                                   disabled={managingRegistration === registration.id}
                                 >
-                                  {managingRegistration === registration.id ? 'Declining...' : 'Decline'}
+                                  {managingRegistration === registration.id ? 'Removing...' : 'Remove'}
                                 </Button>
-                              </>
-                            )}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="btn-secondary text-red-600 hover:text-red-700"
-                              onClick={() => handleManageRegistration(registration.id, 'kick')}
-                              disabled={managingRegistration === registration.id}
-                            >
-                              {managingRegistration === registration.id ? 'Removing...' : 'Remove'}
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                } catch (error) {
-                  console.error('Error rendering registration:', error, registration);
-                  return null;
-                }
-              })
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    } catch (error) {
+                      console.error('Error rendering registration:', error, registration);
+                      return null;
+                    }
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-12">
