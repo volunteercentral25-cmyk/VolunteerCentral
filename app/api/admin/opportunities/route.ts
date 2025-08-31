@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
           student_id
         )
       `, { count: 'exact' })
-      .in('club_id', clubIds)
+      .or(`club_id.in.(${clubIds.map(id => `"${id}"`).join(',')}),club_restriction.eq.anyone`)
 
     // Add search filter
     if (search) {

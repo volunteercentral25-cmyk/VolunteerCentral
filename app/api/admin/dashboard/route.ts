@@ -220,6 +220,7 @@ export async function GET(request: NextRequest) {
         .eq('role', 'student')
         .eq('nths', true)
     } else {
+      // If no clubs selected, return 0
       studentCountQuery = supabase
         .from('profiles')
         .select('id', { count: 'exact' })
@@ -227,7 +228,7 @@ export async function GET(request: NextRequest) {
         .eq('id', '00000000-0000-0000-0000-000000000000')
     }
     
-    const { data: studentCount, error: studentCountError } = await studentCountQuery
+    const { data: studentCount, error: studentCountError, count } = await studentCountQuery
     
     if (studentCountError) {
       console.error('Error getting student count:', studentCountError)
@@ -296,11 +297,11 @@ export async function GET(request: NextRequest) {
       recentHoursResult,
       recentOpportunitiesResult
     ] = await Promise.all([
-      // Total opportunities for supervised clubs
+      // Total opportunities for supervised clubs (including those open to all)
       supabase
         .from('volunteer_opportunities')
         .select('id')
-        .in('club_id', clubIds),
+        .or(`club_id.in.(${clubIds.map(id => `"${id}"`).join(',')}),club_restriction.eq.anyone`),
       
       // Pending hours for students in supervised clubs
       supabase
@@ -335,7 +336,7 @@ export async function GET(request: NextRequest) {
       supabase
         .from('volunteer_opportunities')
         .select('*')
-        .in('club_id', clubIds)
+        .or(`club_id.in.(${clubIds.map(id => `"${id}"`).join(',')}),club_restriction.eq.anyone`)
         .gte('date', new Date().toISOString().split('T')[0])
         .order('date', { ascending: true })
         .limit(5)
@@ -358,7 +359,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Calculate counts manually
-    const totalStudents = studentCount || 0
+    const totalStudents = count || 0
     const totalOpportunities = opportunitiesResult.data?.length || 0
     const pendingHours = pendingHoursResult.data?.length || 0
     
@@ -380,10 +381,10 @@ export async function GET(request: NextRequest) {
         .select(`
           id,
           status,
-          volunteer_opportunities!inner(title, club_id),
+          volunteer_opportunities!inner(title, club_id, club_restriction),
           profiles!inner(full_name)
         `)
-        .in('volunteer_opportunities.club_id', clubIds)
+        .or(`volunteer_opportunities.club_id.in.(${clubIds.map(id => `"${id}"`).join(',')}),volunteer_opportunities.club_restriction.eq.anyone`)
         .order('registered_at', { ascending: false })
         .limit(10)
       
