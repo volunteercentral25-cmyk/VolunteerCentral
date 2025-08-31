@@ -78,14 +78,7 @@ export async function GET(request: NextRequest) {
         verification_date,
         verified_by,
         verification_notes,
-        profiles!inner (
-          full_name,
-          email,
-          student_id,
-          phone,
-          beta_club,
-          nths
-        )
+        student_id
       `)
       .in('student_id', students.map(s => s.id))
       .order('created_at', { ascending: false })
@@ -94,6 +87,23 @@ export async function GET(request: NextRequest) {
       console.error('Error getting volunteer hours:', hoursError)
       return NextResponse.json({ error: 'Failed to get volunteer hours' }, { status: 500 })
     }
+
+    // Get student profiles for volunteer hours separately
+    const { data: studentProfiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, student_id, phone, beta_club, nths')
+      .in('id', students.map(s => s.id))
+
+    if (profilesError) {
+      console.error('Error getting student profiles:', profilesError)
+      return NextResponse.json({ error: 'Failed to get student profiles' }, { status: 500 })
+    }
+
+    // Create a map of student profiles
+    const studentProfileMap = new Map()
+    studentProfiles?.forEach(profile => {
+      studentProfileMap.set(profile.id, profile)
+    })
 
     // Get all opportunities for supervised clubs
     const { data: opportunities, error: opportunitiesError } = await supabase
@@ -192,21 +202,23 @@ export async function GET(request: NextRequest) {
         }
       }),
       volunteerHours: volunteerHours.map(hour => {
+        const studentProfile = studentProfileMap.get(hour.student_id)
+        
         // Determine club name based on boolean values
         let clubName = 'None'
-        if (hour.profiles[0]?.beta_club && hour.profiles[0]?.nths) {
+        if (studentProfile?.beta_club && studentProfile?.nths) {
           clubName = 'Beta Club, NTHS'
-        } else if (hour.profiles[0]?.beta_club) {
+        } else if (studentProfile?.beta_club) {
           clubName = 'Beta Club'
-        } else if (hour.profiles[0]?.nths) {
+        } else if (studentProfile?.nths) {
           clubName = 'NTHS'
         }
         
         return {
-          studentName: hour.profiles[0]?.full_name || 'Unknown',
-          studentEmail: hour.profiles[0]?.email || 'Unknown',
-          studentId: hour.profiles[0]?.student_id || 'Unknown',
-          studentPhone: hour.profiles[0]?.phone || '',
+          studentName: studentProfile?.full_name || 'Unknown',
+          studentEmail: studentProfile?.email || 'Unknown',
+          studentId: studentProfile?.student_id || 'Unknown',
+          studentPhone: studentProfile?.phone || '',
           club: clubName,
           hours: hour.hours,
           date: hour.date,
