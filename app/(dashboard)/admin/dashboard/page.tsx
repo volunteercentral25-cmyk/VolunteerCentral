@@ -180,23 +180,27 @@ export default function AdminDashboard() {
       }
       
       const data = await response.json()
+      const csv = generateCSV(data)
       
-      // Create CSV content
-      const csvContent = generateCSV(data)
+      // Create a timestamp for the filename
+      const timestamp = new Date().toISOString().split('T')[0] // YYYY-MM-DD format
+      const filename = `volunteer_central_export_${timestamp}.csv`
       
-      // Download the file
-      const blob = new Blob([csvContent], { type: 'text/csv' })
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `volunteer-data-${new Date().toISOString().split('T')[0]}.csv`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      window.URL.revokeObjectURL(url)
+      // Create and download the file
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      link.setAttribute('href', url)
+      link.setAttribute('download', filename)
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      alert(`Data exported to ${filename}`)
     } catch (error) {
-      console.error('Error exporting data:', error)
-      setError('Failed to export data')
+      console.error('Export error:', error)
+      alert('Failed to export data. Please try again.')
     } finally {
       setExporting(false)
     }
@@ -205,40 +209,80 @@ export default function AdminDashboard() {
   const generateCSV = (data: any) => {
     let csv = ''
 
-    // Summary section
-    csv += 'SUMMARY\n'
-    csv += 'Total Students,Total Hours,Approved Hours,Pending Hours,Denied Hours,Total Opportunities,Total Registrations\n'
-    csv += `${data.summary.totalStudents},${data.summary.totalHours},${data.summary.approvedHours},${data.summary.pendingHours},${data.summary.deniedHours},${data.summary.totalOpportunities},${data.summary.totalRegistrations}\n\n`
+    // Helper function to sanitize CSV values
+    const sanitizeValue = (value: any) => {
+      if (value === null || value === undefined) return ''
+      const stringValue = String(value)
+      // Escape quotes and wrap in quotes if contains comma, quote, or newline
+      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+        return `"${stringValue.replace(/"/g, '""')}"`
+      }
+      return stringValue
+    }
 
-    // Students section
-    csv += 'STUDENTS\n'
-    csv += 'Name,Email,Student ID,Phone,Bio,Club,Joined Date,Last Updated\n'
+    // Helper function to format date
+    const formatDate = (dateString: string) => {
+      if (!dateString) return ''
+      try {
+        return new Date(dateString).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        })
+      } catch {
+        return dateString
+      }
+    }
+
+    // Summary section with better formatting
+    csv += 'VOLUNTEER CENTRAL - DATA EXPORT\n'
+    csv += `Generated on: ${new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })}\n\n`
+    
+    csv += 'SUMMARY STATISTICS\n'
+    csv += 'Metric,Value\n'
+    csv += `Total Students,${data.summary.totalStudents}\n`
+    csv += `Total Volunteer Hours,${data.summary.totalHours}\n`
+    csv += `Approved Hours,${data.summary.approvedHours}\n`
+    csv += `Pending Hours,${data.summary.pendingHours}\n`
+    csv += `Denied Hours,${data.summary.deniedHours}\n`
+    csv += `Total Opportunities,${data.summary.totalOpportunities}\n`
+    csv += `Total Registrations,${data.summary.totalRegistrations}\n\n`
+
+    // Students section with enhanced columns
+    csv += 'STUDENT INFORMATION\n'
+    csv += 'Full Name,Email Address,Student ID,Phone Number,Bio,Club Membership,Date Joined,Last Updated\n'
     data.students.forEach((student: any) => {
-      csv += `"${student.name}","${student.email}","${student.studentId}","${student.phone}","${student.bio}","${student.club}","${student.joinedDate}","${student.lastUpdated}"\n`
+      csv += `${sanitizeValue(student.name)},${sanitizeValue(student.email)},${sanitizeValue(student.studentId)},${sanitizeValue(student.phone)},${sanitizeValue(student.bio)},${sanitizeValue(student.club)},${sanitizeValue(formatDate(student.joinedDate))},${sanitizeValue(formatDate(student.lastUpdated))}\n`
     })
     csv += '\n'
 
-    // Volunteer Hours section
-    csv += 'VOLUNTEER HOURS\n'
-    csv += 'Student Name,Student Email,Student ID,Student Phone,Club,Hours,Date,Description,Status,Verification Email,Submitted Date,Verified Date,Verified By,Notes\n'
+    // Volunteer Hours section with detailed information
+    csv += 'VOLUNTEER HOURS DETAILS\n'
+    csv += 'Student Name,Student Email,Student ID,Student Phone,Club,Hours Logged,Activity Date,Activity Description,Status,Verification Email,Date Submitted,Date Verified,Verified By,Verification Notes\n'
     data.volunteerHours.forEach((hour: any) => {
-      csv += `"${hour.studentName}","${hour.studentEmail}","${hour.studentId}","${hour.studentPhone}","${hour.club}",${hour.hours},"${hour.date}","${hour.description}","${hour.status}","${hour.verificationEmail}","${hour.submittedDate}","${hour.verifiedDate}","${hour.verifiedBy}","${hour.notes}"\n`
+      csv += `${sanitizeValue(hour.studentName)},${sanitizeValue(hour.studentEmail)},${sanitizeValue(hour.studentId)},${sanitizeValue(hour.studentPhone)},${sanitizeValue(hour.club)},${sanitizeValue(hour.hours)},${sanitizeValue(formatDate(hour.date))},${sanitizeValue(hour.description)},${sanitizeValue(hour.status)},${sanitizeValue(hour.verificationEmail)},${sanitizeValue(formatDate(hour.submittedDate))},${sanitizeValue(formatDate(hour.verifiedDate))},${sanitizeValue(hour.verifiedBy)},${sanitizeValue(hour.notes)}\n`
     })
     csv += '\n'
 
-    // Opportunities section
-    csv += 'OPPORTUNITIES\n'
-    csv += 'Title,Description,Date,Location,Club,Created Date\n'
+    // Opportunities section with enhanced details
+    csv += 'VOLUNTEER OPPORTUNITIES\n'
+    csv += 'Opportunity Title,Description,Date,Location,Club,Created Date\n'
     data.opportunities.forEach((opp: any) => {
-      csv += `"${opp.title}","${opp.description}","${opp.date}","${opp.location}","${opp.club}","${opp.createdDate}"\n`
+      csv += `${sanitizeValue(opp.title)},${sanitizeValue(opp.description)},${sanitizeValue(formatDate(opp.date))},${sanitizeValue(opp.location)},${sanitizeValue(opp.club)},${sanitizeValue(formatDate(opp.createdDate))}\n`
     })
     csv += '\n'
 
-    // Registrations section
-    csv += 'REGISTRATIONS\n'
-    csv += 'Student Name,Student Email,Student ID,Opportunity,Opportunity Date,Club,Status,Registered Date\n'
+    // Registrations section with complete information
+    csv += 'OPPORTUNITY REGISTRATIONS\n'
+    csv += 'Student Name,Student Email,Student ID,Opportunity Title,Opportunity Date,Club,Registration Status,Date Registered\n'
     data.registrations.forEach((reg: any) => {
-      csv += `"${reg.studentName}","${reg.studentEmail}","${reg.studentId}","${reg.opportunity}","${reg.opportunityDate}","${reg.club}","${reg.status}","${reg.registeredDate}"\n`
+      csv += `${sanitizeValue(reg.studentName)},${sanitizeValue(reg.studentEmail)},${sanitizeValue(reg.studentId)},${sanitizeValue(reg.opportunity)},${sanitizeValue(formatDate(reg.opportunityDate))},${sanitizeValue(reg.club)},${sanitizeValue(reg.status)},${sanitizeValue(formatDate(reg.registeredDate))}\n`
     })
 
     return csv
