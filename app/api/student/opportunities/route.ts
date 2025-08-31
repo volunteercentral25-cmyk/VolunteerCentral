@@ -42,11 +42,11 @@ export async function GET(request: NextRequest) {
     // Add club filter - simplified approach
     if (club) {
       if (club === 'beta_club') {
-        query = query.eq('club_restriction', 'beta_club')
+        query = query.or('club_restriction.eq.beta_club,club_restriction.eq.anyone')
       } else if (club === 'nths') {
-        query = query.eq('club_restriction', 'nths')
+        query = query.or('club_restriction.eq.nths,club_restriction.eq.anyone')
       } else if (club === 'both') {
-        query = query.eq('club_restriction', 'both')
+        query = query.or('club_restriction.eq.both,club_restriction.eq.anyone')
       }
     }
 

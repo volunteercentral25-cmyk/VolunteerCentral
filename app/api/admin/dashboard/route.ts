@@ -169,7 +169,19 @@ export async function GET(request: NextRequest) {
 
     // Test the filter manually
     let testFilterQuery
-    if (supervisedClubNames.includes('NTHS')) {
+    if (supervisedClubNames.includes('Beta Club') && supervisedClubNames.includes('NTHS')) {
+      testFilterQuery = supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .eq('role', 'student')
+        .or('beta_club.eq.true,nths.eq.true')
+    } else if (supervisedClubNames.includes('Beta Club')) {
+      testFilterQuery = supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .eq('role', 'student')
+        .eq('beta_club', true)
+    } else if (supervisedClubNames.includes('NTHS')) {
       testFilterQuery = supabase
         .from('profiles')
         .select('id, full_name, email')
@@ -189,7 +201,19 @@ export async function GET(request: NextRequest) {
 
     // Get student count for supervised clubs
     let studentCountQuery
-    if (supervisedClubNames.includes('NTHS')) {
+    if (supervisedClubNames.includes('Beta Club') && supervisedClubNames.includes('NTHS')) {
+      studentCountQuery = supabase
+        .from('profiles')
+        .select('id', { count: 'exact' })
+        .eq('role', 'student')
+        .or('beta_club.eq.true,nths.eq.true')
+    } else if (supervisedClubNames.includes('Beta Club')) {
+      studentCountQuery = supabase
+        .from('profiles')
+        .select('id', { count: 'exact' })
+        .eq('role', 'student')
+        .eq('beta_club', true)
+    } else if (supervisedClubNames.includes('NTHS')) {
       studentCountQuery = supabase
         .from('profiles')
         .select('id', { count: 'exact' })
@@ -219,7 +243,19 @@ export async function GET(request: NextRequest) {
 
     // Get student IDs for supervised clubs first
     let studentIdsQuery
-    if (supervisedClubNames.includes('NTHS')) {
+    if (supervisedClubNames.includes('Beta Club') && supervisedClubNames.includes('NTHS')) {
+      studentIdsQuery = supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'student')
+        .or('beta_club.eq.true,nths.eq.true')
+    } else if (supervisedClubNames.includes('Beta Club')) {
+      studentIdsQuery = supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'student')
+        .eq('beta_club', true)
+    } else if (supervisedClubNames.includes('NTHS')) {
       studentIdsQuery = supabase
         .from('profiles')
         .select('id')
