@@ -212,17 +212,17 @@ export default function AdminDashboard() {
 
     // Students section
     csv += 'STUDENTS\n'
-    csv += 'Name,Email,Student ID,Club,Joined Date\n'
+    csv += 'Name,Email,Student ID,Phone,Bio,Club,Joined Date,Last Updated\n'
     data.students.forEach((student: any) => {
-      csv += `"${student.name}","${student.email}","${student.studentId}","${student.club}","${student.joinedDate}"\n`
+      csv += `"${student.name}","${student.email}","${student.studentId}","${student.phone}","${student.bio}","${student.club}","${student.joinedDate}","${student.lastUpdated}"\n`
     })
     csv += '\n'
 
     // Volunteer Hours section
     csv += 'VOLUNTEER HOURS\n'
-    csv += 'Student Name,Student Email,Student ID,Club,Hours,Date,Description,Status,Submitted Date,Verified Date,Verified By,Notes\n'
+    csv += 'Student Name,Student Email,Student ID,Student Phone,Club,Hours,Date,Description,Status,Verification Email,Submitted Date,Verified Date,Verified By,Notes\n'
     data.volunteerHours.forEach((hour: any) => {
-      csv += `"${hour.studentName}","${hour.studentEmail}","${hour.studentId}","${hour.club}",${hour.hours},"${hour.date}","${hour.description}","${hour.status}","${hour.submittedDate}","${hour.verifiedDate}","${hour.verifiedBy}","${hour.notes}"\n`
+      csv += `"${hour.studentName}","${hour.studentEmail}","${hour.studentId}","${hour.studentPhone}","${hour.club}",${hour.hours},"${hour.date}","${hour.description}","${hour.status}","${hour.verificationEmail}","${hour.submittedDate}","${hour.verifiedDate}","${hour.verifiedBy}","${hour.notes}"\n`
     })
     csv += '\n'
 

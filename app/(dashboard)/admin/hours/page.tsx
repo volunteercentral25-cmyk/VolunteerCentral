@@ -41,7 +41,6 @@ interface HourEntry {
   date: string
   description: string
   status: string
-  location: string
   verification_email?: string
   verified_by?: string
   verification_date?: string
@@ -545,12 +544,6 @@ export default function AdminHours() {
                                             <Calendar className="h-4 w-4" />
                                             {new Date(hour.date).toLocaleDateString()}
                                           </span>
-                                          {hour.location !== 'N/A' && (
-                                            <span className="flex items-center gap-1">
-                                              <MapPin className="h-4 w-4" />
-                                              {hour.location}
-                                            </span>
-                                          )}
                                         </div>
 
                                         {hour.verification_email && (

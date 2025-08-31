@@ -48,7 +48,10 @@ export async function GET(request: NextRequest) {
         full_name,
         email,
         student_id,
+        phone,
+        bio,
         created_at,
+        updated_at,
         beta_club,
         nths
       `)
@@ -70,6 +73,7 @@ export async function GET(request: NextRequest) {
         date,
         description,
         status,
+        verification_email,
         created_at,
         verification_date,
         verified_by,
@@ -78,6 +82,7 @@ export async function GET(request: NextRequest) {
           full_name,
           email,
           student_id,
+          phone,
           beta_club,
           nths
         )
@@ -179,8 +184,11 @@ export async function GET(request: NextRequest) {
           name: student.full_name,
           email: student.email,
           studentId: student.student_id,
+          phone: student.phone || '',
+          bio: student.bio || '',
           club: clubName,
-          joinedDate: new Date(student.created_at).toLocaleDateString()
+          joinedDate: new Date(student.created_at).toLocaleDateString(),
+          lastUpdated: new Date(student.updated_at).toLocaleDateString()
         }
       }),
       volunteerHours: volunteerHours.map(hour => {
@@ -198,11 +206,13 @@ export async function GET(request: NextRequest) {
           studentName: hour.profiles[0]?.full_name || 'Unknown',
           studentEmail: hour.profiles[0]?.email || 'Unknown',
           studentId: hour.profiles[0]?.student_id || 'Unknown',
+          studentPhone: hour.profiles[0]?.phone || '',
           club: clubName,
           hours: hour.hours,
           date: hour.date,
           description: hour.description,
           status: hour.status,
+          verificationEmail: hour.verification_email || '',
           submittedDate: new Date(hour.created_at).toLocaleDateString(),
           verifiedDate: hour.verification_date ? new Date(hour.verification_date).toLocaleDateString() : '',
           verifiedBy: hour.verified_by || '',
