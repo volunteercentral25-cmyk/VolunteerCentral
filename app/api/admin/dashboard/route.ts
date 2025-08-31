@@ -39,10 +39,13 @@ export async function GET(request: NextRequest) {
       console.error('Error getting supervised clubs:', clubsError)
     }
 
+    console.log('Current user ID:', user.id)
+    console.log('Current user email:', user.email)
     console.log('Supervised clubs:', supervisedClubs)
 
     // If admin hasn't selected clubs yet, return basic data with club selection flag
     if (!supervisedClubs || supervisedClubs.length === 0) {
+      console.log('No supervised clubs found - returning club selection flag')
       return NextResponse.json({
         needsClubSelection: true,
         profile,
@@ -82,6 +85,7 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('Student filter:', studentFilter)
+    console.log('Club IDs for opportunities:', clubIds)
 
     // Get student count for supervised clubs
     const { data: studentCount, error: studentCountError } = await supabase
@@ -95,6 +99,11 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('Student count result:', studentCount)
+    console.log('Student count query details:', {
+      role: 'student',
+      filter: studentFilter,
+      count: studentCount?.length || 0
+    })
 
     // Get student IDs for supervised clubs first
     const { data: studentIds, error: studentIdsError } = await supabase
@@ -108,6 +117,9 @@ export async function GET(request: NextRequest) {
     }
 
     const studentIdArray = studentIds?.map(s => s.id) || []
+
+    console.log('Student IDs for filtering:', studentIdArray)
+    console.log('Number of students found:', studentIdArray.length)
 
     // Fetch other statistics filtered by supervised clubs
     const [
@@ -163,14 +175,15 @@ export async function GET(request: NextRequest) {
     ])
 
     // Calculate counts manually
-    const totalStudents = studentCount?.length || 0
+    const totalStudents = studentCount || 0
     const totalOpportunities = opportunitiesResult.data?.length || 0
     const pendingHours = pendingHoursResult.data?.length || 0
     
     console.log('Calculated stats:', {
       totalStudents,
       totalOpportunities,
-      pendingHours
+      pendingHours,
+      studentIdArrayLength: studentIdArray.length
     })
     
     // Calculate total hours
