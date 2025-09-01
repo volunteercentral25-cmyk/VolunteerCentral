@@ -144,8 +144,9 @@ export default function StudentProfile() {
     setIsClubModalOpen(false)
     // Refresh the page to get updated club information
     setTimeout(() => {
+      console.log('Reloading page to get updated club data...')
       window.location.reload()
-    }, 1000) // Increased delay to ensure API has time to process
+    }, 1500) // Increased delay to ensure API has time to process
   }
 
   const handleShareProfile = async () => {
@@ -264,26 +265,6 @@ export default function StudentProfile() {
   
   // Debug logging
   console.log('Profile data received:', { profile, clubs, safeClubs })
-  
-  // Additional safety checks
-  if (!safeProfile.id || !safeProfile.full_name || !safeProfile.email) {
-    return (
-      <div className="min-h-screen gradient-bg flex items-center justify-center">
-        <Card className="glass-effect border-0 shadow-xl max-w-md">
-          <CardContent className="p-6 text-center">
-            <div className="mb-4">
-              <XCircle className="h-12 w-12 text-red-500 mx-auto" />
-            </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Invalid Profile Data</h2>
-            <p className="text-gray-600 mb-4">The profile data is missing required information.</p>
-            <Button onClick={() => window.location.reload()} className="btn-primary">
-              Try Again
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
   
   // Additional safety checks
   if (!safeProfile.id || !safeProfile.full_name || !safeProfile.email) {
@@ -460,6 +441,13 @@ export default function StudentProfile() {
                             <p className="font-medium text-gray-700">Club Data Sources:</p>
                             <p className="text-gray-600">New System (student_clubs): {safeClubs.map(c => c.name).join(', ')}</p>
                             <p className="text-gray-600">Legacy System (profiles): Beta Club={safeProfile.beta_club ? 'Yes' : 'No'}, NTHS={safeProfile.nths ? 'Yes' : 'No'}</p>
+                          </div>
+                        )}
+                        {/* Combined club display for better user experience */}
+                        {safeClubs && safeClubs.length > 0 && (
+                          <div className="mt-2 p-2 bg-green-50 rounded text-xs">
+                            <p className="font-medium text-green-700">✓ Active Club Memberships:</p>
+                            <p className="text-green-600">{safeClubs.map(c => c.name).join(', ')}</p>
                           </div>
                         )}
                         {/* Debug info */}

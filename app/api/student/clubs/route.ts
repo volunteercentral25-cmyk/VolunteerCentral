@@ -32,8 +32,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch club information' }, { status: 500 })
     }
 
+    console.log('Available clubs:', clubData)
+
     // Create a map of club names to IDs
     const clubMap = new Map(clubData?.map(club => [club.name, club.id]) || [])
+
+    console.log('Club map:', Object.fromEntries(clubMap))
 
     // Remove existing club memberships
     const { error: deleteError } = await supabase
@@ -44,6 +48,8 @@ export async function POST(request: NextRequest) {
     if (deleteError) {
       console.error('Error removing existing club memberships:', deleteError)
       // Continue with the request even if this fails
+    } else {
+      console.log('Successfully removed existing club memberships')
     }
 
     // Add new club memberships
@@ -53,12 +59,14 @@ export async function POST(request: NextRequest) {
         student_id: user.id,
         club_id: clubMap.get('Beta Club')
       })
+      console.log('Adding Beta Club membership')
     }
     if (nths && clubMap.has('NTHS')) {
       clubMemberships.push({
         student_id: user.id,
         club_id: clubMap.get('NTHS')
       })
+      console.log('Adding NTHS membership')
     }
 
     console.log('Club memberships to insert:', clubMemberships)
@@ -96,6 +104,13 @@ export async function POST(request: NextRequest) {
       console.error('Club update error:', updateError)
       return NextResponse.json({ error: 'Failed to update club information' }, { status: 500 })
     }
+
+    console.log('Successfully updated profile with club information:', {
+      beta_club: updatedProfile.beta_club,
+      nths: updatedProfile.nths,
+      clubs_completed: updatedProfile.clubs_completed,
+      clubs_setup_completed: updatedProfile.clubs_setup_completed
+    })
 
     return NextResponse.json({
       success: true,

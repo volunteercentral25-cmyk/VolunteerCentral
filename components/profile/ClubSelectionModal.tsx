@@ -46,14 +46,12 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete, userRole = 'st
   useEffect(() => {
     console.log('ClubSelectionModal: initialClubs changed:', initialClubs)
     if (initialClubs) {
-      setSelectedClubs({
+      const newSelectedClubs = {
         beta_club: initialClubs.beta_club || false,
         nths: initialClubs.nths || false
-      })
-      console.log('ClubSelectionModal: Updated selectedClubs to:', {
-        beta_club: initialClubs.beta_club || false,
-        nths: initialClubs.nths || false
-      })
+      }
+      setSelectedClubs(newSelectedClubs)
+      console.log('ClubSelectionModal: Updated selectedClubs to:', newSelectedClubs)
     }
   }, [initialClubs])
 
