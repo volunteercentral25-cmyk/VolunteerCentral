@@ -40,6 +40,9 @@ interface ProfileData {
     created_at: string
     beta_club?: boolean
     nths?: boolean
+    first_steps_achieved_at?: string
+    dedicated_helper_achieved_at?: string
+    community_champion_achieved_at?: string
   }
   stats: {
     totalHours: number

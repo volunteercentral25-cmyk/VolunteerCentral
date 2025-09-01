@@ -97,15 +97,64 @@ export async function GET(request: NextRequest) {
     const betaClub = currentClubs.includes('Beta Club')
     const nths = currentClubs.includes('NTHS')
 
-    // Calculate achievements based on hours
+    // Calculate achievements based on hours and track achievement dates
     const achievements = []
+    const now = new Date().toISOString()
+    
+    // Check if achievements are newly earned and update database
+    if (totalHours >= 5 && !profile.first_steps_achieved_at) {
+      // Newly achieved - update database
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ 
+          first_steps_achieved_at: now,
+          updated_at: now
+        })
+        .eq('id', user.id)
+      
+      if (updateError) {
+        console.error('Error updating first steps achievement date:', updateError)
+      }
+    }
+    
+    if (totalHours >= 10 && !profile.dedicated_helper_achieved_at) {
+      // Newly achieved - update database
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ 
+          dedicated_helper_achieved_at: now,
+          updated_at: now
+        })
+        .eq('id', user.id)
+      
+      if (updateError) {
+        console.error('Error updating dedicated helper achievement date:', updateError)
+      }
+    }
+    
+    if (totalHours >= 20 && !profile.community_champion_achieved_at) {
+      // Newly achieved - update database
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ 
+          community_champion_achieved_at: now,
+          updated_at: now
+        })
+        .eq('id', user.id)
+      
+      if (updateError) {
+        console.error('Error updating community champion achievement date:', updateError)
+      }
+    }
+
+    // Build achievements array with actual achievement dates
     if (totalHours >= 5) {
       achievements.push({
         id: 'first_steps',
         title: 'First Steps',
         description: 'Complete your first 5 hours of community service',
         earned: true,
-        earnedAt: new Date().toISOString()
+        earnedAt: profile.first_steps_achieved_at || now
       })
     }
 
@@ -115,7 +164,7 @@ export async function GET(request: NextRequest) {
         title: 'Dedicated Helper',
         description: 'Complete 10 hours of community service',
         earned: true,
-        earnedAt: new Date().toISOString()
+        earnedAt: profile.dedicated_helper_achieved_at || now
       })
     }
 
@@ -125,7 +174,7 @@ export async function GET(request: NextRequest) {
         title: 'Community Champion',
         description: 'Complete 20 hours of community service',
         earned: true,
-        earnedAt: new Date().toISOString()
+        earnedAt: profile.community_champion_achieved_at || now
       })
     }
 
@@ -177,7 +226,10 @@ export async function GET(request: NextRequest) {
         created_at: profile.created_at,
         beta_club: betaClub,
         nths: nths,
-        clubs_completed: currentClubs.length > 0
+        clubs_completed: currentClubs.length > 0,
+        first_steps_achieved_at: profile.first_steps_achieved_at,
+        dedicated_helper_achieved_at: profile.dedicated_helper_achieved_at,
+        community_champion_achieved_at: profile.community_champion_achieved_at
       },
       stats: {
         totalHours: totalHours,
@@ -354,6 +406,7 @@ export async function PUT(request: NextRequest) {
             beta_club: betaClub,
             nths: nths,
             clubs_completed: clubs.length > 0,
+            clubs_setup_completed: true,
             updated_at: new Date().toISOString()
           })
           .eq('id', user.id)

@@ -127,6 +127,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Mark club setup as completed
+    const { error: profileUpdateError } = await supabase
+      .from('profiles')
+      .update({
+        clubs_setup_completed: true,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', user.id)
+
+    if (profileUpdateError) {
+      console.error('Error updating profile clubs_setup_completed:', profileUpdateError)
+      // Don't fail the request, just log the error
+    }
+
     return NextResponse.json({ 
       success: true, 
       message: 'Club supervision updated successfully',

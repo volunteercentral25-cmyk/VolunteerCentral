@@ -20,13 +20,66 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid club data' }, { status: 400 })
     }
 
-    // Update profile with club information
+    // Get the club IDs for Beta Club and NTHS
+    const { data: clubData, error: clubError } = await supabase
+      .from('clubs')
+      .select('id, name')
+      .in('name', ['Beta Club', 'NTHS'])
+      .eq('is_active', true)
+
+    if (clubError) {
+      console.error('Error fetching clubs:', clubError)
+      return NextResponse.json({ error: 'Failed to fetch club information' }, { status: 500 })
+    }
+
+    // Create a map of club names to IDs
+    const clubMap = new Map(clubData?.map(club => [club.name, club.id]) || [])
+
+    // Remove existing club memberships
+    const { error: deleteError } = await supabase
+      .from('student_clubs')
+      .delete()
+      .eq('student_id', user.id)
+
+    if (deleteError) {
+      console.error('Error removing existing club memberships:', deleteError)
+      // Continue with the request even if this fails
+    }
+
+    // Add new club memberships
+    const clubMemberships = []
+    if (beta_club && clubMap.has('Beta Club')) {
+      clubMemberships.push({
+        student_id: user.id,
+        club_id: clubMap.get('Beta Club')
+      })
+    }
+    if (nths && clubMap.has('NTHS')) {
+      clubMemberships.push({
+        student_id: user.id,
+        club_id: clubMap.get('NTHS')
+      })
+    }
+
+    if (clubMemberships.length > 0) {
+      const { error: insertError } = await supabase
+        .from('student_clubs')
+        .insert(clubMemberships)
+
+      if (insertError) {
+        console.error('Error creating club memberships:', insertError)
+        return NextResponse.json({ error: 'Failed to create club memberships' }, { status: 500 })
+      }
+    }
+
+    // Update profile with club information and mark setup as completed
     const { data: updatedProfile, error: updateError } = await supabase
       .from('profiles')
       .update({
         beta_club: beta_club,
         nths: nths,
         clubs_completed: true,
+        clubs_setup_completed: true,
         updated_at: new Date().toISOString()
       })
       .eq('id', user.id)
@@ -44,7 +97,8 @@ export async function POST(request: NextRequest) {
         id: updatedProfile.id,
         beta_club: updatedProfile.beta_club,
         nths: updatedProfile.nths,
-        clubs_completed: updatedProfile.clubs_completed
+        clubs_completed: updatedProfile.clubs_completed,
+        clubs_setup_completed: updatedProfile.clubs_setup_completed
       }
     })
 
@@ -67,7 +121,7 @@ export async function GET(request: NextRequest) {
     // Get user profile and check if student
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, clubs_setup_completed')
       .eq('id', user.id)
       .single()
 
@@ -75,10 +129,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Student access required' }, { status: 403 })
     }
 
-    // Fetch all active clubs
+    // Fetch only Beta Club and NTHS
     const { data: clubs, error: clubsError } = await supabase
       .from('clubs')
       .select('id, name, description')
+      .in('name', ['Beta Club', 'NTHS'])
       .eq('is_active', true)
       .order('name')
 
@@ -87,7 +142,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch clubs' }, { status: 500 })
     }
 
-    return NextResponse.json(clubs || [])
+    return NextResponse.json({
+      clubs: clubs || [],
+      clubs_setup_completed: profile.clubs_setup_completed || false
+    })
   } catch (error) {
     console.error('Clubs API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

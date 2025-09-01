@@ -106,9 +106,22 @@ export async function GET(request: NextRequest) {
 
     // If admin hasn't selected clubs yet, return basic data with club selection flag
     if (!supervisedClubsWithDetails || supervisedClubsWithDetails.length === 0) {
-      console.log('No supervised clubs found - returning club selection flag')
+      console.log('No supervised clubs found - checking if club setup is completed')
+      
+      // Check if admin has completed club setup
+      const { data: profileWithClubs, error: profileError } = await supabase
+        .from('profiles')
+        .select('clubs_setup_completed')
+        .eq('id', user.id)
+        .single()
+      
+      const needsClubSelection = !profileWithClubs?.clubs_setup_completed
+      
+      console.log('Club setup completed:', profileWithClubs?.clubs_setup_completed)
+      console.log('Needs club selection:', needsClubSelection)
+      
       return NextResponse.json({
-        needsClubSelection: true,
+        needsClubSelection,
         profile,
         stats: {
           totalStudents: 0,

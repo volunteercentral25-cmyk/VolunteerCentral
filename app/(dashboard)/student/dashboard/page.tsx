@@ -30,8 +30,8 @@ export default function StudentDashboard() {
           const response = await fetch('/api/student/clubs')
           if (response.ok) {
             const clubData = await response.json()
-            // Show modal if clubs_completed is false or null
-            if (!clubData.clubs_completed) {
+            // Show modal only if clubs_setup_completed is false or null (first login)
+            if (!clubData.clubs_setup_completed) {
               setShowClubModal(true)
             }
           }
