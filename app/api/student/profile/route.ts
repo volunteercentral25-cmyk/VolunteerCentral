@@ -7,12 +7,11 @@ interface ClubMembership {
     id: string
     name: string
     description: string
-  }
+  }[]
 }
 
 interface Club {
   id: string
-  name: string
 }
 
 export async function GET(request: NextRequest) {
@@ -94,7 +93,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Extract club names for backward compatibility
-    const currentClubs = clubMemberships?.map((cm: ClubMembership) => cm.clubs.name) || []
+    const currentClubs = clubMemberships?.map((cm: ClubMembership) => cm.clubs[0]?.name).filter(Boolean) || []
     const betaClub = currentClubs.includes('Beta Club')
     const nths = currentClubs.includes('NTHS')
 
@@ -190,10 +189,10 @@ export async function GET(request: NextRequest) {
       },
       achievements: achievements,
       clubs: clubMemberships?.map((cm: ClubMembership) => ({
-        id: cm.clubs.id,
-        name: cm.clubs.name,
-        description: cm.clubs.description
-      })) || []
+        id: cm.clubs[0]?.id,
+        name: cm.clubs[0]?.name,
+        description: cm.clubs[0]?.description
+      })).filter(club => club.id && club.name) || []
     }
 
     return NextResponse.json(profileData)
