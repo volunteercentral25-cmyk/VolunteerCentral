@@ -265,6 +265,13 @@ export default function StudentProfile() {
   
   // Debug logging
   console.log('Profile data received:', { profile, clubs, safeClubs })
+  console.log('Club display info:', {
+    safeClubs: safeClubs.map(c => c.name),
+    betaClubFromClubs: safeClubs.some(club => club.name === 'Beta Club'),
+    nthsFromClubs: safeClubs.some(club => club.name === 'NTHS'),
+    betaClubFromProfile: safeProfile.beta_club,
+    nthsFromProfile: safeProfile.nths
+  })
   
   // Additional safety checks
   if (!safeProfile.id || !safeProfile.full_name || !safeProfile.email) {
@@ -424,6 +431,12 @@ export default function StudentProfile() {
                             <p className="text-xs text-gray-500">No clubs selected yet</p>
                           )}
                         </div>
+                        {/* Debug info for development */}
+                        {process.env.NODE_ENV === 'development' && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            Clubs: {safeClubs.map(c => c.name).join(', ') || 'None'}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -625,8 +638,8 @@ export default function StudentProfile() {
           onComplete={handleClubModalComplete}
           userRole="student"
           initialClubs={{
-            beta_club: safeProfile.beta_club || false,
-            nths: safeProfile.nths || false
+            beta_club: safeClubs.some(club => club.name === 'Beta Club'),
+            nths: safeClubs.some(club => club.name === 'NTHS')
           }}
         />
       </div>
