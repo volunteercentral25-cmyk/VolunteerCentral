@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+interface ClubMembership {
+  club_id: string
+  clubs: {
+    id: string
+    name: string
+    description: string
+  }
+}
+
+interface Club {
+  id: string
+  name: string
+}
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = createClient()
@@ -80,7 +94,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Extract club names for backward compatibility
-    const currentClubs = clubMemberships?.map(cm => cm.clubs.name) || []
+    const currentClubs = clubMemberships?.map((cm: ClubMembership) => cm.clubs.name) || []
     const betaClub = currentClubs.includes('Beta Club')
     const nths = currentClubs.includes('NTHS')
 
@@ -175,7 +189,7 @@ export async function GET(request: NextRequest) {
         goalHours: goalHours
       },
       achievements: achievements,
-      clubs: clubMemberships?.map(cm => ({
+      clubs: clubMemberships?.map((cm: ClubMembership) => ({
         id: cm.clubs.id,
         name: cm.clubs.name,
         description: cm.clubs.description
@@ -316,7 +330,7 @@ export async function PUT(request: NextRequest) {
             console.error('Error fetching club IDs:', clubError)
           } else if (clubData && clubData.length > 0) {
             // Create new club memberships
-            const clubMemberships = clubData.map(club => ({
+            const clubMemberships = clubData.map((club: Club) => ({
               student_id: user.id,
               club_id: club.id
             }))
