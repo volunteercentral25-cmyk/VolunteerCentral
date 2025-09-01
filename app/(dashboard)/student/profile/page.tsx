@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EditProfileModal } from '@/components/profile'
+import { ClubSelectionModal } from '@/components/profile'
 import { 
   User,
   LogOut,
@@ -74,6 +75,7 @@ export default function StudentProfile() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isClubModalOpen, setIsClubModalOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const router = useRouter()
   const supabase = createClient()
@@ -131,6 +133,12 @@ export default function StudentProfile() {
         }
       })
     }
+  }
+
+  const handleClubModalComplete = () => {
+    setIsClubModalOpen(false)
+    // Refresh the page to get updated club information
+    window.location.reload()
   }
 
   const handleShareProfile = async () => {
@@ -246,6 +254,9 @@ export default function StudentProfile() {
   // Ensure other properties exist
   const safeProfile = profile || {}
   const safeStats = stats || { totalHours: 0, pendingHours: 0, opportunities: 0, achievements: 0, goalProgress: 0, goalHours: 20 }
+  
+  // Debug logging
+  console.log('Profile data received:', { profile, clubs, safeClubs })
   
   // Additional safety checks
   if (!safeProfile.id || !safeProfile.full_name || !safeProfile.email) {
@@ -389,32 +400,33 @@ export default function StudentProfile() {
                         </p>
                       </div>
                     </div>
-                    {(safeProfile.beta_club || safeProfile.nths || (safeClubs && safeClubs.length > 0)) && (
-                      <div className="flex items-center gap-3 p-3 rounded-lg bg-white/50">
-                        <Users className="h-5 w-5 text-purple-600" />
-                        <div>
-                          <p className="font-medium text-gray-900">Club Memberships</p>
-                          <div className="flex gap-2 mt-1 flex-wrap">
-                            {safeClubs && safeClubs.length > 0 ? (
-                              safeClubs.map((club) => (
-                                <Badge key={club.id} className="bg-purple-100 text-purple-800 text-xs">
-                                  {club.name}
-                                </Badge>
-                              ))
-                            ) : (
-                              <>
-                                {safeProfile.beta_club && (
-                                  <Badge className="bg-blue-100 text-blue-800 text-xs">Beta Club</Badge>
-                                )}
-                                {safeProfile.nths && (
-                                  <Badge className="bg-green-100 text-green-800 text-xs">NTHS</Badge>
-                                )}
-                              </>
-                            )}
-                          </div>
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-white/50">
+                      <Users className="h-5 w-5 text-purple-600" />
+                      <div>
+                        <p className="font-medium text-gray-900">Club Memberships</p>
+                        <div className="flex gap-2 mt-1 flex-wrap">
+                          {safeClubs && safeClubs.length > 0 ? (
+                            safeClubs.map((club) => (
+                              <Badge key={club.id} className="bg-purple-100 text-purple-800 text-xs">
+                                {club.name}
+                              </Badge>
+                            ))
+                          ) : (
+                            <>
+                              {safeProfile.beta_club && (
+                                <Badge className="bg-blue-100 text-blue-800 text-xs">Beta Club</Badge>
+                              )}
+                              {safeProfile.nths && (
+                                <Badge className="bg-green-100 text-green-800 text-xs">NTHS</Badge>
+                              )}
+                            </>
+                          )}
                         </div>
+                        {safeClubs && safeClubs.length === 0 && !safeProfile.beta_club && !safeProfile.nths && (
+                          <p className="text-xs text-gray-500 mt-1">No clubs selected yet</p>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
 
                   <div className="space-y-3 mt-6">
@@ -424,6 +436,14 @@ export default function StudentProfile() {
                     >
                       <Edit className="h-4 w-4 mr-2" />
                       Edit Profile
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="btn-secondary w-full"
+                      onClick={() => setIsClubModalOpen(true)}
+                    >
+                      <Users className="h-4 w-4 mr-2" />
+                      Update Clubs
                     </Button>
                     <Button 
                       variant="outline"
@@ -597,6 +617,18 @@ export default function StudentProfile() {
           onClose={() => setIsEditModalOpen(false)}
           profile={safeProfile}
           onProfileUpdate={handleProfileUpdate}
+        />
+
+        {/* Club Selection Modal */}
+        <ClubSelectionModal
+          isOpen={isClubModalOpen}
+          onClose={() => setIsClubModalOpen(false)}
+          onComplete={handleClubModalComplete}
+          userRole="student"
+          initialClubs={{
+            beta_club: safeProfile.beta_club || false,
+            nths: safeProfile.nths || false
+          }}
         />
       </div>
     )

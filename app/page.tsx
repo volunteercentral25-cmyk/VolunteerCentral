@@ -430,7 +430,12 @@ export default function HomePage() {
               <p className="text-xs text-gray-600">Community Service</p>
             </div>
           </div>
-          <p>© {new Date().getFullYear()} Central High School. All rights reserved.</p>
+          <div className="flex flex-col items-center gap-2 md:flex-row">
+            <p>© {new Date().getFullYear()} Central High School. All rights reserved.</p>
+            <Link href="/creator" className="text-sm text-gray-600 hover:text-purple-600 transition-colors">
+              Created by Yatish Grandhe
+            </Link>
+          </div>
         </div>
       </footer>
     </div>

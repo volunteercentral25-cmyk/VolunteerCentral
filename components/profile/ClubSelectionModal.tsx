@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -23,12 +23,13 @@ interface ClubSelectionModalProps {
   onClose: () => void
   onComplete: () => void
   userRole?: 'student' | 'admin'
+  initialClubs?: { beta_club: boolean; nths: boolean }
 }
 
-export function ClubSelectionModal({ isOpen, onClose, onComplete, userRole = 'student' }: ClubSelectionModalProps) {
+export function ClubSelectionModal({ isOpen, onClose, onComplete, userRole = 'student', initialClubs }: ClubSelectionModalProps) {
   const [selectedClubs, setSelectedClubs] = useState({
-    beta_club: false,
-    nths: false
+    beta_club: initialClubs?.beta_club || false,
+    nths: initialClubs?.nths || false
   })
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
@@ -38,6 +39,16 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete, userRole = 'st
   const description = isAdmin 
     ? 'Tell us which clubs you are an advisor for to help manage student memberships and opportunities'
     : 'Tell us about your club memberships to help us personalize your experience'
+
+    // Update selected clubs when initialClubs changes
+  useEffect(() => {
+    if (initialClubs) {
+      setSelectedClubs({
+        beta_club: initialClubs.beta_club || false,
+        nths: initialClubs.nths || false
+      })
+    }
+  }, [initialClubs])
 
   const handleClubToggle = (club: 'beta_club' | 'nths') => {
     setSelectedClubs(prev => ({

@@ -6,6 +6,8 @@ import MobileAdminLayout from '@/components/layout/mobile-admin-layout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { ClubSelectionModal } from '@/components/profile'
+import AdminClubSelectionModal from '@/components/admin/AdminClubSelectionModal'
 import { 
   Users,
   Calendar,
@@ -14,7 +16,10 @@ import {
   TrendingUp,
   Star,
   ArrowRight,
-  Activity
+  Activity,
+  Download,
+  Settings,
+  Shield
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -64,6 +69,7 @@ class ErrorBoundary extends Component<
 }
 
 interface DashboardData {
+  needsClubSelection: boolean
   stats: {
     totalStudents: number
     totalOpportunities: number
@@ -96,6 +102,14 @@ interface DashboardData {
       full_name: string
     }
   }>
+  supervisedClubs: Array<{
+    club_id: string
+    clubs: {
+      id: string
+      name: string
+      description: string
+    }
+  }>
   profile: any
 }
 
@@ -103,6 +117,10 @@ export default function MobileAdminDashboard() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showClubModal, setShowClubModal] = useState(false)
+  const [showAdminClubModal, setShowAdminClubModal] = useState(false)
+  const [clubModalChecked, setClubModalChecked] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     loadDashboardData()
@@ -116,12 +134,174 @@ export default function MobileAdminDashboard() {
       }
       const data = await response.json()
       setDashboardData(data)
+      
+      // Check if admin needs to complete club selection
+      if (!clubModalChecked) {
+        if (data.needsClubSelection) {
+          setShowAdminClubModal(true)
+        } else {
+          try {
+            const clubResponse = await fetch('/api/student/clubs')
+            if (clubResponse.ok) {
+              const clubData = await clubResponse.json()
+              // Show modal only if clubs_setup_completed is false or null (first login)
+              if (!clubData.clubs_setup_completed) {
+                setShowClubModal(true)
+              }
+            }
+          } catch (error) {
+            console.error('Error checking club status:', error)
+          }
+        }
+        setClubModalChecked(true)
+      }
     } catch (error) {
       console.error('Error loading dashboard data:', error)
       setError('Failed to load dashboard data')
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleClubModalComplete = () => {
+    setShowClubModal(false)
+    // Refresh dashboard data to get updated club information
+    loadDashboardData()
+  }
+
+  const handleAdminClubModalComplete = () => {
+    setShowAdminClubModal(false)
+    // Refresh dashboard data to get updated club information
+    loadDashboardData()
+  }
+
+  const handleExportData = async () => {
+    setExporting(true)
+    try {
+      const response = await fetch('/api/admin/export-data')
+      if (!response.ok) {
+        throw new Error('Failed to export data')
+      }
+      
+      const data = await response.json()
+      const csv = generateCSV(data)
+      
+      // Create a timestamp for the filename
+      const timestamp = new Date().toISOString().split('T')[0] // YYYY-MM-DD format
+      const adminName = dashboardData?.profile?.full_name?.replace(/[^a-zA-Z0-9]/g, '_') || 'Admin'
+      const clubs = dashboardData?.supervisedClubs?.map(sc => sc.clubs?.name?.replace(/[^a-zA-Z0-9]/g, '_')).join('_') || 'All'
+      const filename = `VolunteerCentral_${adminName}_${clubs}_${timestamp}.csv`
+      
+      // Create and download the file
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      link.setAttribute('href', url)
+      link.setAttribute('download', filename)
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      alert(`✅ Data exported successfully!\n\nFile: ${filename}\nStudents: ${data.summary.totalStudents}\nHours: ${data.summary.totalHours}\nOpportunities: ${data.summary.totalOpportunities}`)
+    } catch (error) {
+      console.error('Export error:', error)
+      alert('Failed to export data. Please try again.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const generateCSV = (data: any) => {
+    let csv = ''
+
+    // Helper function to sanitize CSV values
+    const sanitizeValue = (value: any) => {
+      if (value === null || value === undefined) return ''
+      const stringValue = String(value)
+      // Escape quotes and wrap in quotes if contains comma, quote, or newline
+      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+        return `"${stringValue.replace(/"/g, '""')}"`
+      }
+      return stringValue
+    }
+
+    // Header with title and generation info
+    csv += 'VOLUNTEER CENTRAL - COMPREHENSIVE DATA EXPORT\n'
+    csv += '='.repeat(60) + '\n'
+    csv += `Generated on: ${new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })}\n`
+    csv += `Generated by: ${dashboardData?.profile?.full_name || 'Admin'}\n`
+    csv += `Supervised Clubs: ${dashboardData?.supervisedClubs?.map(sc => sc.clubs?.name).join(', ') || 'None'}\n`
+    csv += `Export Scope: Students in supervised clubs + opportunities open to all\n\n`
+    
+    // Executive Summary Section
+    csv += 'EXECUTIVE SUMMARY\n'
+    csv += '-'.repeat(25) + '\n'
+    csv += 'Metric,Value,Description\n'
+    csv += `Total Students,${data.summary.totalStudents},Students in supervised clubs\n`
+    csv += `Total Volunteer Hours,${data.summary.totalHours},All hours logged (approved + pending + denied)\n`
+    csv += `Approved Hours,${data.summary.approvedHours},Hours verified and counted\n`
+    csv += `Pending Hours,${data.summary.pendingHours},Hours awaiting verification\n`
+    csv += `Denied Hours,${data.summary.deniedHours},Hours rejected\n`
+    csv += `Total Opportunities,${data.summary.totalOpportunities},Club-specific + open-to-all opportunities\n`
+    csv += `Total Registrations,${data.summary.totalRegistrations},Student registrations for opportunities\n\n`
+
+    // Students Table
+    csv += 'STUDENT INFORMATION\n'
+    csv += '-'.repeat(20) + '\n'
+    csv += 'Full Name,Email Address,Student ID,Phone Number,Bio,Club Membership,Date Joined,Last Updated\n'
+    data.students.forEach((student: any) => {
+      csv += `${sanitizeValue(student.name)},${sanitizeValue(student.email)},${sanitizeValue(student.studentId)},${sanitizeValue(student.phone)},${sanitizeValue(student.bio)},${sanitizeValue(student.club)},${sanitizeValue(student.joinedDate)},${sanitizeValue(student.lastUpdated)}\n`
+    })
+    csv += '\n'
+
+    // Volunteer Hours Table
+    csv += 'VOLUNTEER HOURS DETAILS\n'
+    csv += '-'.repeat(20) + '\n'
+    csv += 'Student Name,Student Email,Student ID,Student Phone,Club,Hours Logged,Activity Date,Activity Description,Status,Verification Email,Date Submitted,Date Verified,Verified By,Verification Notes\n'
+    data.volunteerHours.forEach((hour: any) => {
+      csv += `${sanitizeValue(hour.studentName)},${sanitizeValue(hour.studentEmail)},${sanitizeValue(hour.studentId)},${sanitizeValue(hour.studentPhone)},${sanitizeValue(hour.club)},${sanitizeValue(hour.hours)},${sanitizeValue(hour.date)},${sanitizeValue(hour.description)},${sanitizeValue(hour.status)},${sanitizeValue(hour.verificationEmail)},${sanitizeValue(hour.submittedDate)},${sanitizeValue(hour.verifiedDate)},${sanitizeValue(hour.verifiedBy)},${sanitizeValue(hour.notes)}\n`
+    })
+    csv += '\n'
+
+    // Opportunities Table
+    csv += 'VOLUNTEER OPPORTUNITIES\n'
+    csv += '-'.repeat(20) + '\n'
+    csv += 'Opportunity Title,Description,Date,Location,Club Restriction,Created Date\n'
+    data.opportunities.forEach((opp: any) => {
+      csv += `${sanitizeValue(opp.title)},${sanitizeValue(opp.description)},${sanitizeValue(opp.date)},${sanitizeValue(opp.location)},${sanitizeValue(opp.club)},${sanitizeValue(opp.createdDate)}\n`
+    })
+    csv += '\n'
+
+    // Registrations Table
+    csv += 'OPPORTUNITY REGISTRATIONS\n'
+    csv += '-'.repeat(20) + '\n'
+    csv += 'Student Name,Student Email,Student ID,Opportunity Title,Opportunity Date,Club Restriction,Registration Status,Date Registered\n'
+    data.registrations.forEach((reg: any) => {
+      csv += `${sanitizeValue(reg.studentName)},${sanitizeValue(reg.studentEmail)},${sanitizeValue(reg.studentId)},${sanitizeValue(reg.opportunity)},${sanitizeValue(reg.opportunityDate)},${sanitizeValue(reg.club)},${sanitizeValue(reg.status)},${sanitizeValue(reg.registeredDate)}\n`
+    })
+    csv += '\n'
+
+    // Footer with additional info
+    csv += 'NOTES AND LEGEND\n'
+    csv += '-'.repeat(25) + '\n'
+    csv += '• Club Restriction "Open to All Students" means the opportunity is available to all students regardless of club membership\n'
+    csv += '• Hours status: "pending" = awaiting approval, "approved" = verified and counted, "denied" = rejected\n'
+    csv += '• Registration status: "pending" = awaiting approval, "approved" = confirmed, "denied" = rejected\n'
+    csv += '• All dates are in MM/DD/YYYY format\n'
+    csv += '• This export contains only data for students in your supervised clubs\n'
+    csv += '• Opportunities include both club-specific and open-to-all opportunities\n'
+    csv += '• Student club membership is based on Beta Club and NTHS boolean flags\n'
+    csv += '• Verification emails are sent to supervisors for hours approval\n'
+    csv += '• Phone numbers and bios are optional fields and may be empty\n'
+
+    return csv
   }
 
   if (loading) {
@@ -176,6 +356,24 @@ export default function MobileAdminDashboard() {
         <p className="text-gray-600 text-sm">
           Manage the volunteer system. Monitor students, opportunities, and volunteer hours.
         </p>
+        {dashboardData?.supervisedClubs && dashboardData.supervisedClubs.length > 0 && (
+          <div className="flex items-center justify-center gap-2 mt-4">
+            <Badge variant="outline" className="text-xs">
+              Supervising: {dashboardData.supervisedClubs.map((sc, index) => {
+                try {
+                  // Ensure we're working with a safe object structure
+                  const clubName = sc && typeof sc === 'object' && sc.clubs && typeof sc.clubs === 'object' 
+                    ? sc.clubs.name || 'Unknown Club'
+                    : 'Unknown Club';
+                  return clubName;
+                } catch (error) {
+                  console.error('Error accessing club name:', error, sc);
+                  return 'Unknown Club';
+                }
+              }).join(', ')}
+            </Badge>
+          </div>
+        )}
       </motion.div>
 
       {/* Stats Cards */}
@@ -278,6 +476,21 @@ export default function MobileAdminDashboard() {
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
+            <Button 
+              onClick={handleExportData}
+              disabled={exporting}
+              className="w-full justify-between bg-indigo-600 hover:bg-indigo-700"
+            >
+              <span>{exporting ? 'Generating...' : 'Export Data'}</span>
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button 
+              onClick={() => setShowAdminClubModal(true)}
+              className="w-full justify-between bg-teal-600 hover:bg-teal-700"
+            >
+              <span>Manage Clubs</span>
+              <Settings className="h-4 w-4" />
+            </Button>
           </CardContent>
         </Card>
       </motion.div>
@@ -393,6 +606,21 @@ export default function MobileAdminDashboard() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Club Selection Modal */}
+      <ClubSelectionModal
+        isOpen={showClubModal}
+        onClose={() => setShowClubModal(false)}
+        onComplete={handleClubModalComplete}
+        userRole="admin"
+      />
+
+      {/* Admin Club Selection Modal */}
+      <AdminClubSelectionModal
+        isOpen={showAdminClubModal}
+        onClose={() => setShowAdminClubModal(false)}
+        onComplete={handleAdminClubModalComplete}
+      />
     </MobileAdminLayout>
   </ErrorBoundary>
   )

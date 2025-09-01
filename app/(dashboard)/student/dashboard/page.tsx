@@ -51,6 +51,10 @@ export default function StudentDashboard() {
     setShowClubModal(false)
     // Refresh dashboard data to get updated club information
     refetch()
+    // Also refresh the page to ensure all components get updated data
+    setTimeout(() => {
+      window.location.reload()
+    }, 1000)
   }
 
   // Loading state
