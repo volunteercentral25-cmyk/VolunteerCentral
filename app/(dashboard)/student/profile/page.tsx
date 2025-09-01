@@ -267,6 +267,7 @@ export default function StudentProfile() {
   console.log('Profile data received:', { profile, clubs, safeClubs })
   console.log('Club display info:', {
     safeClubs: safeClubs.map(c => c.name),
+    safeClubsLength: safeClubs.length,
     betaClubFromClubs: safeClubs.some(club => club.name === 'Beta Club'),
     nthsFromClubs: safeClubs.some(club => club.name === 'NTHS'),
     betaClubFromProfile: safeProfile.beta_club,

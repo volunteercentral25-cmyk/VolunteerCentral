@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
       .from('student_clubs')
       .select(`
         club_id,
-        clubs!inner(id, name, description)
+        clubs(id, name, description)
       `)
       .eq('student_id', user.id)
 
@@ -101,7 +101,9 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('Profile API: Fetching club memberships for user ID:', user.id)
-    console.log('Club memberships for user:', user.id, clubMemberships)
+    console.log('Raw club memberships response:', clubMemberships)
+    console.log('Club memberships error:', clubError)
+    console.log('User object:', { id: user.id, email: user.email })
 
     // Extract club names for backward compatibility
     const currentClubs = clubMemberships?.map((cm: ClubMembership) => cm.clubs[0]?.name).filter(Boolean) || []
@@ -118,7 +120,7 @@ export async function GET(request: NextRequest) {
       description: cm.clubs[0]?.description
     })).filter(club => club.id && club.name) || []
 
-    // Log clubs array for debugging
+    // Log clubs array for frontend
     console.log('Clubs array for frontend:', clubsArray)
 
     // Calculate achievements based on hours and track achievement dates
@@ -268,6 +270,14 @@ export async function GET(request: NextRequest) {
       achievements: achievements,
       clubs: clubsArray
     }
+
+    console.log('Final profile data being sent to frontend:', {
+      clubs: clubsArray,
+      clubsLength: clubsArray.length,
+      betaClub,
+      nths,
+      currentClubs
+    })
 
     return NextResponse.json(profileData)
 
