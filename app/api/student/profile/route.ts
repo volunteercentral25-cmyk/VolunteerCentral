@@ -65,6 +65,25 @@ export async function GET(request: NextRequest) {
 
     const totalOpportunities = registrations?.length || 0
 
+    // Get current club memberships
+    const { data: clubMemberships, error: clubError } = await supabase
+      .from('student_clubs')
+      .select(`
+        club_id,
+        clubs!inner(id, name, description)
+      `)
+      .eq('student_id', user.id)
+
+    if (clubError) {
+      console.error('Club memberships fetch error:', clubError)
+      // Continue without club memberships
+    }
+
+    // Extract club names for backward compatibility
+    const currentClubs = clubMemberships?.map(cm => cm.clubs.name) || []
+    const betaClub = currentClubs.includes('Beta Club')
+    const nths = currentClubs.includes('NTHS')
+
     // Calculate achievements based on hours
     const achievements = []
     if (totalHours >= 5) {
@@ -143,9 +162,9 @@ export async function GET(request: NextRequest) {
         full_name: profile.full_name,
         role: profile.role,
         created_at: profile.created_at,
-        beta_club: profile.beta_club || false,
-        nths: profile.nths || false,
-        clubs_completed: profile.clubs_completed || false
+        beta_club: betaClub,
+        nths: nths,
+        clubs_completed: currentClubs.length > 0
       },
       stats: {
         totalHours: totalHours,
@@ -155,7 +174,12 @@ export async function GET(request: NextRequest) {
         goalProgress: goalProgress,
         goalHours: goalHours
       },
-      achievements: achievements
+      achievements: achievements,
+      clubs: clubMemberships?.map(cm => ({
+        id: cm.clubs.id,
+        name: cm.clubs.name,
+        description: cm.clubs.description
+      })) || []
     }
 
     return NextResponse.json(profileData)
@@ -178,11 +202,16 @@ export async function PUT(request: NextRequest) {
     }
 
     // Parse request body
-    const { full_name, student_id, email } = await request.json()
+    const { full_name, student_id, email, clubs } = await request.json()
 
     // Validate required fields
     if (!full_name || !student_id || !email) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    // Validate clubs array if provided
+    if (clubs && !Array.isArray(clubs)) {
+      return NextResponse.json({ error: 'Clubs must be an array' }, { status: 400 })
     }
 
     // Validate student ID format
@@ -260,13 +289,81 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // Handle club membership updates if clubs are provided
+    if (clubs) {
+      try {
+        // First, remove all existing club memberships
+        const { error: deleteError } = await supabase
+          .from('student_clubs')
+          .delete()
+          .eq('student_id', user.id)
+
+        if (deleteError) {
+          console.error('Error removing existing club memberships:', deleteError)
+          // Continue with the request even if this fails
+        }
+
+        // Add new club memberships
+        if (clubs.length > 0) {
+          // Get club IDs for the selected club names
+          const { data: clubData, error: clubError } = await supabase
+            .from('clubs')
+            .select('id')
+            .in('name', clubs)
+            .eq('is_active', true)
+
+          if (clubError) {
+            console.error('Error fetching club IDs:', clubError)
+          } else if (clubData && clubData.length > 0) {
+            // Create new club memberships
+            const clubMemberships = clubData.map(club => ({
+              student_id: user.id,
+              club_id: club.id
+            }))
+
+            const { error: insertError } = await supabase
+              .from('student_clubs')
+              .insert(clubMemberships)
+
+            if (insertError) {
+              console.error('Error creating club memberships:', insertError)
+            }
+          }
+        }
+
+        // Update the legacy boolean flags for backward compatibility
+        const betaClub = clubs.includes('Beta Club')
+        const nths = clubs.includes('NTHS')
+        
+        const { error: legacyUpdateError } = await supabase
+          .from('profiles')
+          .update({
+            beta_club: betaClub,
+            nths: nths,
+            clubs_completed: clubs.length > 0,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id)
+
+        if (legacyUpdateError) {
+          console.error('Error updating legacy club flags:', legacyUpdateError)
+        }
+      } catch (clubError) {
+        console.error('Error handling club memberships:', clubError)
+        // Continue with the request even if club handling fails
+      }
+    }
+
     return NextResponse.json({
       id: updatedProfile.id,
       email: updatedProfile.email,
       student_id: updatedProfile.student_id,
       full_name: updatedProfile.full_name,
       role: updatedProfile.role,
-      created_at: updatedProfile.created_at
+      created_at: updatedProfile.created_at,
+      beta_club: clubs ? clubs.includes('Beta Club') : updatedProfile.beta_club,
+      nths: clubs ? clubs.includes('NTHS') : updatedProfile.nths,
+      clubs_completed: clubs ? clubs.length > 0 : updatedProfile.clubs_completed
     })
 
   } catch (error) {

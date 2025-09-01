@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { 
   X,
   User,
@@ -15,7 +16,8 @@ import {
   Save,
   Loader2,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Users
 } from 'lucide-react'
 
 interface ProfileData {
@@ -25,6 +27,14 @@ interface ProfileData {
   full_name: string
   role: string
   created_at: string
+  beta_club?: boolean
+  nths?: boolean
+}
+
+interface Club {
+  id: string
+  name: string
+  description: string
 }
 
 interface EditProfileModalProps {
@@ -40,12 +50,59 @@ export function EditProfileModal({ isOpen, onClose, profile, onProfileUpdate }: 
     student_id: profile.student_id || '',
     email: profile.email
   })
+  const [selectedClubs, setSelectedClubs] = useState<string[]>([])
+  const [availableClubs, setAvailableClubs] = useState<Club[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingClubs, setIsLoadingClubs] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+
+  // Initialize selected clubs from profile
+  useEffect(() => {
+    const clubs = []
+    if (profile.beta_club) clubs.push('Beta Club')
+    if (profile.nths) clubs.push('NTHS')
+    setSelectedClubs(clubs)
+  }, [profile])
+
+  // Fetch available clubs when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchAvailableClubs()
+    }
+  }, [isOpen])
+
+  const fetchAvailableClubs = async () => {
+    setIsLoadingClubs(true)
+    try {
+      const response = await fetch('/api/student/clubs')
+      if (response.ok) {
+        const clubs = await response.json()
+        setAvailableClubs(clubs)
+      } else {
+        console.error('Failed to fetch clubs')
+      }
+    } catch (error) {
+      console.error('Error fetching clubs:', error)
+    } finally {
+      setIsLoadingClubs(false)
+    }
+  }
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
     // Clear message when user starts typing
+    if (message) setMessage(null)
+  }
+
+  const handleClubToggle = (clubName: string) => {
+    setSelectedClubs(prev => {
+      if (prev.includes(clubName)) {
+        return prev.filter(name => name !== clubName)
+      } else {
+        return [...prev, clubName]
+      }
+    })
+    // Clear message when user changes clubs
     if (message) setMessage(null)
   }
 
@@ -97,7 +154,8 @@ export function EditProfileModal({ isOpen, onClose, profile, onProfileUpdate }: 
         body: JSON.stringify({
           full_name: formData.full_name.trim(),
           student_id: formData.student_id.trim(),
-          email: formData.email.trim()
+          email: formData.email.trim(),
+          clubs: selectedClubs
         })
       })
 
@@ -131,6 +189,11 @@ export function EditProfileModal({ isOpen, onClose, profile, onProfileUpdate }: 
         student_id: profile.student_id || '',
         email: profile.email
       })
+      // Reset selected clubs to original values
+      const clubs = []
+      if (profile.beta_club) clubs.push('Beta Club')
+      if (profile.nths) clubs.push('NTHS')
+      setSelectedClubs(clubs)
       setMessage(null)
       onClose()
     }
@@ -252,6 +315,48 @@ export function EditProfileModal({ isOpen, onClose, profile, onProfileUpdate }: 
                       required
                       disabled={isLoading}
                     />
+                  </div>
+
+                  {/* Club Memberships */}
+                  <div className="space-y-3">
+                    <Label className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Club Memberships
+                    </Label>
+                    {isLoadingClubs ? (
+                      <div className="flex items-center gap-2 p-3 rounded-lg bg-gray-50">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="text-sm text-gray-600">Loading clubs...</span>
+                      </div>
+                    ) : availableClubs.length === 0 ? (
+                      <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-50 border border-yellow-200">
+                        <AlertCircle className="h-4 w-4 text-yellow-600" />
+                        <span className="text-sm text-yellow-700">No clubs available at the moment</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-40 overflow-y-auto">
+                        {availableClubs.map((club) => (
+                          <div key={club.id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`club-${club.id}`}
+                              checked={selectedClubs.includes(club.name)}
+                              onCheckedChange={() => handleClubToggle(club.name)}
+                              disabled={isLoading}
+                            />
+                            <Label
+                              htmlFor={`club-${club.id}`}
+                              className="text-sm font-normal cursor-pointer flex-1"
+                            >
+                              <div className="font-medium">{club.name}</div>
+                              <div className="text-xs text-gray-500">{club.description}</div>
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-500">
+                      Select the clubs you're a member of. You can change these at any time.
+                    </p>
                   </div>
 
                   {/* Account Status (Read-only) */}

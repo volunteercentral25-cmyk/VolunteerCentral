@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -59,32 +59,37 @@ export async function GET(request: NextRequest) {
     const supabase = createClient()
     
     // Get the current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get user's club information
+    // Get user profile and check if student
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('beta_club, nths, clubs_completed')
+      .select('role')
       .eq('id', user.id)
       .single()
 
-    if (profileError) {
-      console.error('Profile fetch error:', profileError)
-      return NextResponse.json({ error: 'Failed to fetch club information' }, { status: 500 })
+    if (profileError || !profile || profile.role !== 'student') {
+      return NextResponse.json({ error: 'Student access required' }, { status: 403 })
     }
 
-    return NextResponse.json({
-      beta_club: profile.beta_club || false,
-      nths: profile.nths || false,
-      clubs_completed: profile.clubs_completed || false
-    })
+    // Fetch all active clubs
+    const { data: clubs, error: clubsError } = await supabase
+      .from('clubs')
+      .select('id, name, description')
+      .eq('is_active', true)
+      .order('name')
 
+    if (clubsError) {
+      console.error('Error fetching clubs:', clubsError)
+      return NextResponse.json({ error: 'Failed to fetch clubs' }, { status: 500 })
+    }
+
+    return NextResponse.json(clubs || [])
   } catch (error) {
-    console.error('Club GET API error:', error)
+    console.error('Clubs API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
