@@ -81,9 +81,9 @@ export default function StudentDashboard() {
   }
 
   return (
-    <div className="min-h-screen gradient-bg overflow-hidden">
+    <div className="min-h-screen gradient-bg overflow-hidden w-full">
       {/* Decorative blobs */}
-      <div className="pointer-events-none absolute inset-0 -z-10">
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-32 -right-16 h-72 w-72 rounded-full bg-purple-300/70 blur-3xl animate-blob" />
         <div className="absolute bottom-0 left-0 h-72 w-72 rounded-full bg-pink-300/60 blur-3xl animate-blob animation-delay-2000" />
         <div className="absolute top-40 left-10 h-72 w-72 rounded-full bg-blue-300/60 blur-3xl animate-blob animation-delay-4000" />
@@ -92,7 +92,7 @@ export default function StudentDashboard() {
       {/* Header */}
       <DashboardHeader profile={data.profile} />
 
-      <main className="mx-auto max-w-7xl px-4 py-8">
+      <main className="mx-auto max-w-7xl px-4 py-8 w-full">
         {/* Welcome Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

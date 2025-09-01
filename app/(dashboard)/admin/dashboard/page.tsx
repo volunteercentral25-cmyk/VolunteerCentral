@@ -383,9 +383,9 @@ export default function AdminDashboard() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen gradient-bg overflow-hidden">
+      <div className="min-h-screen gradient-bg overflow-hidden w-full">
         {/* Decorative blobs */}
-        <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
           <div className="absolute -top-32 -right-16 h-72 w-72 rounded-full bg-purple-300/70 blur-3xl animate-blob" />
           <div className="absolute bottom-0 left-0 h-72 w-72 rounded-full bg-pink-300/60 blur-3xl animate-blob animation-delay-2000" />
           <div className="absolute top-40 left-10 h-72 w-72 rounded-full bg-blue-300/60 blur-3xl animate-blob animation-delay-4000" />
@@ -396,9 +396,9 @@ export default function AdminDashboard() {
           initial={{ y: -24, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5 }}
-          className="sticky top-0 z-40 border-b border-white/30 bg-white/70 backdrop-blur-md"
+          className="sticky top-0 z-40 border-b border-white/30 bg-white/70 backdrop-blur-md w-full"
         >
-          <div className="mx-auto max-w-7xl px-4 py-4">
+          <div className="mx-auto max-w-7xl px-4 py-4 w-full">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Link href="/" className="flex items-center gap-3">
@@ -427,7 +427,7 @@ export default function AdminDashboard() {
           </div>
         </motion.header>
 
-        <main className="mx-auto max-w-7xl px-4 py-8">
+        <main className="mx-auto max-w-7xl px-4 py-8 w-full">
           {/* Header Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}

@@ -69,9 +69,18 @@
 @layer base {
   * {
     @apply border-border;
+    box-sizing: border-box;
   }
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
+  }
+  
+  html {
+    overflow-x: hidden;
+    width: 100%;
   }
 }
 
@@ -311,6 +320,16 @@
   body {
     -webkit-overflow-scrolling: touch;
     overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
+  }
+
+  /* Prevent horizontal overflow */
+  .container, .max-w-7xl, .max-w-6xl, .max-w-5xl, .max-w-4xl, .max-w-3xl, .max-w-2xl, .max-w-xl, .max-w-lg, .max-w-md, .max-w-sm {
+    max-width: 100%;
+    width: 100%;
+    padding-left: 1rem;
+    padding-right: 1rem;
   }
 
   /* Mobile text scaling */
@@ -379,6 +398,56 @@
   .desktop-animation {
     transition: all 0.3s ease-in-out;
   }
+}
+
+/* Additional responsive fixes */
+@media (max-width: 640px) {
+  .px-4 {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  .mx-auto {
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+  
+  /* Ensure all containers respect viewport width */
+  .max-w-7xl, .max-w-6xl, .max-w-5xl, .max-w-4xl, .max-w-3xl, .max-w-2xl, .max-w-xl, .max-w-lg, .max-w-md, .max-w-sm {
+    max-width: calc(100vw - 2rem) !important;
+    width: 100% !important;
+  }
+  
+  /* Prevent text overflow */
+  .text-balance {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  
+  /* Ensure buttons don't overflow */
+  .btn-primary, .btn-secondary {
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* Prevent horizontal scroll on all screen sizes */
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+}
+
+/* Ensure all elements respect container bounds */
+* {
+  max-width: 100%;
+}
+
+/* Fix for flex items that might overflow */
+.flex {
+  flex-wrap: wrap;
 }
 
 /* High DPI displays */
