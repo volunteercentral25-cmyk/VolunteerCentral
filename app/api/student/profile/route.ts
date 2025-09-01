@@ -37,6 +37,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 })
     }
 
+    console.log('Profile API: User profile data:', { 
+      id: profile.id, 
+      email: profile.email, 
+      full_name: profile.full_name,
+      beta_club: profile.beta_club,
+      nths: profile.nths
+    })
+
     // Get total approved hours
     const { data: approvedHours, error: hoursError } = await supabase
       .from('volunteer_hours')
@@ -92,6 +100,7 @@ export async function GET(request: NextRequest) {
       // Continue without club memberships
     }
 
+    console.log('Profile API: Fetching club memberships for user ID:', user.id)
     // Log club memberships for debugging
     console.log('Club memberships for user:', user.id, clubMemberships)
 
