@@ -77,6 +77,7 @@ export default function StudentProfile() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isClubModalOpen, setIsClubModalOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -130,25 +131,61 @@ export default function StudentProfile() {
   }
 
   const handleProfileUpdate = (updatedProfile: any) => {
-    if (profileData && updatedProfile && typeof updatedProfile === 'object') {
-      setProfileData({
-        ...profileData,
-        profile: {
-          ...profileData.profile,
-          ...updatedProfile
+    console.log('Profile updated, refreshing data...')
+    // Close the modal first
+    setIsEditModalOpen(false)
+    
+    // Refetch profile data after a short delay
+    setTimeout(async () => {
+      console.log('Refetching profile data...')
+      setIsRefreshing(true)
+      try {
+        const response = await fetch('/api/student/profile')
+        if (response.ok) {
+          const data = await response.json()
+          console.log('Refreshed profile data:', data)
+          setProfileData(data)
+        } else {
+          console.error('Failed to refresh profile data')
+          // Fallback to page reload
+          window.location.reload()
         }
-      })
-    }
+      } catch (error) {
+        console.error('Error refreshing profile data:', error)
+        // Fallback to page reload
+        window.location.reload()
+      } finally {
+        setIsRefreshing(false)
+      }
+    }, 1000) // Short delay to show success message
   }
 
   const handleClubModalComplete = () => {
-    console.log('Club modal completed, refreshing page...')
+    console.log('Club modal completed, refreshing data...')
     setIsClubModalOpen(false)
-    // Refresh the page to get updated club information
-    setTimeout(() => {
-      console.log('Reloading page to get updated club data...')
-      window.location.reload()
-    }, 2000) // Increased delay to ensure API has time to process
+    // Refetch profile data after a short delay
+    setTimeout(async () => {
+      console.log('Refetching profile data after club update...')
+      setIsRefreshing(true)
+      try {
+        const response = await fetch('/api/student/profile')
+        if (response.ok) {
+          const data = await response.json()
+          console.log('Refreshed profile data after club update:', data)
+          setProfileData(data)
+        } else {
+          console.error('Failed to refresh profile data after club update')
+          // Fallback to page reload
+          window.location.reload()
+        }
+      } catch (error) {
+        console.error('Error refreshing profile data after club update:', error)
+        // Fallback to page reload
+        window.location.reload()
+      } finally {
+        setIsRefreshing(false)
+      }
+    }, 1000) // Short delay to show success message
   }
 
   const handleShareProfile = async () => {
@@ -342,6 +379,12 @@ export default function StudentProfile() {
                   <User className="h-4 w-4" />
                   <span>{safeProfile.full_name}</span>
                 </div>
+                {isRefreshing && (
+                  <div className="flex items-center gap-2 text-sm text-blue-600">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Updating...</span>
+                  </div>
+                )}
                 <Button 
                   onClick={handleSignOut}
                   variant="outline" 
@@ -356,6 +399,16 @@ export default function StudentProfile() {
         </motion.header>
 
         <main className="mx-auto max-w-7xl px-4 py-8">
+          {/* Refresh Overlay */}
+          {isRefreshing && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
+              <div className="bg-white rounded-lg p-6 shadow-xl flex items-center gap-3">
+                <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
+                <span className="text-lg font-medium text-gray-900">Updating profile...</span>
+              </div>
+            </div>
+          )}
+          
           {/* Profile Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -459,6 +512,7 @@ export default function StudentProfile() {
                     <Button 
                       className="btn-primary w-full"
                       onClick={() => setIsEditModalOpen(true)}
+                      disabled={isRefreshing}
                     >
                       <Edit className="h-4 w-4 mr-2" />
                       Edit Profile
@@ -467,6 +521,7 @@ export default function StudentProfile() {
                       variant="outline"
                       className="btn-secondary w-full"
                       onClick={() => setIsClubModalOpen(true)}
+                      disabled={isRefreshing}
                     >
                       <Users className="h-4 w-4 mr-2" />
                       Update Clubs
@@ -475,6 +530,7 @@ export default function StudentProfile() {
                       variant="outline"
                       className="btn-secondary w-full"
                       onClick={handleShareProfile}
+                      disabled={isRefreshing}
                     >
                       {copied ? (
                         <>
@@ -504,6 +560,7 @@ export default function StudentProfile() {
                             alert('Debug API error')
                           }
                         }}
+                        disabled={isRefreshing}
                       >
                         Debug Clubs
                       </Button>

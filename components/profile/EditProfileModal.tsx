@@ -176,7 +176,7 @@ export function EditProfileModal({ isOpen, onClose, profile, onProfileUpdate }: 
         onProfileUpdate(updatedProfile)
         setMessage({ type: 'success', text: 'Profile updated successfully!' })
         
-        // Close modal after a short delay
+        // Close modal after a short delay to show success message
         setTimeout(() => {
           onClose()
           setMessage(null)
