@@ -64,6 +64,24 @@ export async function GET(
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
     }
 
+    // Fetch club memberships for this profile
+    const { data: clubMemberships, error: clubError } = await supabase
+      .from('student_clubs')
+      .select(`
+        club_id,
+        clubs!inner(id, name, description)
+      `)
+      .eq('student_id', profileId)
+
+    if (clubError) {
+      console.error('Error getting club memberships:', clubError)
+    }
+
+    // Extract club information for backward compatibility
+    const currentClubs = clubMemberships?.map((cm: any) => cm.clubs[0]?.name).filter(Boolean) || []
+    const betaClub = currentClubs.includes('Beta Club')
+    const nths = currentClubs.includes('NTHS')
+
     // Fetch only approved volunteer hours for this profile
     const { data: volunteerHours, error: hoursError } = await supabase
       .from('volunteer_hours')
@@ -79,7 +97,10 @@ export async function GET(
     // Fetch opportunity registrations for this profile
     const { data: registrations, error: regError } = await supabase
       .from('opportunity_registrations')
-      .select('*')
+      .select(`
+        *,
+        volunteer_opportunities!inner(title, description, location, date)
+      `)
       .eq('student_id', profileId)
       .order('registered_at', { ascending: false })
 
@@ -87,9 +108,25 @@ export async function GET(
       console.error('Error getting registrations:', regError)
     }
 
+    // Transform the data for the frontend
+    const transformedProfile = {
+      id: profile.id,
+      full_name: profile.full_name,
+      student_id: profile.student_id,
+      bio: profile.bio || '',
+      beta_club: betaClub,
+      nths: nths,
+      created_at: profile.created_at,
+      clubs: clubMemberships?.map((cm: any) => ({
+        id: cm.clubs[0]?.id,
+        name: cm.clubs[0]?.name,
+        description: cm.clubs[0]?.description
+      })).filter((club: any) => club.id && club.name) || []
+    }
+
     return NextResponse.json({ 
       success: true,
-      profile: profile,
+      profile: transformedProfile,
       volunteer_hours: volunteerHours || [],
       registrations: registrations || [],
       shareable_profile: shareableProfile,

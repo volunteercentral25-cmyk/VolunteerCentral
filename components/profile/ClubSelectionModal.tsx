@@ -89,7 +89,17 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete, userRole = 'st
       if (response.ok) {
         const responseData = await response.json()
         console.log('Club API response data:', responseData)
-        setMessage({ type: 'success', text: 'Club information saved successfully!' })
+        
+        // Create a success message showing selected clubs
+        const selectedClubNames = []
+        if (selectedClubs.beta_club) selectedClubNames.push('Beta Club')
+        if (selectedClubs.nths) selectedClubNames.push('NTHS')
+        
+        const successMessage = selectedClubNames.length > 0 
+          ? `Successfully saved: ${selectedClubNames.join(', ')}`
+          : 'Club information updated successfully!'
+        
+        setMessage({ type: 'success', text: successMessage })
         setTimeout(() => {
           onComplete()
           setMessage(null)
@@ -101,7 +111,7 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete, userRole = 'st
       }
     } catch (error) {
       console.error('Error saving club information:', error)
-      setMessage({ type: 'error', text: 'An unexpected error occurred' })
+      setMessage({ type: 'error', text: 'An unexpected error occurred. Please try again.' })
     } finally {
       setIsLoading(false)
     }
@@ -249,7 +259,7 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete, userRole = 'st
                       ) : (
                         <>
                           <Save className="h-4 w-4 mr-2" />
-                          Continue
+                          Save Changes
                         </>
                       )}
                     </Button>

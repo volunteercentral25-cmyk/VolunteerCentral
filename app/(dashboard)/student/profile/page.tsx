@@ -146,7 +146,7 @@ export default function StudentProfile() {
     setTimeout(() => {
       console.log('Reloading page to get updated club data...')
       window.location.reload()
-    }, 1500) // Increased delay to ensure API has time to process
+    }, 2000) // Increased delay to ensure API has time to process
   }
 
   const handleShareProfile = async () => {
@@ -413,7 +413,7 @@ export default function StudentProfile() {
                       <div>
                         <p className="font-medium text-gray-900">Club Memberships</p>
                         <div className="flex gap-2 mt-1 flex-wrap">
-                          {/* Show clubs from student_clubs table first */}
+                          {/* Show clubs from student_clubs table */}
                           {safeClubs && safeClubs.length > 0 ? (
                             safeClubs.map((club) => (
                               <Badge key={club.id} className="bg-purple-100 text-purple-800 text-xs">
@@ -421,39 +421,9 @@ export default function StudentProfile() {
                               </Badge>
                             ))
                           ) : (
-                            <>
-                              {/* Fallback to legacy boolean fields */}
-                              {safeProfile.beta_club && (
-                                <Badge className="bg-blue-100 text-blue-800 text-xs">Beta Club</Badge>
-                              )}
-                              {safeProfile.nths && (
-                                <Badge className="bg-green-100 text-green-800 text-xs">NTHS</Badge>
-                              )}
-                            </>
+                            <p className="text-xs text-gray-500">No clubs selected yet</p>
                           )}
                         </div>
-                        {safeClubs && safeClubs.length === 0 && !safeProfile.beta_club && !safeProfile.nths && (
-                          <p className="text-xs text-gray-500 mt-1">No clubs selected yet</p>
-                        )}
-                        {/* Show both new and legacy club data for debugging */}
-                        {(safeClubs && safeClubs.length > 0) && (
-                          <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
-                            <p className="font-medium text-gray-700">Club Data Sources:</p>
-                            <p className="text-gray-600">New System (student_clubs): {safeClubs.map(c => c.name).join(', ')}</p>
-                            <p className="text-gray-600">Legacy System (profiles): Beta Club={safeProfile.beta_club ? 'Yes' : 'No'}, NTHS={safeProfile.nths ? 'Yes' : 'No'}</p>
-                          </div>
-                        )}
-                        {/* Combined club display for better user experience */}
-                        {safeClubs && safeClubs.length > 0 && (
-                          <div className="mt-2 p-2 bg-green-50 rounded text-xs">
-                            <p className="font-medium text-green-700">✓ Active Club Memberships:</p>
-                            <p className="text-green-600">{safeClubs.map(c => c.name).join(', ')}</p>
-                          </div>
-                        )}
-                        {/* Debug info */}
-                        <p className="text-xs text-gray-400 mt-1">
-                          Debug: safeClubs={safeClubs?.length || 0}, beta_club={safeProfile.beta_club ? 'true' : 'false'}, nths={safeProfile.nths ? 'true' : 'false'}
-                        </p>
                       </div>
                     </div>
                   </div>

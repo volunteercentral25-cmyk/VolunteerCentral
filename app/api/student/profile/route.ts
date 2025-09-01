@@ -101,7 +101,6 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('Profile API: Fetching club memberships for user ID:', user.id)
-    // Log club memberships for debugging
     console.log('Club memberships for user:', user.id, clubMemberships)
 
     // Extract club names for backward compatibility

@@ -31,10 +31,11 @@ interface PublicProfile {
   fullName: string
   studentId: string
   bio: string
-  clubs: {
-    betaClub: boolean
-    nths: boolean
-  }
+  clubs: Array<{
+    id: string
+    name: string
+    description: string
+  }>
   memberSince: string
   volunteerStats: {
     totalHours: number
@@ -99,10 +100,7 @@ export default function PublicProfile() {
           fullName: data.profile.full_name,
           studentId: data.profile.student_id,
           bio: data.profile.bio || '',
-          clubs: {
-            betaClub: data.profile.beta_club || false,
-            nths: data.profile.nths || false
-          },
+          clubs: data.profile.clubs || [],
           memberSince: data.profile.created_at,
           volunteerStats: {
             totalHours: data.volunteer_hours?.reduce((total: number, hour: any) => total + (hour.hours || 0), 0) || 0,
@@ -114,10 +112,10 @@ export default function PublicProfile() {
             })) || []
           },
           upcomingOpportunities: data.registrations?.map((reg: any) => ({
-            title: reg.opportunity_title || 'Volunteer Opportunity',
-            organization: reg.organization_name || 'Organization',
-            date: reg.event_date || reg.registered_at,
-            location: reg.location || 'Location TBD'
+            title: reg.volunteer_opportunities?.title || 'Volunteer Opportunity',
+            organization: reg.volunteer_opportunities?.description || 'Organization',
+            date: reg.volunteer_opportunities?.date || reg.registered_at,
+            location: reg.volunteer_opportunities?.location || 'Location TBD'
           })) || []
         }
         setProfile(transformedProfile)
@@ -274,20 +272,14 @@ export default function PublicProfile() {
           </div>
 
           {/* Club Memberships */}
-          {(profile.clubs.betaClub || profile.clubs.nths) && (
+          {profile.clubs && profile.clubs.length > 0 && (
             <div className="flex items-center justify-center gap-2 mb-4">
-              {profile.clubs.betaClub && (
-                <Badge variant="outline" className="border-blue-500 text-blue-700">
+              {profile.clubs.map((club) => (
+                <Badge key={club.id} variant="outline" className="border-blue-500 text-blue-700">
                   <Star className="h-3 w-3 mr-1" />
-                  Beta Club
+                  {club.name}
                 </Badge>
-              )}
-              {profile.clubs.nths && (
-                <Badge variant="outline" className="border-purple-500 text-purple-700">
-                  <Award className="h-3 w-3 mr-1" />
-                  NTHS
-                </Badge>
-              )}
+              ))}
             </div>
           )}
 
