@@ -45,10 +45,16 @@ interface EditProfileModalProps {
 }
 
 export function EditProfileModal({ isOpen, onClose, profile, onProfileUpdate }: EditProfileModalProps) {
+  // Safety check for profile
+  if (!profile || !profile.id) {
+    console.error('EditProfileModal: Invalid profile prop', profile)
+    return null
+  }
+
   const [formData, setFormData] = useState({
-    full_name: profile.full_name,
+    full_name: profile.full_name || '',
     student_id: profile.student_id || '',
-    email: profile.email
+    email: profile.email || ''
   })
   const [selectedClubs, setSelectedClubs] = useState<string[]>([])
   const [availableClubs, setAvailableClubs] = useState<Club[]>([])
@@ -58,10 +64,12 @@ export function EditProfileModal({ isOpen, onClose, profile, onProfileUpdate }: 
 
   // Initialize selected clubs from profile
   useEffect(() => {
-    const clubs = []
-    if (profile.beta_club) clubs.push('Beta Club')
-    if (profile.nths) clubs.push('NTHS')
-    setSelectedClubs(clubs)
+    if (profile && profile.id) {
+      const clubs = []
+      if (profile.beta_club) clubs.push('Beta Club')
+      if (profile.nths) clubs.push('NTHS')
+      setSelectedClubs(Array.isArray(clubs) ? clubs : [])
+    }
   }, [profile])
 
   // Fetch available clubs when modal opens
@@ -76,13 +84,16 @@ export function EditProfileModal({ isOpen, onClose, profile, onProfileUpdate }: 
     try {
       const response = await fetch('/api/student/clubs')
       if (response.ok) {
-        const clubs = await response.json()
-        setAvailableClubs(clubs)
+        const data = await response.json()
+        // Fix: Extract clubs from the response object
+        setAvailableClubs(data.clubs || [])
       } else {
         console.error('Failed to fetch clubs')
+        setAvailableClubs([])
       }
     } catch (error) {
       console.error('Error fetching clubs:', error)
+      setAvailableClubs([])
     } finally {
       setIsLoadingClubs(false)
     }
@@ -96,6 +107,7 @@ export function EditProfileModal({ isOpen, onClose, profile, onProfileUpdate }: 
 
   const handleClubToggle = (clubName: string) => {
     setSelectedClubs(prev => {
+      if (!Array.isArray(prev)) return [clubName]
       if (prev.includes(clubName)) {
         return prev.filter(name => name !== clubName)
       } else {
@@ -155,7 +167,7 @@ export function EditProfileModal({ isOpen, onClose, profile, onProfileUpdate }: 
           full_name: formData.full_name.trim(),
           student_id: formData.student_id.trim(),
           email: formData.email.trim(),
-          clubs: selectedClubs
+          clubs: Array.isArray(selectedClubs) ? selectedClubs : []
         })
       })
 
@@ -182,18 +194,18 @@ export function EditProfileModal({ isOpen, onClose, profile, onProfileUpdate }: 
   }
 
   const handleClose = () => {
-    if (!isLoading) {
+    if (!isLoading && profile && profile.id) {
       // Reset form data to original values
       setFormData({
-        full_name: profile.full_name,
+        full_name: profile.full_name || '',
         student_id: profile.student_id || '',
-        email: profile.email
+        email: profile.email || ''
       })
       // Reset selected clubs to original values
       const clubs = []
       if (profile.beta_club) clubs.push('Beta Club')
       if (profile.nths) clubs.push('NTHS')
-      setSelectedClubs(clubs)
+      setSelectedClubs(Array.isArray(clubs) ? clubs : [])
       setMessage(null)
       onClose()
     }
@@ -328,7 +340,7 @@ export function EditProfileModal({ isOpen, onClose, profile, onProfileUpdate }: 
                         <Loader2 className="h-4 w-4 animate-spin" />
                         <span className="text-sm text-gray-600">Loading clubs...</span>
                       </div>
-                    ) : availableClubs.length === 0 ? (
+                    ) : (!Array.isArray(availableClubs) || availableClubs.length === 0) ? (
                       <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-50 border border-yellow-200">
                         <AlertCircle className="h-4 w-4 text-yellow-600" />
                         <span className="text-sm text-yellow-700">No clubs available at the moment</span>
