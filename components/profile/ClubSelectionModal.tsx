@@ -27,6 +27,8 @@ interface ClubSelectionModalProps {
 }
 
 export function ClubSelectionModal({ isOpen, onClose, onComplete, userRole = 'student', initialClubs }: ClubSelectionModalProps) {
+  console.log('ClubSelectionModal: Rendering with props:', { isOpen, userRole, initialClubs })
+  
   const [selectedClubs, setSelectedClubs] = useState({
     beta_club: initialClubs?.beta_club || false,
     nths: initialClubs?.nths || false
@@ -40,10 +42,15 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete, userRole = 'st
     ? 'Tell us which clubs you are an advisor for to help manage student memberships and opportunities'
     : 'Tell us about your club memberships to help us personalize your experience'
 
-    // Update selected clubs when initialClubs changes
+  // Update selected clubs when initialClubs changes
   useEffect(() => {
+    console.log('ClubSelectionModal: initialClubs changed:', initialClubs)
     if (initialClubs) {
       setSelectedClubs({
+        beta_club: initialClubs.beta_club || false,
+        nths: initialClubs.nths || false
+      })
+      console.log('ClubSelectionModal: Updated selectedClubs to:', {
         beta_club: initialClubs.beta_club || false,
         nths: initialClubs.nths || false
       })
@@ -51,6 +58,7 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete, userRole = 'st
   }, [initialClubs])
 
   const handleClubToggle = (club: 'beta_club' | 'nths') => {
+    console.log('ClubSelectionModal: Toggling club:', club, 'from', selectedClubs[club], 'to', !selectedClubs[club])
     setSelectedClubs(prev => ({
       ...prev,
       [club]: !prev[club]
@@ -64,6 +72,8 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete, userRole = 'st
     setIsLoading(true)
     setMessage(null)
 
+    console.log('Submitting club selection:', selectedClubs)
+
     try {
       const response = await fetch('/api/student/clubs', {
         method: 'POST',
@@ -76,7 +86,11 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete, userRole = 'st
         })
       })
 
+      console.log('Club API response status:', response.status)
+
       if (response.ok) {
+        const responseData = await response.json()
+        console.log('Club API response data:', responseData)
         setMessage({ type: 'success', text: 'Club information saved successfully!' })
         setTimeout(() => {
           onComplete()
@@ -84,6 +98,7 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete, userRole = 'st
         }, 1500)
       } else {
         const errorData = await response.json()
+        console.error('Club API error:', errorData)
         setMessage({ type: 'error', text: errorData.error || 'Failed to save club information' })
       }
     } catch (error) {

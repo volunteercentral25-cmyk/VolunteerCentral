@@ -61,6 +61,8 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    console.log('Club memberships to insert:', clubMemberships)
+
     if (clubMemberships.length > 0) {
       const { error: insertError } = await supabase
         .from('student_clubs')
@@ -70,6 +72,10 @@ export async function POST(request: NextRequest) {
         console.error('Error creating club memberships:', insertError)
         return NextResponse.json({ error: 'Failed to create club memberships' }, { status: 500 })
       }
+      
+      console.log('Successfully inserted club memberships')
+    } else {
+      console.log('No club memberships to insert')
     }
 
     // Update profile with club information and mark setup as completed

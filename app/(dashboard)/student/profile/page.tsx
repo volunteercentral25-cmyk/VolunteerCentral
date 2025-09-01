@@ -90,8 +90,11 @@ export default function StudentProfile() {
           
           // Fetch profile data from API
           const response = await fetch('/api/student/profile')
+          console.log('Profile API response status:', response.status)
+          
           if (response.ok) {
             const data = await response.json()
+            console.log('Profile API response data:', data)
             
             // Validate the data structure
             if (data && data.profile && data.stats && Array.isArray(data.achievements) && Array.isArray(data.clubs)) {
@@ -102,6 +105,7 @@ export default function StudentProfile() {
             }
           } else {
             const errorData = await response.json()
+            console.error('Profile API error:', errorData)
             setError(errorData.error || 'Failed to fetch profile data')
           }
         } else {
@@ -136,9 +140,12 @@ export default function StudentProfile() {
   }
 
   const handleClubModalComplete = () => {
+    console.log('Club modal completed, refreshing page...')
     setIsClubModalOpen(false)
     // Refresh the page to get updated club information
-    window.location.reload()
+    setTimeout(() => {
+      window.location.reload()
+    }, 1000) // Increased delay to ensure API has time to process
   }
 
   const handleShareProfile = async () => {
@@ -257,6 +264,26 @@ export default function StudentProfile() {
   
   // Debug logging
   console.log('Profile data received:', { profile, clubs, safeClubs })
+  
+  // Additional safety checks
+  if (!safeProfile.id || !safeProfile.full_name || !safeProfile.email) {
+    return (
+      <div className="min-h-screen gradient-bg flex items-center justify-center">
+        <Card className="glass-effect border-0 shadow-xl max-w-md">
+          <CardContent className="p-6 text-center">
+            <div className="mb-4">
+              <XCircle className="h-12 w-12 text-red-500 mx-auto" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Invalid Profile Data</h2>
+            <p className="text-gray-600 mb-4">The profile data is missing required information.</p>
+            <Button onClick={() => window.location.reload()} className="btn-primary">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
   
   // Additional safety checks
   if (!safeProfile.id || !safeProfile.full_name || !safeProfile.email) {
@@ -405,6 +432,7 @@ export default function StudentProfile() {
                       <div>
                         <p className="font-medium text-gray-900">Club Memberships</p>
                         <div className="flex gap-2 mt-1 flex-wrap">
+                          {/* Show clubs from student_clubs table first */}
                           {safeClubs && safeClubs.length > 0 ? (
                             safeClubs.map((club) => (
                               <Badge key={club.id} className="bg-purple-100 text-purple-800 text-xs">
@@ -413,6 +441,7 @@ export default function StudentProfile() {
                             ))
                           ) : (
                             <>
+                              {/* Fallback to legacy boolean fields */}
                               {safeProfile.beta_club && (
                                 <Badge className="bg-blue-100 text-blue-800 text-xs">Beta Club</Badge>
                               )}
@@ -425,6 +454,18 @@ export default function StudentProfile() {
                         {safeClubs && safeClubs.length === 0 && !safeProfile.beta_club && !safeProfile.nths && (
                           <p className="text-xs text-gray-500 mt-1">No clubs selected yet</p>
                         )}
+                        {/* Show both new and legacy club data for debugging */}
+                        {(safeClubs && safeClubs.length > 0) && (
+                          <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
+                            <p className="font-medium text-gray-700">Club Data Sources:</p>
+                            <p className="text-gray-600">New System (student_clubs): {safeClubs.map(c => c.name).join(', ')}</p>
+                            <p className="text-gray-600">Legacy System (profiles): Beta Club={safeProfile.beta_club ? 'Yes' : 'No'}, NTHS={safeProfile.nths ? 'Yes' : 'No'}</p>
+                          </div>
+                        )}
+                        {/* Debug info */}
+                        <p className="text-xs text-gray-400 mt-1">
+                          Debug: safeClubs={safeClubs?.length || 0}, beta_club={safeProfile.beta_club ? 'true' : 'false'}, nths={safeProfile.nths ? 'true' : 'false'}
+                        </p>
                       </div>
                     </div>
                   </div>

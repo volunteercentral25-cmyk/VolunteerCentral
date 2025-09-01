@@ -103,6 +103,16 @@ export async function GET(request: NextRequest) {
     // Log extracted club data for debugging
     console.log('Extracted clubs:', { currentClubs, betaClub, nths })
 
+    // Build clubs array for frontend - ensure proper structure
+    const clubsArray = clubMemberships?.map((cm: ClubMembership) => ({
+      id: cm.clubs[0]?.id,
+      name: cm.clubs[0]?.name,
+      description: cm.clubs[0]?.description
+    })).filter(club => club.id && club.name) || []
+
+    // Log clubs array for debugging
+    console.log('Clubs array for frontend:', clubsArray)
+
     // Calculate achievements based on hours and track achievement dates
     const achievements = []
     const now = new Date().toISOString()
@@ -222,15 +232,7 @@ export async function GET(request: NextRequest) {
     const goalHours = 20
     const goalProgress = Math.min(Math.round((totalHours / goalHours) * 100), 100)
 
-    // Build clubs array for frontend
-    const clubsArray = clubMemberships?.map((cm: ClubMembership) => ({
-      id: cm.clubs[0]?.id,
-      name: cm.clubs[0]?.name,
-      description: cm.clubs[0]?.description
-    })).filter(club => club.id && club.name) || []
 
-    // Log clubs array for debugging
-    console.log('Clubs array for frontend:', clubsArray)
 
     const profileData = {
       profile: {
