@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+interface Club {
+  id: string
+  name: string
+  description: string
+}
+
 interface ClubMembership {
   club_id: string
   clubs: {
@@ -86,41 +92,43 @@ export async function GET(request: NextRequest) {
 
     const totalOpportunities = registrations?.length || 0
 
-    // Get current club memberships
-    const { data: clubMemberships, error: clubError } = await supabase
+    // Get current club memberships - using separate queries for better reliability
+    const { data: studentClubIds, error: clubIdsError } = await supabase
       .from('student_clubs')
-      .select(`
-        club_id,
-        clubs(id, name, description)
-      `)
+      .select('club_id')
       .eq('student_id', user.id)
 
-    if (clubError) {
-      console.error('Club memberships fetch error:', clubError)
-      // Continue without club memberships
+    if (clubIdsError) {
+      console.error('Club IDs fetch error:', clubIdsError)
     }
 
-    console.log('Profile API: Fetching club memberships for user ID:', user.id)
-    console.log('Raw club memberships response:', clubMemberships)
-    console.log('Club memberships error:', clubError)
-    console.log('User object:', { id: user.id, email: user.email })
+    console.log('Profile API: Club IDs for user:', studentClubIds)
+
+    let clubsArray: Club[] = []
+    if (studentClubIds && studentClubIds.length > 0) {
+      const clubIds = studentClubIds.map(sc => sc.club_id)
+      
+      const { data: clubData, error: clubDataError } = await supabase
+        .from('clubs')
+        .select('id, name, description')
+        .in('id', clubIds)
+        .eq('is_active', true)
+
+      if (clubDataError) {
+        console.error('Club data fetch error:', clubDataError)
+      } else {
+        clubsArray = clubData || []
+        console.log('Profile API: Club data fetched:', clubData)
+      }
+    }
 
     // Extract club names for backward compatibility
-    const currentClubs = clubMemberships?.map((cm: ClubMembership) => cm.clubs[0]?.name).filter(Boolean) || []
+    const currentClubs = clubsArray.map(club => club.name).filter(Boolean)
     const betaClub = currentClubs.includes('Beta Club')
     const nths = currentClubs.includes('NTHS')
 
     // Log extracted club data for debugging
     console.log('Extracted clubs:', { currentClubs, betaClub, nths })
-
-    // Build clubs array for frontend - ensure proper structure
-    const clubsArray = clubMemberships?.map((cm: ClubMembership) => ({
-      id: cm.clubs[0]?.id,
-      name: cm.clubs[0]?.name,
-      description: cm.clubs[0]?.description
-    })).filter(club => club.id && club.name) || []
-
-    // Log clubs array for frontend
     console.log('Clubs array for frontend:', clubsArray)
 
     // Calculate achievements based on hours and track achievement dates
@@ -276,7 +284,11 @@ export async function GET(request: NextRequest) {
       clubsLength: clubsArray.length,
       betaClub,
       nths,
-      currentClubs
+      currentClubs,
+      profileData: {
+        clubs: clubsArray,
+        clubsLength: clubsArray.length
+      }
     })
 
     return NextResponse.json(profileData)
@@ -413,7 +425,7 @@ export async function PUT(request: NextRequest) {
             console.error('Error fetching club IDs:', clubError)
           } else if (clubData && clubData.length > 0) {
             // Create new club memberships
-            const clubMemberships = clubData.map((club: Club) => ({
+            const clubMemberships = clubData.map((club: { id: string }) => ({
               student_id: user.id,
               club_id: club.id
             }))

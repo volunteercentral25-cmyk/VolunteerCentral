@@ -95,6 +95,8 @@ export default function StudentProfile() {
           if (response.ok) {
             const data = await response.json()
             console.log('Profile API response data:', data)
+            console.log('Profile API clubs data:', data.clubs)
+            console.log('Profile API clubs length:', data.clubs?.length)
             
             // Validate the data structure
             if (data && data.profile && data.stats && Array.isArray(data.achievements) && Array.isArray(data.clubs)) {
@@ -273,6 +275,14 @@ export default function StudentProfile() {
     betaClubFromProfile: safeProfile.beta_club,
     nthsFromProfile: safeProfile.nths
   })
+  console.log('Safe clubs check:', {
+    clubs: clubs,
+    safeClubs: safeClubs,
+    clubsLength: clubs?.length,
+    safeClubsLength: safeClubs.length,
+    clubsIsArray: Array.isArray(clubs),
+    safeClubsIsArray: Array.isArray(safeClubs)
+  })
   
   // Additional safety checks
   if (!safeProfile.id || !safeProfile.full_name || !safeProfile.email) {
@@ -420,7 +430,7 @@ export default function StudentProfile() {
                       <Users className="h-5 w-5 text-purple-600" />
                       <div>
                         <p className="font-medium text-gray-900">Club Memberships</p>
-                        <div className="flex gap-2 mt-1 flex-wrap">
+                                                <div className="flex gap-2 mt-1 flex-wrap">
                           {/* Show clubs from student_clubs table */}
                           {safeClubs && safeClubs.length > 0 ? (
                             safeClubs.map((club) => (
@@ -434,9 +444,12 @@ export default function StudentProfile() {
                         </div>
                         {/* Debug info for development */}
                         {process.env.NODE_ENV === 'development' && (
-                          <p className="text-xs text-gray-400 mt-1">
-                            Clubs: {safeClubs.map(c => c.name).join(', ') || 'None'}
-                          </p>
+                          <div className="text-xs text-gray-400 mt-1 space-y-1">
+                            <p>Debug Info:</p>
+                            <p>SafeClubs: {JSON.stringify(safeClubs)}</p>
+                            <p>SafeClubs Length: {safeClubs.length}</p>
+                            <p>SafeClubs Names: {safeClubs.map(c => c.name).join(', ')}</p>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -475,6 +488,26 @@ export default function StudentProfile() {
                         </>
                       )}
                     </Button>
+                    {/* Debug button for development */}
+                    {process.env.NODE_ENV === 'development' && (
+                      <Button 
+                        variant="outline"
+                        className="btn-secondary w-full"
+                        onClick={async () => {
+                          try {
+                            const response = await fetch('/api/debug-clubs')
+                            const data = await response.json()
+                            console.log('Debug API response:', data)
+                            alert(`Debug: ${data.clubsLength} clubs found: ${data.clubNames.join(', ')}`)
+                          } catch (error) {
+                            console.error('Debug API error:', error)
+                            alert('Debug API error')
+                          }
+                        }}
+                      >
+                        Debug Clubs
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
