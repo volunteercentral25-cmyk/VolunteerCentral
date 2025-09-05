@@ -263,6 +263,11 @@ export default function HomePage() {
                           </>
                         )}
                       </Button>
+                      <div className="text-center">
+                        <Link href="/forgot-password" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                          Forgot your password?
+                        </Link>
+                      </div>
                     </form>
                   </TabsContent>
 
