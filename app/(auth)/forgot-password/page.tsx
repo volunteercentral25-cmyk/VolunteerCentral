@@ -5,35 +5,33 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 
-export default function LoginPage() {
+export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const router = useRouter()
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const supabase = createClient()
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setError('')
+    setMessage(null)
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
       })
 
       if (error) {
-        setError(error.message)
+        setMessage({ type: 'error', text: error.message })
       } else {
-        // Redirect based on user role
-        router.push('/dashboard')
+        setMessage({ 
+          type: 'success', 
+          text: 'Password reset email sent! Please check your inbox and follow the instructions to reset your password.' 
+        })
       }
     } catch (err) {
-      setError('An unexpected error occurred')
+      setMessage({ type: 'error', text: 'An unexpected error occurred. Please try again.' })
     } finally {
       setLoading(false)
     }
@@ -54,32 +52,36 @@ export default function LoginPage() {
             transition={{ duration: 0.5 }}
             className="flex justify-center mb-6"
           >
-            <Image
-              src="/logo.png"
-              alt="CATA Logo"
-              width={80}
-              height={80}
-              className="rounded-lg"
-            />
+            <Link href="/" className="flex items-center gap-3">
+              <Image src="/logo.png" alt="Volunteer Central Logo" width={32} height={32} className="rounded-lg shadow-glow" />
+              <div>
+                <p className="text-sm font-semibold text-gradient">Volunteer Central</p>
+                <p className="text-xs text-gray-600">Reset Password</p>
+              </div>
+            </Link>
           </motion.div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-          <p className="text-gray-600">Sign in to your CATA Volunteer account</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Forgot Password?</h1>
+          <p className="text-gray-600">Enter your email address and we'll send you a link to reset your password</p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-6">
-          {error && (
+        <form onSubmit={handleResetPassword} className="space-y-6">
+          {message && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg"
+              className={`px-4 py-3 rounded-lg ${
+                message.type === 'success' 
+                  ? 'bg-green-50 border border-green-200 text-green-600' 
+                  : 'bg-red-50 border border-red-200 text-red-600'
+              }`}
             >
-              {error}
+              {message.text}
             </motion.div>
           )}
 
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-              Email
+              Email Address
             </label>
             <input
               id="email"
@@ -88,22 +90,7 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter your email"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter your password"
+              placeholder="Enter your email address"
             />
           </div>
 
@@ -114,14 +101,15 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? 'Sending...' : 'Send Reset Link'}
           </motion.button>
         </form>
 
         <div className="mt-6 text-center space-y-2">
           <p className="text-gray-600">
-            <Link href="/forgot-password" className="text-blue-600 hover:text-blue-700 font-medium">
-              Forgot your password?
+            Remember your password?{' '}
+            <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
+              Sign in
             </Link>
           </p>
           <p className="text-gray-600">
