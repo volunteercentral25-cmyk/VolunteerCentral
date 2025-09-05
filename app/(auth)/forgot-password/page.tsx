@@ -17,7 +17,35 @@ export default function ForgotPasswordPage() {
     setLoading(true)
     setMessage(null)
 
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setMessage({ 
+        type: 'error', 
+        text: 'Please enter a valid email address.' 
+      })
+      setLoading(false)
+      return
+    }
+
     try {
+      // Check if the email exists in the database
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('email', email)
+        .single()
+
+      if (profileError || !profile) {
+        setMessage({ 
+          type: 'error', 
+          text: 'No account found with this email address. Please check your email or create a new account.' 
+        })
+        setLoading(false)
+        return
+      }
+
+      // If email exists in profiles table, send the password reset email
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       })
@@ -117,6 +145,9 @@ export default function ForgotPasswordPage() {
             <Link href="/register" className="text-blue-600 hover:text-blue-700 font-medium">
               Sign up
             </Link>
+          </p>
+          <p className="text-xs text-gray-500 mt-4">
+            Only registered users can reset their password. If you don't have an account, please sign up first.
           </p>
         </div>
       </motion.div>
