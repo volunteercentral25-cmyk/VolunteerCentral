@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
-
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
@@ -58,6 +57,7 @@ export default function ForgotPasswordPage() {
       setLoading(false)
     }
   }
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -127,22 +127,13 @@ export default function ForgotPasswordPage() {
           </motion.button>
         </form>
 
-        <div className="mt-6 text-center space-y-2">
-          <p className="text-gray-600">
-            Remember your password?{' '}
-            <Link href="/#auth?tab=login" className="text-blue-600 hover:text-blue-700 font-medium">
-              Sign in
-            </Link>
-          </p>
-          <p className="text-gray-600">
-            Don't have an account?{' '}
-            <Link href="/#auth?tab=register" className="text-blue-600 hover:text-blue-700 font-medium">
-              Sign up
-            </Link>
-          </p>
-          <p className="text-xs text-gray-500 mt-4">
-            Only registered users can reset their password. If you don't have an account, please sign up first.
-          </p>
+        <div className="mt-6 text-center">
+          <Link 
+            href="/"
+            className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+          >
+            ← Back to Homepage
+          </Link>
         </div>
       </motion.div>
     </div>

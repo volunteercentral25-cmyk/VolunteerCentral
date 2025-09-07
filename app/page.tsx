@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
@@ -42,27 +42,6 @@ export default function HomePage() {
   })
   const router = useRouter()
 
-  // Handle URL parameters and hash to set the active tab and scroll
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search)
-    const tab = urlParams.get('tab')
-    const hash = window.location.hash
-    
-    // If there's a tab parameter, set it
-    if (tab === 'login' || tab === 'register') {
-      setActiveTab(tab)
-    }
-    
-    // If there's an auth hash (with or without tab parameter), scroll to the auth section
-    if (hash === '#auth' || hash.startsWith('#auth')) {
-      setTimeout(() => {
-        const authElement = document.getElementById('auth')
-        if (authElement) {
-          authElement.scrollIntoView({ behavior: 'smooth' })
-        }
-      }, 100) // Small delay to ensure the page is fully loaded
-    }
-  }, [])
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -184,10 +163,6 @@ export default function HomePage() {
                   <p className="text-xs text-gray-600">Community Service</p>
                 </div>
               </Link>
-            <div className="hidden md:flex items-center gap-3">
-              <Link href="#auth" className="btn-secondary btn-hover-effect rounded-md px-4 py-2">Sign In</Link>
-              <Link href="#auth" className="btn-primary btn-hover-effect rounded-md px-4 py-2">Get Started</Link>
-            </div>
           </div>
         </div>
       </motion.header>
