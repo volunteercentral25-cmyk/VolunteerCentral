@@ -377,7 +377,7 @@ export default function StudentOpportunities() {
         >
           <Card className="glass-effect border-0 shadow-xl">
             <CardContent className="p-6">
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid md:grid-cols-2 gap-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
@@ -399,19 +399,6 @@ export default function StudentOpportunities() {
                         {category.label}
                       </option>
                     ))}
-                  </select>
-                </div>
-                <div className="relative">
-                  <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <select
-                    value={selectedClub}
-                    onChange={(e) => setSelectedClub(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
-                  >
-                    <option value="all">All Clubs</option>
-                    <option value="beta_club">Beta Club</option>
-                    <option value="nths">NTHS</option>
-                    <option value="both">Both Clubs</option>
                   </select>
                 </div>
               </div>

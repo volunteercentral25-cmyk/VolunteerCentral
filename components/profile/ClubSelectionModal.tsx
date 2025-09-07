@@ -23,15 +23,14 @@ interface ClubSelectionModalProps {
   onClose: () => void
   onComplete: () => void
   userRole?: 'student' | 'admin'
-  initialClubs?: { beta_club: boolean; nths: boolean }
+  initialClubs?: { nths: boolean }
 }
 
 export function ClubSelectionModal({ isOpen, onClose, onComplete, userRole = 'student', initialClubs }: ClubSelectionModalProps) {
   console.log('ClubSelectionModal: Rendering with props:', { isOpen, userRole, initialClubs })
   
   const [selectedClubs, setSelectedClubs] = useState({
-    beta_club: initialClubs?.beta_club || false,
-    nths: initialClubs?.nths || false
+    nths: initialClubs?.nths || true // Default to NTHS selected
   })
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
@@ -39,23 +38,22 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete, userRole = 'st
   const isAdmin = userRole === 'admin'
   const title = isAdmin ? 'Welcome to Volunteer Central!' : 'Welcome to Volunteer Central!'
   const description = isAdmin 
-    ? 'Tell us which clubs you are an advisor for to help manage student memberships and opportunities'
-    : 'Tell us about your club memberships to help us personalize your experience'
+    ? 'You are an advisor for NTHS (National Technical Honor Society)'
+    : 'You are a member of NTHS (National Technical Honor Society)'
 
   // Update selected clubs when initialClubs changes
   useEffect(() => {
     console.log('ClubSelectionModal: initialClubs changed:', initialClubs)
     if (initialClubs) {
       const newSelectedClubs = {
-        beta_club: initialClubs.beta_club || false,
-        nths: initialClubs.nths || false
+        nths: initialClubs.nths || true // Default to NTHS selected
       }
       setSelectedClubs(newSelectedClubs)
       console.log('ClubSelectionModal: Updated selectedClubs to:', newSelectedClubs)
     }
   }, [initialClubs])
 
-  const handleClubToggle = (club: 'beta_club' | 'nths') => {
+  const handleClubToggle = (club: 'nths') => {
     console.log('ClubSelectionModal: Toggling club:', club, 'from', selectedClubs[club], 'to', !selectedClubs[club])
     setSelectedClubs(prev => ({
       ...prev,
@@ -79,7 +77,6 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete, userRole = 'st
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          beta_club: selectedClubs.beta_club,
           nths: selectedClubs.nths
         })
       })
@@ -92,7 +89,6 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete, userRole = 'st
         
         // Create a success message showing selected clubs
         const selectedClubNames = []
-        if (selectedClubs.beta_club) selectedClubNames.push('Beta Club')
         if (selectedClubs.nths) selectedClubNames.push('NTHS')
         
         const successMessage = selectedClubNames.length > 0 
@@ -169,37 +165,10 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete, userRole = 'st
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-4">
                     <Label className="text-base font-medium text-gray-900">
-                      {isAdmin ? 'Select clubs you are an advisor for:' : 'Select your club memberships:'}
+                      {isAdmin ? 'NTHS Advisor Status:' : 'NTHS Membership Status:'}
                     </Label>
 
-                    <div className="flex items-center space-x-3 p-4 rounded-lg border border-gray-200 hover:border-purple-300 transition-colors">
-                      <Checkbox
-                        id="beta_club"
-                        checked={selectedClubs.beta_club}
-                        onCheckedChange={() => handleClubToggle('beta_club')}
-                        disabled={isLoading}
-                      />
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-purple-600">
-                          <Award className="h-5 w-5 text-white" />
-                        </div>
-                        <div className="flex-1">
-                          <Label htmlFor="beta_club" className="text-sm font-medium text-gray-900 cursor-pointer">
-                            Beta Club
-                          </Label>
-                          <p className="text-xs text-gray-600">
-                            {isAdmin ? 'Beta Club advisor' : 'National Beta Club member'}
-                          </p>
-                        </div>
-                        {selectedClubs.beta_club && (
-                          <Badge className="bg-blue-100 text-blue-800">
-                            {isAdmin ? 'Advisor' : 'Selected'}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center space-x-3 p-4 rounded-lg border border-gray-200 hover:border-purple-300 transition-colors">
+                    <div className="flex items-center space-x-3 p-4 rounded-lg border border-gray-200 bg-green-50">
                       <Checkbox
                         id="nths"
                         checked={selectedClubs.nths}
@@ -220,7 +189,7 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete, userRole = 'st
                         </div>
                         {selectedClubs.nths && (
                           <Badge className="bg-green-100 text-green-800">
-                            {isAdmin ? 'Advisor' : 'Selected'}
+                            {isAdmin ? 'Advisor' : 'Member'}
                           </Badge>
                         )}
                       </div>
@@ -230,8 +199,8 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete, userRole = 'st
                   <div className="text-center">
                     <p className="text-xs text-gray-600">
                       {isAdmin 
-                        ? 'You can be an advisor for both clubs. This information helps you manage student memberships and create club-specific opportunities.'
-                        : 'You can be a member of both clubs. This information helps us provide you with relevant opportunities and track your achievements.'
+                        ? 'As an NTHS advisor, you can manage student memberships and create opportunities for NTHS members.'
+                        : 'As an NTHS member, you can participate in volunteer opportunities and track your service hours.'
                       }
                     </p>
                   </div>

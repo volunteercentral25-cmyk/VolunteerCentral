@@ -13,18 +13,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse request body
-    const { beta_club, nths } = await request.json()
+    const { nths } = await request.json()
 
     // Validate input
-    if (typeof beta_club !== 'boolean' || typeof nths !== 'boolean') {
+    if (typeof nths !== 'boolean') {
       return NextResponse.json({ error: 'Invalid club data' }, { status: 400 })
     }
 
-    // Get the club IDs for Beta Club and NTHS
+    // Get the club ID for NTHS
     const { data: clubData, error: clubError } = await supabase
       .from('clubs')
       .select('id, name')
-      .in('name', ['Beta Club', 'NTHS'])
+      .eq('name', 'NTHS')
       .eq('is_active', true)
 
     if (clubError) {
@@ -54,13 +54,6 @@ export async function POST(request: NextRequest) {
 
     // Add new club memberships
     const clubMemberships = []
-    if (beta_club && clubMap.has('Beta Club')) {
-      clubMemberships.push({
-        student_id: user.id,
-        club_id: clubMap.get('Beta Club')
-      })
-      console.log('Adding Beta Club membership')
-    }
     if (nths && clubMap.has('NTHS')) {
       clubMemberships.push({
         student_id: user.id,
@@ -90,7 +83,7 @@ export async function POST(request: NextRequest) {
     const { data: updatedProfile, error: updateError } = await supabase
       .from('profiles')
       .update({
-        beta_club: beta_club,
+        beta_club: false, // Always false since we only have NTHS
         nths: nths,
         clubs_completed: true,
         clubs_setup_completed: true,
@@ -106,7 +99,6 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('Successfully updated profile with club information:', {
-      beta_club: updatedProfile.beta_club,
       nths: updatedProfile.nths,
       clubs_completed: updatedProfile.clubs_completed,
       clubs_setup_completed: updatedProfile.clubs_setup_completed
@@ -116,7 +108,6 @@ export async function POST(request: NextRequest) {
       success: true,
       profile: {
         id: updatedProfile.id,
-        beta_club: updatedProfile.beta_club,
         nths: updatedProfile.nths,
         clubs_completed: updatedProfile.clubs_completed,
         clubs_setup_completed: updatedProfile.clubs_setup_completed
@@ -150,11 +141,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Student access required' }, { status: 403 })
     }
 
-    // Fetch only Beta Club and NTHS
+    // Fetch only NTHS
     const { data: clubs, error: clubsError } = await supabase
       .from('clubs')
       .select('id, name, description')
-      .in('name', ['Beta Club', 'NTHS'])
+      .eq('name', 'NTHS')
       .eq('is_active', true)
       .order('name')
 

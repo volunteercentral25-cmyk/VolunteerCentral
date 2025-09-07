@@ -69,22 +69,23 @@ export default function AdminClubSelectionModal({
   }
 
   const handleSave = async () => {
-    if (selectedClubIds.length === 0) {
-      setError('Please select at least one club to supervise')
-      return
-    }
-
     setSaving(true)
     setError(null)
 
     try {
+      // Since we only have NTHS, automatically select it
+      const nthClub = clubs.find(club => club.name === 'NTHS')
+      if (!nthClub) {
+        throw new Error('NTHS club not found')
+      }
+
       const response = await fetch('/api/admin/club-selection', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          clubIds: selectedClubIds
+          clubIds: [nthClub.id]
         }),
       })
 
@@ -118,7 +119,7 @@ export default function AdminClubSelectionModal({
                 Select Clubs to Supervise
               </CardTitle>
               <CardDescription>
-                Choose which clubs you will supervise. Only NTHS and Beta Club are available. You can select up to 2 clubs at a time.
+                You are supervising NTHS (National Technical Honor Society). This gives you access to manage NTHS members and create opportunities for them.
               </CardDescription>
             </CardHeader>
 
@@ -142,56 +143,33 @@ export default function AdminClubSelectionModal({
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-sm text-gray-600">
-                      Selected: {selectedClubIds.length}/2 clubs
-                    </span>
-                    {selectedClubIds.length > 2 && (
-                      <Badge variant="destructive" className="text-xs">
-                        Maximum 2 clubs allowed
-                      </Badge>
-                    )}
-                  </div>
-
-                  <div className="grid gap-3">
-                    {clubs.map((club) => (
-                      <motion.div
-                        key={club.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                          selectedClubIds.includes(club.id)
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                        onClick={() => handleClubToggle(club.id)}
-                      >
-                        <div className="flex items-start gap-3">
-                          <Checkbox
-                            checked={selectedClubIds.includes(club.id)}
-                            onChange={() => handleClubToggle(club.id)}
-                            disabled={!selectedClubIds.includes(club.id) && selectedClubIds.length >= 2}
-                          />
-                          <div className="flex-1">
-                            <h3 className="font-medium text-gray-900">{club.name}</h3>
-                            {club.description && (
-                              <p className="text-sm text-gray-600 mt-1">{club.description}</p>
-                            )}
-                          </div>
-                          {selectedClubIds.includes(club.id) && (
-                            <CheckCircle className="h-5 w-5 text-blue-600" />
-                          )}
+                  <div className="p-6 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <CheckCircle className="h-6 w-6 text-green-600 mt-1" />
+                      <div className="flex-1">
+                        <h3 className="font-medium text-green-900">NTHS Supervisor</h3>
+                        <p className="text-sm text-green-700 mt-1">
+                          You will supervise NTHS (National Technical Honor Society) members and create opportunities for them.
+                        </p>
+                        <div className="mt-3">
+                          <Badge className="bg-green-100 text-green-800">
+                            Automatically Selected
+                          </Badge>
                         </div>
-                      </motion.div>
-                    ))}
+                      </div>
+                    </div>
                   </div>
 
-                  {clubs.length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
-                      <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                      <p>No clubs available</p>
-                    </div>
-                  )}
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-600">
+                      As an NTHS supervisor, you can:
+                    </p>
+                    <ul className="text-sm text-gray-600 mt-2 space-y-1">
+                      <li>• Create volunteer opportunities for NTHS members</li>
+                      <li>• Manage student registrations and hours</li>
+                      <li>• View reports and analytics for NTHS activities</li>
+                    </ul>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -199,10 +177,10 @@ export default function AdminClubSelectionModal({
             <div className="flex gap-3 p-6 border-t">
               <Button
                 onClick={handleSave}
-                disabled={saving || selectedClubIds.length === 0 || selectedClubIds.length > 2}
+                disabled={saving}
                 className="flex-1"
               >
-                {saving ? 'Saving...' : 'Save Selection'}
+                {saving ? 'Saving...' : 'Continue with NTHS'}
               </Button>
               <Button
                 variant="outline"

@@ -476,7 +476,7 @@ export default function AdminOpportunities() {
         >
           <Card className="glass-effect border-0 shadow-xl">
             <CardContent className="p-6">
-              <div className="grid md:grid-cols-5 gap-4">
+              <div className="grid md:grid-cols-4 gap-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
@@ -495,18 +495,6 @@ export default function AdminOpportunities() {
                     <option value="">All Opportunities</option>
                     <option value="future">Future</option>
                     <option value="past">Past</option>
-                  </select>
-                </div>
-                <div>
-                  <select
-                    value={clubFilter}
-                    onChange={(e) => handleClubFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  >
-                    <option value="">All Clubs</option>
-                    <option value="beta_club">Beta Club</option>
-                    <option value="nths">NTHS</option>
-                    <option value="both">Both Clubs</option>
                   </select>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-gray-600">

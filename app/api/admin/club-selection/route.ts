@@ -22,11 +22,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
-    // Get only NTHS and Beta Club
+    // Get only NTHS
     const { data: clubs, error: clubsError } = await supabase
       .from('clubs')
       .select('id, name, description')
-      .in('name', ['NTHS', 'Beta Club'])
+      .eq('name', 'NTHS')
       .eq('is_active', true)
 
     if (clubsError) {
@@ -83,12 +83,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid club IDs' }, { status: 400 })
     }
 
-    // Validate that the club IDs correspond to NTHS or Beta Club
+    // Validate that the club IDs correspond to NTHS
     const { data: validClubs, error: validationError } = await supabase
       .from('clubs')
       .select('id, name')
       .in('id', clubIds)
-      .in('name', ['NTHS', 'Beta Club'])
+      .eq('name', 'NTHS')
 
     if (validationError) {
       console.error('Error validating clubs:', validationError)
