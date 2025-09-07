@@ -42,12 +42,25 @@ export default function HomePage() {
   })
   const router = useRouter()
 
-  // Handle URL parameters to set the active tab
+  // Handle URL parameters and hash to set the active tab and scroll
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const tab = urlParams.get('tab')
+    const hash = window.location.hash
+    
+    // If there's a tab parameter, set it
     if (tab === 'login' || tab === 'register') {
       setActiveTab(tab)
+    }
+    
+    // If there's an auth hash (with or without tab parameter), scroll to the auth section
+    if (hash === '#auth' || hash.startsWith('#auth')) {
+      setTimeout(() => {
+        const authElement = document.getElementById('auth')
+        if (authElement) {
+          authElement.scrollIntoView({ behavior: 'smooth' })
+        }
+      }, 100) // Small delay to ensure the page is fully loaded
     }
   }, [])
 
