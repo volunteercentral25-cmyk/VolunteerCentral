@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
@@ -27,11 +27,12 @@ import {
   X
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 
 export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState("login")
+  const searchParams = useSearchParams()
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [formData, setFormData] = useState({
     email: "",
@@ -41,6 +42,14 @@ export default function HomePage() {
     confirmPassword: ""
   })
   const router = useRouter()
+
+  // Handle URL parameters to set active tab
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab === 'login' || tab === 'register') {
+      setActiveTab(tab)
+    }
+  }, [searchParams])
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
