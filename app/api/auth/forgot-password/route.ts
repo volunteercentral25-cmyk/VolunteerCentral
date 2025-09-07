@@ -29,9 +29,9 @@ export async function POST(request: NextRequest) {
                    `${request.nextUrl.protocol}//${request.nextUrl.host}`
 
     // Send the password reset email using Supabase Auth
-    // Supabase will handle checking if the email exists
+    // For PKCE flow, we need to redirect to our auth confirmation endpoint
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${siteUrl}/reset-password`,
+      redirectTo: `${siteUrl}/auth/confirm?next=/reset-password`,
     })
 
     if (error) {
