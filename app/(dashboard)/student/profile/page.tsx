@@ -729,7 +729,6 @@ export default function StudentProfile() {
           onComplete={handleClubModalComplete}
           userRole="student"
           initialClubs={{
-            beta_club: safeClubs.some(club => club.name === 'Beta Club'),
             nths: safeClubs.some(club => club.name === 'NTHS')
           }}
         />

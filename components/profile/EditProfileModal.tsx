@@ -27,7 +27,6 @@ interface ProfileData {
   full_name: string
   role: string
   created_at: string
-  beta_club?: boolean
   nths?: boolean
 }
 
@@ -66,7 +65,6 @@ export function EditProfileModal({ isOpen, onClose, profile, onProfileUpdate }: 
   useEffect(() => {
     if (profile && profile.id) {
       const clubs = []
-      if (profile.beta_club) clubs.push('Beta Club')
       if (profile.nths) clubs.push('NTHS')
       setSelectedClubs(Array.isArray(clubs) ? clubs : [])
     }
@@ -203,7 +201,6 @@ export function EditProfileModal({ isOpen, onClose, profile, onProfileUpdate }: 
       })
       // Reset selected clubs to original values
       const clubs = []
-      if (profile.beta_club) clubs.push('Beta Club')
       if (profile.nths) clubs.push('NTHS')
       setSelectedClubs(Array.isArray(clubs) ? clubs : [])
       setMessage(null)

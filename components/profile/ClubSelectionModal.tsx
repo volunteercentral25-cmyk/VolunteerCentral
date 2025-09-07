@@ -23,14 +23,14 @@ interface ClubSelectionModalProps {
   onClose: () => void
   onComplete: () => void
   userRole?: 'student' | 'admin'
-  initialClubs?: { nths: boolean }
+  initialClubs?: { nths?: boolean }
 }
 
 export function ClubSelectionModal({ isOpen, onClose, onComplete, userRole = 'student', initialClubs }: ClubSelectionModalProps) {
   console.log('ClubSelectionModal: Rendering with props:', { isOpen, userRole, initialClubs })
   
   const [selectedClubs, setSelectedClubs] = useState({
-    nths: initialClubs?.nths || true // Default to NTHS selected
+    nths: initialClubs?.nths ?? true // Default to NTHS selected
   })
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
@@ -46,7 +46,7 @@ export function ClubSelectionModal({ isOpen, onClose, onComplete, userRole = 'st
     console.log('ClubSelectionModal: initialClubs changed:', initialClubs)
     if (initialClubs) {
       const newSelectedClubs = {
-        nths: initialClubs.nths || true // Default to NTHS selected
+        nths: initialClubs.nths ?? true // Default to NTHS selected
       }
       setSelectedClubs(newSelectedClubs)
       console.log('ClubSelectionModal: Updated selectedClubs to:', newSelectedClubs)
