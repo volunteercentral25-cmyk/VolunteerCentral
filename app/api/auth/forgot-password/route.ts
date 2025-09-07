@@ -23,28 +23,30 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient()
 
-    // Check if the email exists in the profiles table
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('email')
-      .eq('email', email)
-      .single()
+    // Get the site URL from environment or use the request origin
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 
+                   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
+                   `${request.nextUrl.protocol}//${request.nextUrl.host}`
 
-    if (profileError || !profile) {
-      return NextResponse.json(
-        { error: 'No account found with this email address' },
-        { status: 404 }
-      )
-    }
-
-    // If email exists, send the password reset email
+    // Send the password reset email using Supabase Auth
+    // Supabase will handle checking if the email exists
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/reset-password`,
+      redirectTo: `${siteUrl}/reset-password`,
     })
 
     if (error) {
+      console.error('Password reset email error:', error)
+      
+      // Check if the error is because the email doesn't exist
+      if (error.message.includes('User not found') || error.message.includes('Invalid email')) {
+        return NextResponse.json(
+          { error: 'No account found with this email address' },
+          { status: 404 }
+        )
+      }
+      
       return NextResponse.json(
-        { error: error.message },
+        { error: 'Failed to send password reset email. Please try again.' },
         { status: 500 }
       )
     }

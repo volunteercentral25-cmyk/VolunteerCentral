@@ -4,13 +4,11 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
-import { createClient } from '@/lib/supabase/client'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
-  const supabase = createClient()
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,37 +27,33 @@ export default function ForgotPasswordPage() {
     }
 
     try {
-      // Check if the email exists in the database
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('email', email)
-        .single()
-
-      if (profileError || !profile) {
-        setMessage({ 
-          type: 'error', 
-          text: 'No account found with this email address. Please check your email or create a new account.' 
-        })
-        setLoading(false)
-        return
-      }
-
-      // If email exists in profiles table, send the password reset email
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
       })
 
-      if (error) {
-        setMessage({ type: 'error', text: error.message })
+      const data = await response.json()
+
+      if (!response.ok) {
+        setMessage({ 
+          type: 'error', 
+          text: data.error || 'An error occurred. Please try again.' 
+        })
       } else {
         setMessage({ 
           type: 'success', 
           text: 'Password reset email sent! Please check your inbox and follow the instructions to reset your password.' 
         })
+        setEmail('') // Clear the email field
       }
     } catch (err) {
-      setMessage({ type: 'error', text: 'An unexpected error occurred. Please try again.' })
+      setMessage({ 
+        type: 'error', 
+        text: 'An unexpected error occurred. Please try again.' 
+      })
     } finally {
       setLoading(false)
     }
