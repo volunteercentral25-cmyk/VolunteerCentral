@@ -130,13 +130,13 @@ export default function ForgotPasswordPage() {
         <div className="mt-6 text-center space-y-2">
           <p className="text-gray-600">
             Remember your password?{' '}
-            <Link href="/?tab=login" className="text-blue-600 hover:text-blue-700 font-medium">
+            <Link href="/#auth?tab=login" className="text-blue-600 hover:text-blue-700 font-medium">
               Sign in
             </Link>
           </p>
           <p className="text-gray-600">
             Don't have an account?{' '}
-            <Link href="/?tab=register" className="text-blue-600 hover:text-blue-700 font-medium">
+            <Link href="/#auth?tab=register" className="text-blue-600 hover:text-blue-700 font-medium">
               Sign up
             </Link>
           </p>
