@@ -103,12 +103,12 @@ export default function MobileStudentDashboard() {
   }
 
   return (
-    <div className="min-h-screen gradient-bg overflow-hidden w-full">
+    <div className="min-h-screen gradient-bg overflow-hidden overflow-x-hidden w-full max-w-full">
       {/* Decorative blobs */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-32 -right-16 h-72 w-72 rounded-full bg-purple-300/70 blur-3xl animate-blob" />
-        <div className="absolute bottom-0 left-0 h-72 w-72 rounded-full bg-pink-300/60 blur-3xl animate-blob animation-delay-2000" />
-        <div className="absolute top-40 left-10 h-72 w-72 rounded-full bg-blue-300/60 blur-3xl animate-blob animation-delay-4000" />
+        <div className="absolute -top-32 right-0 h-64 w-64 rounded-full bg-purple-300/70 blur-3xl animate-blob" />
+        <div className="absolute bottom-0 left-0 h-64 w-64 rounded-full bg-pink-300/60 blur-3xl animate-blob animation-delay-2000" />
+        <div className="absolute top-40 left-0 h-64 w-64 rounded-full bg-blue-300/60 blur-3xl animate-blob animation-delay-4000" />
       </div>
 
       {/* Mobile Header */}
@@ -118,7 +118,7 @@ export default function MobileStudentDashboard() {
         transition={{ duration: 0.5 }}
         className="sticky top-0 z-40 border-b border-white/30 bg-white/70 backdrop-blur-md w-full"
       >
-        <div className="mx-auto max-w-7xl px-4 py-3 w-full">
+        <div className="mx-auto max-w-sm px-4 py-3 w-full">
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center gap-3">
               <Image src="/logo.png" alt="Volunteer Central Logo" width={28} height={28} className="rounded-lg shadow-glow" priority />
@@ -198,7 +198,7 @@ export default function MobileStudentDashboard() {
         </motion.div>
       )}
 
-      <main className="mx-auto max-w-7xl px-4 py-6 w-full">
+      <main className="mx-auto max-w-sm px-4 py-6 w-full">
         {/* Mobile Welcome Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -258,7 +258,7 @@ export default function MobileStudentDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium text-gray-600">Achievements</p>
-                    <p className="text-xl font-bold text-blue-600">{data.stats.achievements || 0}</p>
+                    <p className="text-xl font-bold text-blue-600">{data.achievements?.length || 0}</p>
                   </div>
                   <div className="p-2 bg-blue-100 rounded-full">
                     <Award className="h-4 w-4 text-blue-600" />
@@ -343,11 +343,11 @@ export default function MobileStudentDashboard() {
                   data.recentActivity.slice(0, 3).map((activity, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div>
-                        <p className="font-medium text-gray-900 text-sm">{activity.title}</p>
-                        <p className="text-xs text-gray-600">{activity.description}</p>
+                        <p className="font-medium text-gray-900 text-sm">{activity.activity}</p>
+                        <p className="text-xs text-gray-600">{activity.hours} hours • {new Date(activity.date).toLocaleDateString()}</p>
                       </div>
                       <Badge className="bg-purple-100 text-purple-800">
-                        {activity.type}
+                        {activity.status}
                       </Badge>
                     </div>
                   ))
@@ -373,7 +373,7 @@ export default function MobileStudentDashboard() {
             <CardContent className="space-y-4">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Current Progress</span>
-                <span className="font-medium">{data.stats.totalHours}/{data.stats.goalHours || 20} hours</span>
+                <span className="font-medium">{data.stats.totalHours}/20 hours</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3">
                 <motion.div
@@ -384,7 +384,7 @@ export default function MobileStudentDashboard() {
                 />
               </div>
               <p className="text-sm text-gray-600">
-                {Math.max(0, (data.stats.goalHours || 20) - data.stats.totalHours)} hours remaining to reach your goal
+                {Math.max(0, 20 - data.stats.totalHours)} hours remaining to reach your goal
               </p>
             </CardContent>
           </Card>
