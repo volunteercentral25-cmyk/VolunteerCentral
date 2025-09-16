@@ -930,6 +930,151 @@ def send_hours_notification():
         logger.error(f"Error sending hours notification: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
+@app.route('/api/email/send-profile-share', methods=['POST'])
+def send_profile_share():
+    """Send profile sharing email from iOS app"""
+    try:
+        logger.info("Received profile share email request")
+        data = request.get_json()
+        logger.info(f"Request data: {data}")
+        
+        # Validate required fields
+        required_fields = ['student_name', 'student_email', 'share_url', 'recipient_email']
+        for field in required_fields:
+            if field not in data:
+                logger.error(f"Missing required field: {field}")
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        student_name = data['student_name']
+        student_email = data['student_email']
+        share_url = data['share_url']
+        recipient_email = data['recipient_email']
+        custom_message = data.get('custom_message', '')
+        
+        logger.info(f"Processing profile share email for student: {student_name} to: {recipient_email}")
+        
+        # Prepare email content
+        template_data = {
+            'student_name': student_name,
+            'student_email': student_email,
+            'share_url': share_url,
+            'custom_message': custom_message,
+            'dashboard_url': FRONTEND_URL
+        }
+        
+        # Create profile sharing email template
+        profile_share_template = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Volunteer Profile Shared</title>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+                .profile-card { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea; }
+                .button { display: inline-block; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; margin: 10px 5px; }
+                .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+                .student-info { background: #e3f2fd; padding: 15px; border-radius: 6px; margin: 15px 0; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>Volunteer Profile Shared</h1>
+                    <p>Volunteer Central</p>
+                </div>
+                
+                <div class="content">
+                    <h2>Hello!</h2>
+                    <p>{{ student_name }} has shared their volunteer profile with you. Check out their community service contributions and achievements!</p>
+                    
+                    <div class="student-info">
+                        <h3>Student Information</h3>
+                        <p><strong>Name:</strong> {{ student_name }}</p>
+                        <p><strong>Email:</strong> {{ student_email }}</p>
+                    </div>
+                    
+                    {% if custom_message %}
+                    <div class="profile-card">
+                        <h3>Personal Message</h3>
+                        <p><em>"{{ custom_message }}"</em></p>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="profile-card">
+                        <h3>View Profile</h3>
+                        <p>Click the button below to view {{ student_name }}'s complete volunteer profile, including:</p>
+                        <ul>
+                            <li>Total volunteer hours</li>
+                            <li>Recent activities and achievements</li>
+                            <li>Club memberships</li>
+                            <li>Community impact</li>
+                        </ul>
+                        
+                        <div style="text-align: center; margin-top: 20px;">
+                            <a href="{{ share_url }}" class="button">View Volunteer Profile</a>
+                        </div>
+                    </div>
+                    
+                    <p style="margin-top: 30px; font-size: 14px; color: #666;">
+                        <strong>Note:</strong> This profile link is shared by {{ student_name }}. If you have any questions, please contact them directly.
+                    </p>
+                </div>
+                
+                <div class="footer">
+                    <p>Volunteer Central - Building Community Through Service</p>
+                    <p>This is an automated message. Please do not reply to this email.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Render email template
+        html_content = render_email(
+            profile_share_template,
+            subject=f'{student_name} shared their volunteer profile with you',
+            preheader=f'Check out {student_name}\'s volunteer achievements',
+            **template_data
+        )
+        
+        # Send email using Flask-Mail
+        logger.info(f"Preparing to send profile share email to: {recipient_email}")
+        
+        msg = Message(
+            f'{student_name} shared their volunteer profile with you',
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[recipient_email]
+        )
+        msg.html = html_content
+        
+        logger.info("Sending profile share email...")
+        mail.send(msg)
+        logger.info("Profile share email sent successfully!")
+        
+        # Log email sent
+        supabase_service.log_email_sent(
+            recipient=recipient_email,
+            template='profile_share',
+            subject=msg.subject,
+            data=template_data
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Profile share email sent successfully',
+            'recipient': recipient_email,
+            'student_name': student_name
+        })
+        
+    except Exception as e:
+        logger.error(f"Error sending profile share email: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
 @app.route('/api/email/health', methods=['GET'])
 def health_check():
     return jsonify({

@@ -40,7 +40,7 @@
       "headers": [
         {
           "key": "Access-Control-Allow-Origin",
-          "value": "https://volunteercentral25-cmyk.vercel.app"
+          "value": "*"
         },
         {
           "key": "Access-Control-Allow-Methods",

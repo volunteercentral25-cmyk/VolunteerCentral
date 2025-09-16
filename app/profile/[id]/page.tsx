@@ -76,22 +76,38 @@ export default function PublicProfile() {
       const shareToken = urlParams.get('token')
       
       if (!shareToken) {
-        throw new Error('Share token is required')
+        throw new Error('Share token is required to view this profile')
       }
       
-      const response = await fetch(`/api/public/profile/${profileId}?token=${shareToken}`)
+      console.log('Loading profile with ID:', profileId, 'and token:', shareToken)
+      
+      const response = await fetch(`/api/public/profile/${profileId}?token=${shareToken}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      console.log('Profile API response status:', response.status)
       
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Profile API error:', errorData)
+        
         if (response.status === 404) {
-          throw new Error('Profile not found')
+          throw new Error('Profile not found or share link is invalid')
         }
         if (response.status === 410) {
           throw new Error('This share link has expired or been deactivated')
         }
-        throw new Error('Failed to load profile')
+        if (response.status === 400) {
+          throw new Error('Invalid share link format')
+        }
+        throw new Error(errorData.error || 'Failed to load profile')
       }
       
       const data = await response.json()
+      console.log('Profile API response data:', data)
       
       // Transform the API response to match the expected interface
       if (data.success && data.profile) {
@@ -106,7 +122,7 @@ export default function PublicProfile() {
             totalHours: data.volunteer_hours?.reduce((total: number, hour: any) => total + (hour.hours || 0), 0) || 0,
             totalActivities: data.volunteer_hours?.length || 0,
             recentActivities: data.volunteer_hours?.slice(0, 5).map((hour: any) => ({
-              description: hour.description || 'Volunteer Activity',
+              description: hour.description || hour.activity || 'Volunteer Activity',
               hours: hour.hours || 0,
               date: hour.date
             })) || []
@@ -119,8 +135,9 @@ export default function PublicProfile() {
           })) || []
         }
         setProfile(transformedProfile)
+        console.log('Profile loaded successfully:', transformedProfile.fullName)
       } else {
-        throw new Error('Invalid profile data received')
+        throw new Error('Invalid profile data received from server')
       }
     } catch (error) {
       console.error('Error loading profile:', error)
@@ -179,11 +196,28 @@ export default function PublicProfile() {
             <div className="text-red-500 mb-4">
               <User className="h-12 w-12 mx-auto" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Profile Not Found</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Profile Not Available</h2>
             <p className="text-gray-600 mb-4">{error || 'The requested profile could not be found.'}</p>
-            <Button asChild className="btn-primary">
-              <Link href="/">Go Home</Link>
-            </Button>
+            
+            {/* Add helpful information for iOS app users */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 text-left">
+              <h3 className="font-semibold text-blue-900 mb-2">Having trouble viewing this profile?</h3>
+              <ul className="text-sm text-blue-800 space-y-1">
+                <li>• Make sure you're using the complete link shared by the student</li>
+                <li>• The link may have expired or been deactivated</li>
+                <li>• Contact the student to request a new share link</li>
+                <li>• If you're using the iOS app, try refreshing the link</li>
+              </ul>
+            </div>
+            
+            <div className="flex flex-col gap-2">
+              <Button asChild className="btn-primary">
+                <Link href="/">Go Home</Link>
+              </Button>
+              <Button asChild variant="outline" className="btn-secondary">
+                <Link href="/register">Join Volunteer Central</Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -456,6 +490,15 @@ export default function PublicProfile() {
               <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
                 Join Volunteer Central to track your own volunteer hours, find opportunities, and make a difference in your community.
               </p>
+              
+              {/* Add iOS app specific messaging */}
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 text-left">
+                <h4 className="font-semibold text-green-900 mb-2">📱 Using the iOS App?</h4>
+                <p className="text-sm text-green-800">
+                  This profile was shared from the Volunteer Central iOS app. You can download the app to create your own profile and start tracking your volunteer hours!
+                </p>
+              </div>
+              
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button asChild className="btn-primary">
                   <Link href="/register">Get Started</Link>
