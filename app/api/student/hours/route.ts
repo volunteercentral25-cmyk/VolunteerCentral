@@ -37,27 +37,39 @@ export async function GET(request: NextRequest) {
       .order('date', { ascending: false })
 
     if (hoursError) {
+      console.error('Hours fetch error for user:', profile.id, hoursError)
       return NextResponse.json({ error: 'Failed to fetch hours' }, { status: 500 })
     }
 
-    // Calculate summary statistics (only approved count toward totals)
-    const totalHours = hoursData
-      ?.filter(hour => hour.status === 'approved')
-      .reduce((sum, hour) => sum + Number(hour.hours), 0) || 0
-    const approvedCount = hoursData?.filter(hour => hour.status === 'approved').length || 0
-    const pendingCount = hoursData?.filter(hour => hour.status === 'pending').length || 0
+    // Safely handle null/undefined hoursData
+    const safeHoursData = Array.isArray(hoursData) ? hoursData : []
 
-    const hoursList = hoursData?.map(hour => ({
-      id: hour.id,
-      activity: hour.description || hour.volunteer_opportunities?.title || 'Volunteer Activity',
-      hours: hour.hours,
-      date: hour.date,
-      description: hour.description,
-      status: hour.status,
-      location: hour.volunteer_opportunities?.location || 'N/A',
-      verification_email: hour.verification_email || null,
-      verified_by: hour.verified_by || null
-    })) || []
+    // Calculate summary statistics (only approved count toward totals)
+    const totalHours = safeHoursData
+      .filter(hour => hour && hour.status === 'approved')
+      .reduce((sum, hour) => sum + Number(hour.hours || 0), 0)
+    const approvedCount = safeHoursData.filter(hour => hour && hour.status === 'approved').length
+    const pendingCount = safeHoursData.filter(hour => hour && hour.status === 'pending').length
+
+    const hoursList = safeHoursData
+      .filter(hour => hour != null) // Filter out any null entries
+      .map(hour => {
+        // Safely extract volunteer_opportunities data
+        const opportunity = hour.volunteer_opportunities
+        const opportunityData = Array.isArray(opportunity) ? opportunity[0] : opportunity
+        
+        return {
+          id: hour.id,
+          activity: hour.description || opportunityData?.title || 'Volunteer Activity',
+          hours: hour.hours,
+          date: hour.date,
+          description: hour.description,
+          status: hour.status,
+          location: opportunityData?.location || 'N/A',
+          verification_email: hour.verification_email || null,
+          verified_by: hour.verified_by || null
+        }
+      })
 
     return NextResponse.json({
       hours: hoursList,
