@@ -28,6 +28,7 @@ import {
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { isBlockedEmailDomain } from "@/lib/utils/emailValidation"
 
 export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -87,6 +88,13 @@ export default function HomePage() {
     e.preventDefault()
     setIsLoading(true)
     setMessage(null)
+
+    // Validate email domain - block school emails
+    if (isBlockedEmailDomain(formData.email)) {
+      showMessage('error', 'Please use a personal email address instead of a school email')
+      setIsLoading(false)
+      return
+    }
 
     if (formData.password !== formData.confirmPassword) {
       showMessage('error', 'Passwords do not match')

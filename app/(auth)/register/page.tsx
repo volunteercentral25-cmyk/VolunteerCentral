@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { isBlockedEmailDomain } from '@/lib/utils/emailValidation'
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -32,6 +33,13 @@ export default function RegisterPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
+
+    // Validate email domain - block school emails
+    if (isBlockedEmailDomain(formData.email)) {
+      setError('Please use a personal email address instead of a school email')
+      setLoading(false)
+      return
+    }
 
     // Validate student ID exactly 10 digits
     if (!/^\d{10}$/.test(formData.studentId)) {

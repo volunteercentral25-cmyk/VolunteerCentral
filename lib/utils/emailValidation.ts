@@ -1,3 +1,9 @@
+// List of blocked email domains (school domains that should use personal emails)
+const BLOCKED_EMAIL_DOMAINS = [
+  'student.ucps.k12.nc.us',
+  'ucps.k12.nc.us'
+]
+
 // List of disposable/temporary email providers to block
 const DISPOSABLE_EMAIL_PROVIDERS = [
   'guerrillamail.com',
@@ -87,6 +93,16 @@ export function validateEmail(email: string): EmailValidationResult {
   // Extract domain
   const domain = email.split('@')[1].toLowerCase()
 
+  // Block school domains that should use personal emails
+  if (BLOCKED_EMAIL_DOMAINS.includes(domain)) {
+    return {
+      isValid: false,
+      isCustomDomain: false,
+      domain,
+      error: 'Please use a personal email address instead of a school email'
+    }
+  }
+
   // Block disposable/temporary domains
   if (DISPOSABLE_EMAIL_PROVIDERS.includes(domain)) {
     return {
@@ -134,4 +150,12 @@ export function getExampleOrganizationalDomains(): string[] {
  */
 export function formatDomain(domain: string): string {
   return domain.charAt(0).toUpperCase() + domain.slice(1)
+}
+
+/**
+ * Checks if an email domain is blocked (e.g., school emails that should use personal emails)
+ */
+export function isBlockedEmailDomain(email: string): boolean {
+  const domain = email.split('@')[1]?.toLowerCase()
+  return BLOCKED_EMAIL_DOMAINS.includes(domain)
 }

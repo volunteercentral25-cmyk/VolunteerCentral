@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { isBlockedEmailDomain } from '@/lib/utils/emailValidation'
 
 export default function MobileRegisterPage() {
   const [formData, setFormData] = useState({
@@ -30,6 +31,13 @@ export default function MobileRegisterPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
+
+    // Validate email domain - block school emails
+    if (isBlockedEmailDomain(formData.email)) {
+      setError('Please use a personal email address instead of a school email')
+      setLoading(false)
+      return
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match')
